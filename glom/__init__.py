@@ -85,4 +85,24 @@ TODO:
   * Django and SQLAlchemy Models and QuerySets
 * Support for subclasses/superclasses via type tree
 
+
+idealized API (from the whiteboard with slight translation)
+
+glom({
+    'name': 'name',  # simple get-attr
+    'primary_email': 'primary_email.email',  # multi-level get-attr
+    'emails': ('email_set', ['email']),  # get-attr + sequence unpack + fetch one attr
+    'roles': ('vendor_roles', [{'role': 'role'}]),  # get-attr + sequence unpack + sub-glom
+}, contact)
+
+ideas from this:
+every value of the dict is moving down a level, the algorithm is to repeatedly
+walk down levels via get-attr + sequence unpacks until you run out of levels
+and then whatever you have arrived at goes in that spot
+
+you could also maybe glom to a list by just taking the values() of the above dict
+glom([
+   'name', 'primary_email.email', ('email_set', ['email']), ('vendor_roles', [{'role': 'role'}])
+], contact)
+
 """
