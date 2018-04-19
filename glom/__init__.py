@@ -18,23 +18,29 @@ _REGISTRY_MAP = {}
 _REGISTRY_LIST = []  # TODO or some sort of tree
 
 
-def register(target_type, accessor, iterate=False):
+def register(target_type, getter, iterate=False):
     if iterate is True:
         iterate = iter
     if iterate is not False and not callable(iterate):
         raise ValueError()
 
-    if not callable(accessor):
+    if not callable(getter):
         raise ValueError()
 
-    _REGISTRY_MAP[target_type] = (accessor, iterate)
-    _REGISTRY_LIST.append((accessor, iterate))
+    _REGISTRY_MAP[target_type] = (getter, iterate)
+    _REGISTRY_LIST.append((getter, iterate))
 
     return
 
 
-def _get_path(target, remaining):
-    pass
+def _get_path(target, path):
+    parts = path.split('.')
+    cur, val = target, None
+    for part in parts:
+        getter = _REGISTRY_MAP[type(cur)][0]
+        val = getter(cur, part)
+        cur = val
+    return val
 
 
 def glom(target, spec, ret=None):
@@ -42,12 +48,30 @@ def glom(target, spec, ret=None):
 
     for field, sub in spec.items():
         if isinstance(sub, str):
-            sub = sub.split('.')
-            cur, val = target, None
-            for s in sub:
-                val = _REGISTRY_MAP[type(cur)][0](cur, s)
-                cur = val
-            ret[field] = val
+            cur_src = sub
+            processor = None
+        elif isinstance(sub, tuple):
+            cur_src = sub[0]
+            processor = sub[1]
+        else:
+            raise ValueError('expected string path, or tuple of (string path, processor), not: %r' % sub)
+
+        iterate = False
+        if isinstance(processor, list):
+            iterate = True
+            processor = processor[0]
+            if isinstance(processor, str):
+                processor = lambda v, p=processor: _get_path(v, p)
+
+        if iterate:
+            value = [processor(val) if processor else val
+                     for val in _get_path(target, cur_src)]
+            print 'iterated', value
+        else:
+            val = _get_path(target, cur_src)
+            value = processor(val) if processor else val
+
+        ret[field] = value
 
     return ret
 
@@ -55,19 +79,28 @@ def glom(target, spec, ret=None):
 # TODO: is it really necessary to register a "get_fields"
 register(object, object.__getattribute__)
 register(dict, dict.__getitem__)
-register(list, list.__getitem__, True)  # TODO: are iterate and accessor mutually exclusive or?
+register(list, list.__getitem__, True)  # TODO: are iterate and getter mutually exclusive or?
 
 
 def _main():
     val = {'a': {'b': 'c'},
            'd': {'e': ['f'],
-                 'g': 'h'}}
+                 'g': 'h'},
+           'i': [{'j': 'k', 'l': 'm'}],
+           'n': 'o'}
 
     ret = glom(val, {'a': 'a.b',
-                     'e': 'd.e'})  # d.e[0] or d.e: (callable to fetch 0)
+                     'e': 'd.e',
+                     'i': ('i', ['j']),
+                     'n': ('n', lambda n: n.upper())})  # d.e[0] or d.e: (callable to fetch 0)
 
-    print(val)
-    print(ret)
+    print('in: ', val)
+    print('got:', ret)
+    expected = {'a': 'c',
+                'e': ['f'],
+                'i': ['k'],
+                'n': 'O'}
+    print('exp:', expected)
     return
 
 
@@ -104,5 +137,11 @@ you could also maybe glom to a list by just taking the values() of the above dic
 glom([
    'name', 'primary_email.email', ('email_set', ['email']), ('vendor_roles', [{'role': 'role'}])
 ], contact)
+
+would be cool to have glom gracefully degrade to a get_path:
+
+  glob({'a': {'b': 'c'}}, 'a.b') -> 'c'
+
+(spec is just a string instead of a dict, target is still a dict obvs)
 
 """
