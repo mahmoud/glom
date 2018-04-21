@@ -14,72 +14,77 @@ higher-level objects.
 
 """
 
-_REGISTRY_MAP = {}
-_REGISTRY_LIST = []  # TODO or some sort of tree
+# attr ok?
+class Glommer(object):
+    def __init__(self):
+        self._map = {}
+        self._list = []
+
+    def register(self, target_type, getter, iterate=False):
+        '''
+        register a new type with the Glommer so it will know
+        how to handle it as a target
+        '''
+        if iterate is True:
+            iterate = iter
+        if iterate is not False and not callable(iterate):
+            raise ValueError('iterate must be iteration function or True')
+        if not callable(getter):
+            raise ValueError('getter must be get attribute function')
+        self._map[target_type] = (getter, iterate)
+        self._list.append((getter, iterate))
+        return
+
+    def _get_path(self, target, path):
+        parts = path.split('.')
+        cur, val = target, None
+        for part in parts:
+            getter = self._map[type(cur)][0]
+            val = getter(cur, part)
+            cur = val
+        return val
 
 
-def register(target_type, getter, iterate=False):
-    if iterate is True:
-        iterate = iter
-    if iterate is not False and not callable(iterate):
-        raise ValueError()
+    def glom(self, target, spec, ret=None):
+        ret = {} if ret is None else ret
 
-    if not callable(getter):
-        raise ValueError()
+        for field, sub in spec.items():
+            if isinstance(sub, str):  # basestring?
+                cur_src = sub
+                processor = None
+            elif isinstance(sub, tuple):
+                cur_src = sub[0]
+                processor = sub[1]
+            else:
+                raise ValueError('expected string path, or tuple of (string path, processor), not: %r' % sub)
 
-    _REGISTRY_MAP[target_type] = (getter, iterate)
-    _REGISTRY_LIST.append((getter, iterate))
+            iterate = False
+            if isinstance(processor, list):
+                iterate = True
+                processor = processor[0]
+                if isinstance(processor, str):
+                    processor = lambda v, p=processor: self._get_path(v, p)
 
-    return
+            if iterate:
+                value = [processor(val) if processor else val
+                         for val in self._get_path(target, cur_src)]
+            else:
+                val = self._get_path(target, cur_src)
+                value = processor(val) if processor else val
+
+            ret[field] = value
+
+        return ret
 
 
-def _get_path(target, path):
-    parts = path.split('.')
-    cur, val = target, None
-    for part in parts:
-        getter = _REGISTRY_MAP[type(cur)][0]
-        val = getter(cur, part)
-        cur = val
-    return val
-
-
-def glom(target, spec, ret=None):
-    ret = {} if ret is None else ret
-
-    for field, sub in spec.items():
-        if isinstance(sub, str):
-            cur_src = sub
-            processor = None
-        elif isinstance(sub, tuple):
-            cur_src = sub[0]
-            processor = sub[1]
-        else:
-            raise ValueError('expected string path, or tuple of (string path, processor), not: %r' % sub)
-
-        iterate = False
-        if isinstance(processor, list):
-            iterate = True
-            processor = processor[0]
-            if isinstance(processor, str):
-                processor = lambda v, p=processor: _get_path(v, p)
-
-        if iterate:
-            value = [processor(val) if processor else val
-                     for val in _get_path(target, cur_src)]
-            print 'iterated', value
-        else:
-            val = _get_path(target, cur_src)
-            value = processor(val) if processor else val
-
-        ret[field] = value
-
-    return ret
+_DEFAULT = Glommer()
+glom = _DEFAULT.glom
 
 
 # TODO: is it really necessary to register a "get_fields"
-register(object, object.__getattribute__)
-register(dict, dict.__getitem__)
-register(list, list.__getitem__, True)  # TODO: are iterate and getter mutually exclusive or?
+_DEFAULT.register(object, object.__getattribute__)
+_DEFAULT.register(dict, dict.__getitem__)
+_DEFAULT.register(list, list.__getitem__, True)  # TODO: are iterate and getter mutually exclusive or?
 
 
 def _main():
