@@ -16,6 +16,21 @@ higher-level objects.
 
 from __future__ import print_function
 
+class Path(object):
+    """Used to represent explicit paths when the default 'a.b.c'-style
+    syntax won't work or isn't desirable.
+
+    Use this to wrap ints, datetimes, and other valid keys, as well as
+    strings with dots that shouldn't be expanded.
+
+    >>> target = {'a': {'b': 'c', 'd.e': 'f', 2: 3}}
+    >>> glom(target, {'a_d': Path('a', 'd.e'), 'a_2': Path('a', 2)})
+    {'a_de': 'f', 'a_2': 3}
+    """
+    def __init__(self, *path_parts):
+        self.path_parts = path_parts
+
+
 class Glommer(object):
     def __init__(self):
         self._map = {}
@@ -38,7 +53,13 @@ class Glommer(object):
         return
 
     def _get_path(self, target, path):
-        parts = path.split('.')
+        try:
+            parts = path.split('.')
+        except (AttributeError, TypeError):
+            parts = getattr(path, 'path_parts', None)
+            if parts is None:
+                raise TypeError('path expected str or Path object, not: %r' % path)
+        # TODO: is it ok to return None here as a default when path is empty?
         cur, val = target, None
         for part in parts:
             getter = self._map[type(cur)][0]
@@ -46,50 +67,30 @@ class Glommer(object):
             cur = val
         return val
 
-
     def glom(self, target, spec):
-        iterate = False
-        if isinstance(spec, list):
-            iterate = True
-            spec = spec[0]
-
-        if isinstance(spec, str):
-            spec = (spec, None)
-
-        accessor, processor = spec
-        if isinstance(accessor, str):  # accessor is a path string
-            accessor = lambda v, p=accessor: self._get_path(v, p)
-        if isinstance(processor, list):
-            iterate = True  # what if iterate was already True?
-            processor = processor[0]
-
-        # TODO: move these into a grammar so the spec is checked once,
-        # recursively (by e.g., schema) at the first call, not on
-        # every recursive call of glom.
-        if not callable(accessor):
-            raise ValueError('glom expected accessor to be str or callable, not: %r' % accessor)
-        if processor and not callable(processor):
-            raise ValueError('glom expected processor to be callable or None, not: %r' % processor)
-
-        # spec stuff sorted above, target work below
-        '''
+        # TODO: good error
+        # TODO: default
+        # TODO: de-recursivize this
         if isinstance(spec, dict):
-            ret = {}
-
-            for field, sub in spec.items():
-                pass
-        else:
-            if iterate:
-                value = [processor(val) if processor else val
-                         for val in self._get_path(target, cur_src)]
-            else:
-                val = self._get_path(target, cur_src)
-                value = processor(val) if processor else val
-
-            ret[field] = value
-
-        return ret
-        '''
+            ret = {}  # TODO: configurable based on registered type
+            for field, sub_spec in spec.items():
+                ret[field] = glom(target, sub_spec)
+            return ret
+        elif isinstance(spec, list):
+            sub_spec = spec[0]
+            iterator = self._map[type(target)][1](target)
+            return [glom(t, sub_spec) for t in iterator]
+        elif isinstance(spec, tuple):
+            res = target
+            for sub_spec in spec:
+                res = glom(res, sub_spec)
+            return res
+        elif callable(spec):
+            return spec(target)
+        elif isinstance(spec, (basestring, Path)):
+            return self._get_path(target, spec)
+        raise TypeError('expected spec to be dict, list, tuple,'
+                        ' callable, or string, not: %r' % spec)
         return
 
 
@@ -97,7 +98,6 @@ _DEFAULT = Glommer()
 glom = _DEFAULT.glom
 
 
-# TODO: is it really necessary to register a "get_fields"
 _DEFAULT.register(object, object.__getattribute__)
 _DEFAULT.register(dict, dict.__getitem__)
 _DEFAULT.register(list, list.__getitem__, True)  # TODO: are iterate and getter mutually exclusive or?
@@ -112,16 +112,18 @@ def _main():
 
     ret = glom(val, {'a': 'a.b',
                      'e': 'd.e',
-                     'i': ('i', ['j']),
+                     'i': ('i', [{'j': 'j'}]),  # TODO: support True for cases when the value should simply be mapped into the field name?
                      'n': ('n', lambda n: n.upper())})  # d.e[0] or d.e: (callable to fetch 0)
 
     print('in: ', val)
     print('got:', ret)
     expected = {'a': 'c',
                 'e': ['f'],
-                'i': ['k'],
+                'i': [{'j': 'k'}],
                 'n': 'O'}
     print('exp:', expected)
+
+    print(glom(range(10), Path(1)))  # test list getting and Path
     return
 
 
