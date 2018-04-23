@@ -68,22 +68,26 @@ class Glommer(object):
         return val
 
     def glom(self, target, spec):
+        # TODO: check spec up front
         # TODO: good error
         # TODO: default
         # TODO: de-recursivize this
         if isinstance(spec, dict):
-            ret = {}  # TODO: configurable based on registered type
+            ret = type(spec)()
+            # TODO: the above works for dict + ordereddict, but is it
+            # sufficient for other cases?
+
             for field, sub_spec in spec.items():
-                ret[field] = glom(target, sub_spec)
+                ret[field] = self.glom(target, sub_spec)
             return ret
         elif isinstance(spec, list):
             sub_spec = spec[0]
             iterator = self._map[type(target)][1](target)
-            return [glom(t, sub_spec) for t in iterator]
+            return [self.glom(t, sub_spec) for t in iterator]
         elif isinstance(spec, tuple):
             res = target
             for sub_spec in spec:
-                res = glom(res, sub_spec)
+                res = self.glom(res, sub_spec)
             return res
         elif callable(spec):
             return spec(target)
