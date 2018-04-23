@@ -14,6 +14,8 @@ higher-level objects.
 
 """
 
+from __future__ import print_function
+
 class Glommer(object):
     def __init__(self):
         self._map = {}
@@ -24,6 +26,7 @@ class Glommer(object):
         register a new type with the Glommer so it will know
         how to handle it as a target
         '''
+        # should maybe also take return type
         if iterate is True:
             iterate = iter
         if iterate is not False and not callable(iterate):
@@ -44,26 +47,38 @@ class Glommer(object):
         return val
 
 
-    def glom(self, target, spec, ret=None):
-        ret = {} if ret is None else ret
+    def glom(self, target, spec):
+        iterate = False
+        if isinstance(spec, list):
+            iterate = True
+            spec = spec[0]
 
-        for field, sub in spec.items():
-            if isinstance(sub, basestring):
-                cur_src = sub
-                processor = None
-            elif isinstance(sub, tuple):
-                cur_src = sub[0]
-                processor = sub[1]
-            else:
-                raise ValueError('expected string path, or tuple of (string path, processor), not: %r' % sub)
+        if isinstance(spec, str):
+            spec = (spec, None)
 
-            iterate = False
-            if isinstance(processor, list):
-                iterate = True
-                processor = processor[0]
-                if isinstance(processor, str):
-                    processor = lambda v, p=processor: self._get_path(v, p)
+        accessor, processor = spec
+        if isinstance(accessor, str):  # accessor is a path string
+            accessor = lambda v, p=accessor: self._get_path(v, p)
+        if isinstance(processor, list):
+            iterate = True  # what if iterate was already True?
+            processor = processor[0]
 
+        # TODO: move these into a grammar so the spec is checked once,
+        # recursively (by e.g., schema) at the first call, not on
+        # every recursive call of glom.
+        if not callable(accessor):
+            raise ValueError('glom expected accessor to be str or callable, not: %r' % accessor)
+        if processor and not callable(processor):
+            raise ValueError('glom expected processor to be callable or None, not: %r' % processor)
+
+        # spec stuff sorted above, target work below
+        '''
+        if isinstance(spec, dict):
+            ret = {}
+
+            for field, sub in spec.items():
+                pass
+        else:
             if iterate:
                 value = [processor(val) if processor else val
                          for val in self._get_path(target, cur_src)]
@@ -74,6 +89,8 @@ class Glommer(object):
             ret[field] = value
 
         return ret
+        '''
+        return
 
 
 _DEFAULT = Glommer()
