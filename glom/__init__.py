@@ -14,7 +14,6 @@ higher-level objects.
 
 """
 
-# attr ok?
 class Glommer(object):
     def __init__(self):
         self._map = {}
@@ -49,7 +48,7 @@ class Glommer(object):
         ret = {} if ret is None else ret
 
         for field, sub in spec.items():
-            if isinstance(sub, str):  # basestring?
+            if isinstance(sub, basestring):
                 cur_src = sub
                 processor = None
             elif isinstance(sub, tuple):
@@ -112,8 +111,7 @@ def _main():
 if __name__ == '__main__':
     _main()
 
-"""
-TODO:
+"""TODO:
 
 * More subspecs
   * dicts
@@ -148,5 +146,32 @@ would be cool to have glom gracefully degrade to a get_path:
   glob({'a': {'b': 'c'}}, 'a.b') -> 'c'
 
 (spec is just a string instead of a dict, target is still a dict obvs)
+
+---
+
+Need to raise a good exception on failure to fetch. Maybe:
+
+class PathAccessError(KeyError, IndexError, TypeError):
+    '''An amalgamation of KeyError, IndexError, and TypeError,
+    representing what can occur when looking up a path in a nested
+    object.
+    '''
+    def __init__(self, exc, seg, path):
+        self.exc = exc
+        self.seg = seg
+        self.path = path
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r, %r, %r)' % (cn, self.exc, self.seg, self.path)
+
+    def __str__(self):
+        return ('could not access %r from path %r, got error: %r'
+                % (self.seg, self.path, self.exc))
+
+
+Also need the ability to specify defaults if something is not found,
+as opposed to raising an error. Default varies by whether or not to
+iterate. Empty list if yes, None if no.
 
 """
