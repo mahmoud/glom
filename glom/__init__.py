@@ -16,6 +16,26 @@ higher-level objects.
 
 from __future__ import print_function
 
+
+class PathAccessError(KeyError, IndexError, TypeError):
+    '''An amalgamation of KeyError, IndexError, and TypeError,
+    representing what can occur when looking up a path in a nested
+    object.
+    '''
+    def __init__(self, exc, seg, path):
+        self.exc = exc
+        self.seg = seg
+        self.path = path
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r, %r, %r)' % (cn, self.exc, self.seg, self.path)
+
+    def __str__(self):
+        return ('could not access %r from path %r, got error: %r'
+                % (self.seg, self.path, self.exc))
+
+
 class Path(object):
     """Used to represent explicit paths when the default 'a.b.c'-style
     syntax won't work or isn't desirable.
