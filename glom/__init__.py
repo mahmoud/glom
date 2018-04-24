@@ -18,6 +18,11 @@ from __future__ import print_function
 
 from collections import OrderedDict
 
+try:
+    basestring
+except NameError:
+    basestring = str
+
 
 class PathAccessError(KeyError, IndexError, TypeError):
     '''An amalgamation of KeyError, IndexError, and TypeError,
@@ -63,6 +68,7 @@ class Glommer(object):
         self._type_tree = OrderedDict()  # see _register_fuzzy_type for details
 
     def _get_type(self, obj):
+        "return the closest-matching type config for an object *instance*, obj"
         try:
             return self._type_map[type(obj)]
         except KeyError:
@@ -200,7 +206,7 @@ class Glommer(object):
             try:
                 return self._get_path(target, spec)
             except PathAccessError as pae:
-                pae.path = Path(*(path + pae.path))
+                pae.path = Path(*(path + list(pae.path)))
                 raise
         raise TypeError('expected spec to be dict, list, tuple,'
                         ' callable, or string, not: %r' % spec)
@@ -217,15 +223,23 @@ _DEFAULT.register(list, list.__getitem__, True)  # TODO: are iterate and getter 
 
 
 def _main():
+    class Example(object):
+        pass
+
+    example = Example()
+    subexample = Example()
+    subexample.name = 'good_name'
+    example.mapping = {'key': subexample}
+
     val = {'a': {'b': 'c'},
-           'func_obj': _DEFAULT.glom,
+           'example': example,
            'd': {'e': ['f'],
                  'g': 'h'},
            'i': [{'j': 'k', 'l': 'm'}],
            'n': 'o'}
 
     ret = glom(val, {'a': 'a.b',
-                     'f_name': 'func_obj.im_func.func_name',  # test object access
+                     'name': 'example.mapping.key.name',  # test object access
                      'e': 'd.e',
                      'i': ('i', [{'j': 'j'}]),  # TODO: support True for cases when the value should simply be mapped into the field name?
                      'n': ('n', lambda n: n.upper())})  # d.e[0] or d.e: (callable to fetch 0)
@@ -233,13 +247,13 @@ def _main():
     print('in: ', val)
     print('got:', ret)
     expected = {'a': 'c',
-                'f_name': 'glom',
+                'name': 'good_name',
                 'e': ['f'],
                 'i': [{'j': 'k'}],
                 'n': 'O'}
     print('exp:', expected)
 
-    print(glom(range(10), Path(1)))  # test list getting and Path
+    print(glom(list(range(10)), Path(1)))  # test list getting and Path
     print(glom(val, ('d.e', [(lambda x: {'f': x[0]}, 'f')])))
 
     class A(object):
