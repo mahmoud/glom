@@ -24,7 +24,11 @@ except NameError:
     basestring = str
 
 
-class PathAccessError(KeyError, IndexError, TypeError):
+class GlomError(Exception):
+    pass
+
+
+class PathAccessError(KeyError, IndexError, TypeError, GlomError):
     '''An amalgamation of KeyError, IndexError, and TypeError,
     representing what can occur when looking up a path in a nested
     object.
@@ -41,6 +45,10 @@ class PathAccessError(KeyError, IndexError, TypeError):
     def __str__(self):
         return ('could not access %r from path %r, got error: %r'
                 % (self.seg, self.path, self.exc))
+
+
+class CoalesceError(GlomError):  # TODO
+    pass
 
 
 class Path(object):
@@ -60,6 +68,34 @@ class Path(object):
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%s)' % (cn, ', '.join([repr(p) for p in self.path_parts]))
+
+
+class Literal(object):
+    def __init__(self, value):
+        self.value = value
+
+
+_MISSING = object()
+
+
+# TODO: exception for coalesces that represents all sub_specs tried
+class Coalesce(object):
+    def __init__(self, *sub_specs, **kwargs):
+        self.sub_specs = sub_specs
+        self.default = kwargs.pop('default', _MISSING)
+        self.skip = kwargs.pop('skip', _MISSING)
+        if self.skip is _MISSING:
+            self.skip_func = lambda v: False
+        elif callable(self.skip):
+            self.skip_func = self.skip
+        elif isinstance(self.skip, tuple):
+            self.skip_func = lambda v: v in self.skip
+        else:
+            self.skip_func = lambda v: v == self.skip
+
+        self.skip_exc = kwargs.pop('skip_exc', PathAccessError)
+        if kwargs:
+            raise TypeError('unexpected keyword args: %r' % (sorted(kwargs.keys()),))
 
 
 class Glommer(object):
@@ -167,6 +203,7 @@ class Glommer(object):
         # TODO: good error
         # TODO: default
         # TODO: de-recursivize this
+        # TODO: rearrange the branching below by frequency of use
         path = kwargs.pop('_path', [])
 
         if isinstance(spec, dict):
@@ -198,7 +235,7 @@ class Glommer(object):
             for sub_spec in spec:
                 res = self.glom(res, sub_spec, _path=path)
                 if not isinstance(sub_spec, list):
-                    path = path + [getattr(sub_spec, 'func_name', sub_spec)]
+                    path = path + [getattr(sub_spec, 'func_name', sub_spec)]  # TODO: py3 __name__ (use inspect)
             return res
         elif callable(spec):
             return spec(target)
@@ -208,8 +245,25 @@ class Glommer(object):
             except PathAccessError as pae:
                 pae.path = Path(*(path + list(pae.path)))
                 raise
-        raise TypeError('expected spec to be dict, list, tuple,'
-                        ' callable, or string, not: %r' % spec)
+        elif isinstance(spec, Coalesce):
+            for sub_spec in spec.sub_specs:
+                try:
+                    ret = self.glom(target, sub_spec)
+                    if spec.skip_func(ret):
+                        continue
+                    return ret
+                except spec.skip_exc as e:
+                    pass
+            if spec.default is not _MISSING:
+                return spec.default
+            else:
+                # TODO: exception for coalesces that represents all sub_specs tried
+                raise CoalesceError('no valid values found while coalescing')
+        elif isinstance(spec, Literal):
+            return spec.value
+        else:
+            raise TypeError('expected spec to be dict, list, tuple,'
+                            ' callable, or string, not: %r' % spec)
         return
 
 
