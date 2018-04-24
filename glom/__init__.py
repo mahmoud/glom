@@ -50,6 +50,10 @@ class Path(object):
     def __init__(self, *path_parts):
         self.path_parts = path_parts
 
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%s)' % (cn, ', '.join([repr(p) for p in self.path_parts]))
+
 
 class Glommer(object):
     def __init__(self):
@@ -65,7 +69,7 @@ class Glommer(object):
         if iterate is True:
             iterate = iter
         if iterate is not False and not callable(iterate):
-            raise ValueError('iterate must be iteration function or True')
+            raise ValueError('iterate must be iteration function or bool')
         if not callable(getter):
             raise ValueError('getter must be get attribute function')
         self._map[target_type] = (getter, iterate)
@@ -82,16 +86,25 @@ class Glommer(object):
         # TODO: is it ok to return None here as a default when path is empty?
         cur, val = target, None
         for part in parts:
-            getter = self._map[type(cur)][0]
-            val = getter(cur, part)
+            try:
+                getter = self._map[type(cur)][0]
+            except KeyError:
+                e = TypeError('type %r not registered for access' % type(cur))
+                raise PathAccessError(e, part, parts)
+            try:
+                val = getter(cur, part)
+            except (KeyError, IndexError, TypeError, ValueError) as e:
+                raise PathAccessError(e, part, parts)
             cur = val
         return val
 
-    def glom(self, target, spec):
+    def glom(self, target, spec, **kwargs):
         # TODO: check spec up front
         # TODO: good error
         # TODO: default
         # TODO: de-recursivize this
+        path = kwargs.pop('_path', [])
+
         if isinstance(spec, dict):
             ret = type(spec)()
             # TODO: the above works for dict + ordereddict, but is it
@@ -102,17 +115,34 @@ class Glommer(object):
             return ret
         elif isinstance(spec, list):
             sub_spec = spec[0]
-            iterator = self._map[type(target)][1](target)
-            return [self.glom(t, sub_spec) for t in iterator]
+            try:
+                _iter = self._map[type(target)][1]
+                if not _iter:
+                    raise KeyError(type(target))
+                iterator = _iter(target)
+            except KeyError:
+                raise TypeError('type %r not registered for iteration (at %r)'
+                                % (target.__class__.__name__, Path(*path)))
+            except TypeError as te:
+                raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
+                                % (target.__class__.__name__, Path(*path), te))
+
+            return [self.glom(t, sub_spec, _path=path + [i]) for i, t in enumerate(iterator)]
         elif isinstance(spec, tuple):
             res = target
             for sub_spec in spec:
-                res = self.glom(res, sub_spec)
+                res = self.glom(res, sub_spec, _path=path)
+                if not isinstance(sub_spec, list):
+                    path = path + [getattr(sub_spec, 'func_name', sub_spec)]
             return res
         elif callable(spec):
             return spec(target)
         elif isinstance(spec, (basestring, Path)):
-            return self._get_path(target, spec)
+            try:
+                return self._get_path(target, spec)
+            except PathAccessError as pae:
+                pae.path = Path(*(path + pae.path))
+                raise
         raise TypeError('expected spec to be dict, list, tuple,'
                         ' callable, or string, not: %r' % spec)
         return
@@ -148,6 +178,7 @@ def _main():
     print('exp:', expected)
 
     print(glom(range(10), Path(1)))  # test list getting and Path
+    print(glom(val, ('d.e', [(lambda x: {'f': x[0]}, 'f')])))
     return
 
 
