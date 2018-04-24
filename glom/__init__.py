@@ -93,7 +93,7 @@ class Glommer(object):
                 raise PathAccessError(e, part, parts)
             try:
                 val = getter(cur, part)
-            except (KeyError, IndexError, TypeError, ValueError) as e:
+            except Exception as e:
                 raise PathAccessError(e, part, parts)
             cur = val
         return val
@@ -179,6 +179,47 @@ def _main():
 
     print(glom(range(10), Path(1)))  # test list getting and Path
     print(glom(val, ('d.e', [(lambda x: {'f': x[0]}, 'f')])))
+
+    class A(object):
+        pass
+
+    class B(object):
+        pass
+
+    class C(A):
+        pass
+
+    class D(B):
+        pass
+
+    class E(C, D, A):
+        pass
+
+    class F(E):
+        pass
+
+    s_types = []
+
+    def insert(new_type):
+        """A little insort designed to keep subtypes ahead of their parent
+        types.
+        """
+        pos = 0
+        for i, reg_type in enumerate(s_types):
+            if issubclass(reg_type, new_type):
+                pos = i + 1
+        s_types.insert(pos, new_type)
+
+
+    insert(F)
+    insert(D)
+    insert(A)
+    insert(C)
+    insert(B)
+    insert(E)
+    from pprint import pprint
+    pprint(s_types)
+
     return
 
 
