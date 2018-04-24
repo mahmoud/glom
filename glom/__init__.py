@@ -16,6 +16,8 @@ higher-level objects.
 
 from __future__ import print_function
 
+from collections import OrderedDict
+
 
 class PathAccessError(KeyError, IndexError, TypeError):
     '''An amalgamation of KeyError, IndexError, and TypeError,
@@ -57,10 +59,65 @@ class Path(object):
 
 class Glommer(object):
     def __init__(self):
-        self._map = {}
-        self._list = []
+        self._type_map = OrderedDict()
+        self._type_tree = OrderedDict()  # see _register_fuzzy_type for details
 
-    def register(self, target_type, getter, iterate=False):
+    def _get_type(self, obj):
+        try:
+            return self._type_map[type(obj)]
+        except KeyError:
+            closest = self._get_closest_type(obj)
+            if closest is not None:
+                return self._type_map[closest]
+            raise TypeError('expected instance of registered types (%r), not %r'
+                            % (', '.join([t.__name__ for t in self._type_map]),
+                               obj.__class__.__name__))  # TODO: instance or type repr?
+
+    def _get_closest_type(self, obj, _type_tree=None):
+        type_tree = _type_tree if _type_tree is not None else self._type_tree
+        default = None
+        for cur_type, sub_tree in reversed(type_tree.items()):
+            if isinstance(obj, cur_type):
+                sub_type = self._get_closest_type(obj, _type_tree=sub_tree)
+                ret = cur_type if sub_type is None else sub_type
+                return ret
+        return default
+
+    def _register_fuzzy_type(self, new_type, _type_tree=None):
+        """Build a "type tree", an OrderedDict mapping registered types to
+        their subtypes
+
+        The type tree's invariant is that a key in the mapping is a
+        valid parent type of all its children.
+
+        Order is preserved such that non-overlapping parts of the
+        subtree take precedence by which was most recently added.
+        """
+        type_tree = _type_tree if _type_tree is not None else self._type_tree
+
+        registered = False
+        for cur_type, sub_tree in list(type_tree.items()):
+            if issubclass(cur_type, new_type):
+                if issubclass(new_type, cur_type):
+                    raise ValueError('inheritance cycles not supported'
+                                     ' (detected between %r and %r)'
+                                     % (new_type, cur_type))
+                sub_tree = type_tree.pop(cur_type)  # mutation for recursion brevity
+                try:
+                    type_tree[new_type][cur_type] = sub_tree
+                except KeyError:
+                    type_tree[new_type] = OrderedDict({cur_type: sub_tree})
+                registered = True
+            elif issubclass(new_type, cur_type):
+                type_tree[cur_type] = self._register_fuzzy_type(new_type, _type_tree=sub_tree)
+                registered = True
+
+        if not registered:
+            type_tree[new_type] = OrderedDict()
+
+        return type_tree
+
+    def register(self, target_type, getter, iterate=False, exact=False):
         '''
         register a new type with the Glommer so it will know
         how to handle it as a target
@@ -72,8 +129,9 @@ class Glommer(object):
             raise ValueError('iterate must be iteration function or bool')
         if not callable(getter):
             raise ValueError('getter must be get attribute function')
-        self._map[target_type] = (getter, iterate)
-        self._list.append((getter, iterate))
+        self._type_map[target_type] = (getter, iterate)
+        if not exact:
+            self._register_fuzzy_type(target_type)
         return
 
     def _get_path(self, target, path):
@@ -87,8 +145,8 @@ class Glommer(object):
         cur, val = target, None
         for part in parts:
             try:
-                getter = self._map[type(cur)][0]
-            except KeyError:
+                getter = self._get_type(cur)[0]
+            except TypeError:
                 e = TypeError('type %r not registered for access' % type(cur))
                 raise PathAccessError(e, part, parts)
             try:
@@ -116,13 +174,14 @@ class Glommer(object):
         elif isinstance(spec, list):
             sub_spec = spec[0]
             try:
-                _iter = self._map[type(target)][1]
+                _iter = self._get_type(target)[1]
                 if not _iter:
-                    raise KeyError(type(target))
-                iterator = _iter(target)
-            except KeyError:
+                    raise TypeError()
+            except TypeError:
                 raise TypeError('type %r not registered for iteration (at %r)'
                                 % (target.__class__.__name__, Path(*path)))
+            try:
+                iterator = _iter(target)
             except TypeError as te:
                 raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
                                 % (target.__class__.__name__, Path(*path), te))
@@ -159,12 +218,14 @@ _DEFAULT.register(list, list.__getitem__, True)  # TODO: are iterate and getter 
 
 def _main():
     val = {'a': {'b': 'c'},
+           'func_obj': _DEFAULT.glom,
            'd': {'e': ['f'],
                  'g': 'h'},
            'i': [{'j': 'k', 'l': 'm'}],
            'n': 'o'}
 
     ret = glom(val, {'a': 'a.b',
+                     'f_name': 'func_obj.im_func.func_name',  # test object access
                      'e': 'd.e',
                      'i': ('i', [{'j': 'j'}]),  # TODO: support True for cases when the value should simply be mapped into the field name?
                      'n': ('n', lambda n: n.upper())})  # d.e[0] or d.e: (callable to fetch 0)
@@ -172,6 +233,7 @@ def _main():
     print('in: ', val)
     print('got:', ret)
     expected = {'a': 'c',
+                'f_name': 'glom',
                 'e': ['f'],
                 'i': [{'j': 'k'}],
                 'n': 'O'}
@@ -198,28 +260,12 @@ def _main():
     class F(E):
         pass
 
-    s_types = []
+    register = _DEFAULT.register
+    get = lambda x: x
+    for t in [E, D, A, C, B]:
+        register(t, get)
 
-    def insert(new_type):
-        """A little insort designed to keep subtypes ahead of their parent
-        types.
-        """
-        pos = 0
-        for i, reg_type in enumerate(s_types):
-            if issubclass(reg_type, new_type):
-                pos = i + 1
-        s_types.insert(pos, new_type)
-
-
-    insert(F)
-    insert(D)
-    insert(A)
-    insert(C)
-    insert(B)
-    insert(E)
-    from pprint import pprint
-    pprint(s_types)
-
+    assert _DEFAULT._get_closest_type(F()) is E
     return
 
 
@@ -234,10 +280,7 @@ if __name__ == '__main__':
   * callables (for advanced processing)
 * More supported target types
   * Django and SQLAlchemy Models and QuerySets
-* Support for subclasses/superclasses via type tree
-
-
-idealized API (from the whiteboard with slight translation)
+* Support unregistering types
 
 glom({
     'name': 'name',  # simple get-attr
