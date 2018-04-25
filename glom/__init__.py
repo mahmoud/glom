@@ -24,7 +24,12 @@ except NameError:
     basestring = str
 
 
+_MISSING = object()
+
+
 class GlomError(Exception):
+    "A base exception for all the errors that might be raised from"
+    " calling the glom function."
     pass
 
 
@@ -51,6 +56,28 @@ class CoalesceError(GlomError):  # TODO
     pass
 
 
+class TypeHandler(object):
+    def __init__(self, type_obj, get, iterate):
+        self.type = type_obj
+        if iterate is True:
+            iterate = iter
+        if iterate is not False and not callable(iterate):
+            raise ValueError('expected callable or bool for iterate, not: %r'
+                             % iterate)
+        self.iterate = iterate
+        if not callable(get):
+            raise ValueError('expected callable for get, not: %r' % (get,))
+        self.get_func = get
+
+    def iter_func(self, target, path=None):
+        if not self.iterate:
+            msg = 'type %r not registered for iteration' % self.type.__name__
+            if path is not None:
+                msg += ' (at %r)' % Path(*path)
+            raise GlomError(msg)  # TODO: dedicated exception type for this?
+        return self.iterate(target)
+
+
 class Path(object):
     """Used to represent explicit paths when the default 'a.b.c'-style
     syntax won't work or isn't desirable.
@@ -71,11 +98,20 @@ class Path(object):
 
 
 class Literal(object):
+    """Used to represent a literal value in a spec. Wherever a Literal
+    object is encountered in a spec, it is replaced with its *value*
+    in the output.
+
+    This could also be achieved with a callable, e.g., `lambda _:
+    'literal'` in the spec, but using a Literal object adds some
+    explicitness and clarity.
+    """
     def __init__(self, value):
         self.value = value
 
-
-_MISSING = object()
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r)' % (cn, self.value)
 
 
 # TODO: exception for coalesces that represents all sub_specs tried
@@ -93,7 +129,7 @@ class Coalesce(object):
         else:
             self.skip_func = lambda v: v == self.skip
 
-        self.skip_exc = kwargs.pop('skip_exc', PathAccessError)
+        self.skip_exc = kwargs.pop('skip_exc', GlomError)
         if kwargs:
             raise TypeError('unexpected keyword args: %r' % (sorted(kwargs.keys()),))
 
@@ -159,19 +195,11 @@ class Glommer(object):
 
         return type_tree
 
-    def register(self, target_type, getter, iterate=False, exact=False):
-        '''
-        register a new type with the Glommer so it will know
-        how to handle it as a target
-        '''
-        # should maybe also take return type
-        if iterate is True:
-            iterate = iter
-        if iterate is not False and not callable(iterate):
-            raise ValueError('iterate must be iteration function or bool')
-        if not callable(getter):
-            raise ValueError('getter must be get attribute function')
-        self._type_map[target_type] = (getter, iterate)
+    def register(self, target_type, get, iterate=False, exact=False):
+        """Register a new type with the Glommer so it will know how to handle
+        it as a target.
+        """
+        self._type_map[target_type] = TypeHandler(target_type, get=get, iterate=iterate)
         if not exact:
             self._register_fuzzy_type(target_type)
         return
@@ -183,11 +211,11 @@ class Glommer(object):
             parts = getattr(path, 'path_parts', None)
             if parts is None:
                 raise TypeError('path expected str or Path object, not: %r' % path)
-        # TODO: is it ok to return None here as a default when path is empty?
-        cur, val = target, None
+
+        cur, val = target, target
         for part in parts:
             try:
-                getter = self._get_type(cur)[0]
+                getter = self._get_type(cur).get_func
             except TypeError:
                 e = TypeError('type %r not registered for access' % type(cur))
                 raise PathAccessError(e, part, parts)
@@ -216,15 +244,10 @@ class Glommer(object):
             return ret
         elif isinstance(spec, list):
             sub_spec = spec[0]
+            _iter = self._get_type(target).iter_func
+
             try:
-                _iter = self._get_type(target)[1]
-                if not _iter:
-                    raise TypeError()
-            except TypeError:
-                raise TypeError('type %r not registered for iteration (at %r)'
-                                % (target.__class__.__name__, Path(*path)))
-            try:
-                iterator = _iter(target)
+                iterator = _iter(target, path=path)
             except TypeError as te:
                 raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
                                 % (target.__class__.__name__, Path(*path), te))
@@ -269,6 +292,7 @@ class Glommer(object):
 
 _DEFAULT = Glommer()
 glom = _DEFAULT.glom
+register = _DEFAULT.register
 
 
 _DEFAULT.register(object, object.__getattribute__)
@@ -292,11 +316,16 @@ def _main():
            'i': [{'j': 'k', 'l': 'm'}],
            'n': 'o'}
 
-    ret = glom(val, {'a': 'a.b',
-                     'name': 'example.mapping.key.name',  # test object access
-                     'e': 'd.e',
-                     'i': ('i', [{'j': 'j'}]),  # TODO: support True for cases when the value should simply be mapped into the field name?
-                     'n': ('n', lambda n: n.upper())})  # d.e[0] or d.e: (callable to fetch 0)
+    spec = {'a': 'a.b',
+            'name': 'example.mapping.key.name',  # test object access
+            'e': 'd.e',  # d.e[0] or d.e: (callable to fetch 0)
+            'i': ('i', [{'j': 'j'}]),  # TODO: support True for cases when the value should simply be mapped into the field name?
+            'n': ('n', lambda n: n.upper()),
+            'p': Coalesce('xxx',
+                          'yyy',
+                          default='zzz')}
+
+    ret = glom(val, spec)
 
     print('in: ', val)
     print('got:', ret)
@@ -304,7 +333,8 @@ def _main():
                 'name': 'good_name',
                 'e': ['f'],
                 'i': [{'j': 'k'}],
-                'n': 'O'}
+                'n': 'O',
+                'p': 'zzz'}
     print('exp:', expected)
 
     print(glom(list(range(10)), Path(1)))  # test list getting and Path
