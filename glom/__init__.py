@@ -143,10 +143,20 @@ class Inspect(object):
     # TODO: the latter can be achieved without special handling in the
     # tuple branch, by making this callable.
     def __init__(self, *a, **kw):
-        self.wrapped = a[0] if a else None
+        self.wrapped = a[0] if a else Path()
         self.echo = kw.pop('echo', True)
         self.breakpoint = kw.pop('breakpoint', False)
+        self.post_mortem = kw.pop('post_mortem', False)
         self.recursive = kw.pop('recursive', False)
+
+    def __call__(self, target):
+        print()
+        print('cur spec:', self.wrapped)
+        print('target:  ', target)
+        print()
+        if self.breakpoint:
+            import pdb;pdb.set_trace()
+        return target
 
     def __repr__(self):
         return '<INSPECT>'
@@ -250,24 +260,35 @@ class Glommer(object):
         # TODO: default
         # TODO: de-recursivize this
         # TODO: rearrange the branching below by frequency of use
+
+        # self.glom() calls should pass path=path to elide the current
+        # step, otherwise add themselves in some fashion.
         path = kwargs.pop('_path', [])
         inspector = kwargs.pop('_inspect', None)
+        next_inspector = inspector if (inspector and inspector.recursive) else None
+        if inspector:
+            if inspector.echo:
+                # TODO: need output/exceptions
+                print()
+                print('path:  ', path + [spec])
+                print('target:', target)
+            if inspector.breakpoint:
+                import pdb;pdb.set_trace()
 
-        if inspector and inspector.echo:
-            # TODO: need output/exceptions
-            print()
-            print('path:  ', path + [spec])
-            print('target:', target)
-            print()
-
-        if isinstance(spec, dict):
+        if isinstance(spec, Inspect):
+            try:
+                ret = self.glom(target, spec.wrapped, _path=path, _inspect=spec)
+            except Exception:
+                if spec.post_mortem:
+                    import pdb;pdb.post_mortem()
+                raise
+        elif isinstance(spec, dict):
             ret = type(spec)()
             # TODO: the above works for dict + ordereddict, but is it
             # sufficient for other cases?
 
             for field, sub_spec in spec.items():
-                ret[field] = self.glom(target, sub_spec, _path=path)
-            return ret
+                ret[field] = self.glom(target, sub_spec, _path=path, _inspect=next_inspector)
         elif isinstance(spec, list):
             sub_spec = spec[0]
             _iter = self._get_type(target).iter_func
@@ -278,47 +299,47 @@ class Glommer(object):
                 raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
                                 % (target.__class__.__name__, Path(*path), te))
 
-            return [self.glom(t, sub_spec, _path=path + [i]) for i, t in enumerate(iterator)]
+            ret = [self.glom(t, sub_spec, _path=path + [i]) for i, t in enumerate(iterator)]
         elif isinstance(spec, tuple):
             res = target
             for sub_spec in spec:
-                res = self.glom(res, sub_spec, _path=path)
+                res = self.glom(res, sub_spec, _path=path, _inspect=next_inspector)
+                next_inspector = sub_spec if (isinstance(sub_spec, Inspect) and sub_spec.recursive) else next_inspector
                 if not isinstance(sub_spec, list):
                     path = path + [getattr(sub_spec, 'func_name', sub_spec)]  # TODO: py3 __name__ (use inspect)
-            return res
+            ret = res
         elif callable(spec):
-            return spec(target)
+            ret = spec(target)
         elif isinstance(spec, (basestring, Path)):
             try:
-                return self._get_path(target, spec)
+                ret = self._get_path(target, spec)
             except PathAccessError as pae:
                 pae.path = Path(*(path + list(pae.path)))
                 raise
         elif isinstance(spec, Coalesce):
             for sub_spec in spec.sub_specs:
-                _inspector = None
-                if isinstance(sub_spec, Inspect):
-                    _inspector = sub_spec
                 try:
-                    ret = self.glom(target, sub_spec, _path=path, _inspect=_inspector)
-                    if spec.skip_func(ret):
-                        continue
-                    return ret
+                    ret = self.glom(target, sub_spec, _path=path, _inspect=next_inspector)
+                    if not spec.skip_func(ret):
+                        break
                 except spec.skip_exc as e:
                     pass
-            if spec.default is not _MISSING:
-                return spec.default
             else:
-                # TODO: exception for coalesces that represents all sub_specs tried
-                raise CoalesceError('no valid values found while coalescing')
-        elif isinstance(spec, Inspect):
-            return self.glom(target, spec.wrapped, _path=path, _inspect=spec)
+                if spec.default is not _MISSING:
+                    ret = spec.default
+                else:
+                    # TODO: exception for coalesces that represents all sub_specs tried
+                    raise CoalesceError('no valid values found while coalescing')
         elif isinstance(spec, Literal):
-            return spec.value
+            ret = spec.value
         else:
             raise TypeError('expected spec to be dict, list, tuple,'
                             ' callable, or string, not: %r' % spec)
-        return
+        if inspector and inspector.echo:
+            print('output:', ret)
+            print()
+
+        return ret
 
 
 _DEFAULT = Glommer()
@@ -347,7 +368,7 @@ def _main():
            'i': [{'j': 'k', 'l': 'm'}],
            'n': 'o'}
 
-    spec = {'a': ('a', Inspect('b')),
+    spec = {'a': (Inspect(recursive=True), 'a', 'b'),
             'name': 'example.mapping.key.name',  # test object access
             'e': 'd.e',  # d.e[0] or d.e: (callable to fetch 0)
             'i': ('i', [{'j': 'j'}]),  # TODO: support True for cases when the value should simply be mapped into the field name?
@@ -459,5 +480,11 @@ class PathAccessError(KeyError, IndexError, TypeError):
 Also need the ability to specify defaults if something is not found,
 as opposed to raising an error. Default varies by whether or not to
 iterate. Empty list if yes, None if no.
+
+---
+tests
+
+obj = {}
+assert glom.glom(obj, (glom.Path(), glom.Path(), glom.Path())) is obj
 
 """
