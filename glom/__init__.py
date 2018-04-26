@@ -16,6 +16,7 @@ higher-level objects.
 
 from __future__ import print_function
 
+import operator
 from collections import OrderedDict
 
 try:
@@ -134,6 +135,23 @@ class Coalesce(object):
             raise TypeError('unexpected keyword args: %r' % (sorted(kwargs.keys()),))
 
 
+class Inspect(object):
+    """Can be used two ways, one as a wrapper around a spec (passed a
+    positional argument), or two, as a posarg-less placeholder in a
+    tuple.
+    """
+    # TODO: the latter can be achieved without special handling in the
+    # tuple branch, by making this callable.
+    def __init__(self, *a, **kw):
+        self.wrapped = a[0] if a else None
+        self.echo = kw.pop('echo', True)
+        self.breakpoint = kw.pop('breakpoint', False)
+        self.recursive = kw.pop('recursive', False)
+
+    def __repr__(self):
+        return '<INSPECT>'
+
+
 class Glommer(object):
     def __init__(self):
         self._type_map = OrderedDict()
@@ -233,6 +251,14 @@ class Glommer(object):
         # TODO: de-recursivize this
         # TODO: rearrange the branching below by frequency of use
         path = kwargs.pop('_path', [])
+        inspector = kwargs.pop('_inspect', None)
+
+        if inspector and inspector.echo:
+            # TODO: need output/exceptions
+            print()
+            print('path:  ', path + [spec])
+            print('target:', target)
+            print()
 
         if isinstance(spec, dict):
             ret = type(spec)()
@@ -240,7 +266,7 @@ class Glommer(object):
             # sufficient for other cases?
 
             for field, sub_spec in spec.items():
-                ret[field] = self.glom(target, sub_spec)
+                ret[field] = self.glom(target, sub_spec, _path=path)
             return ret
         elif isinstance(spec, list):
             sub_spec = spec[0]
@@ -270,8 +296,11 @@ class Glommer(object):
                 raise
         elif isinstance(spec, Coalesce):
             for sub_spec in spec.sub_specs:
+                _inspector = None
+                if isinstance(sub_spec, Inspect):
+                    _inspector = sub_spec
                 try:
-                    ret = self.glom(target, sub_spec)
+                    ret = self.glom(target, sub_spec, _path=path, _inspect=_inspector)
                     if spec.skip_func(ret):
                         continue
                     return ret
@@ -282,6 +311,8 @@ class Glommer(object):
             else:
                 # TODO: exception for coalesces that represents all sub_specs tried
                 raise CoalesceError('no valid values found while coalescing')
+        elif isinstance(spec, Inspect):
+            return self.glom(target, spec.wrapped, _path=path, _inspect=spec)
         elif isinstance(spec, Literal):
             return spec.value
         else:
@@ -295,9 +326,9 @@ glom = _DEFAULT.glom
 register = _DEFAULT.register
 
 
-_DEFAULT.register(object, object.__getattribute__)
-_DEFAULT.register(dict, dict.__getitem__)
-_DEFAULT.register(list, list.__getitem__, True)  # TODO: are iterate and getter mutually exclusive or?
+_DEFAULT.register(object, getattr)
+_DEFAULT.register(dict, operator.getitem)
+_DEFAULT.register(list, operator.getitem, True)  # TODO: are iterate and getter mutually exclusive or?
 
 
 def _main():
@@ -316,7 +347,7 @@ def _main():
            'i': [{'j': 'k', 'l': 'm'}],
            'n': 'o'}
 
-    spec = {'a': 'a.b',
+    spec = {'a': ('a', Inspect('b')),
             'name': 'example.mapping.key.name',  # test object access
             'e': 'd.e',  # d.e[0] or d.e: (callable to fetch 0)
             'i': ('i', [{'j': 'j'}]),  # TODO: support True for cases when the value should simply be mapped into the field name?
@@ -373,9 +404,8 @@ if __name__ == '__main__':
 """TODO:
 
 * More subspecs
-  * dicts
-  * lists (indicating iterability)
-  * callables (for advanced processing)
+  * Inspect
+  * Omit/Drop singleton
 * More supported target types
   * Django and SQLAlchemy Models and QuerySets
 * Support unregistering types
