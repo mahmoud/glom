@@ -1,6 +1,7 @@
 docs/_build
 tmp.py
 htmlcov/
+.coverage.*
 
 *.py[cod]
 .pytest_cache
