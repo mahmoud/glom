@@ -16,6 +16,7 @@ higher-level objects.
 
 from __future__ import print_function
 
+import pdb
 import operator
 from collections import OrderedDict
 
@@ -144,10 +145,22 @@ class Inspect(object):
     # tuple branch, by making this callable.
     def __init__(self, *a, **kw):
         self.wrapped = a[0] if a else Path()
-        self.echo = kw.pop('echo', True)
-        self.breakpoint = kw.pop('breakpoint', False)
-        self.post_mortem = kw.pop('post_mortem', False)
         self.recursive = kw.pop('recursive', False)
+        self.echo = kw.pop('echo', True)
+
+        breakpoint = kw.pop('breakpoint', False)
+        if breakpoint is True:
+            breakpoint = pdb.set_trace
+        if breakpoint and not callable(breakpoint):
+            raise TypeError('breakpoint expected bool or callable, not: %r' % breakpoint)
+        self.breakpoint = breakpoint
+
+        post_mortem = kw.pop('post_mortem', False)
+        if post_mortem is True:
+            post_mortem = pdb.set_trace
+        if post_mortem and not callable(post_mortem):
+            raise TypeError('post_mortem expected bool or callable, not: %r' % post_mortem)
+        self.post_mortem = post_mortem
 
     def __call__(self, target):
         print()
@@ -155,7 +168,7 @@ class Inspect(object):
         print('target:  ', target)
         print()
         if self.breakpoint:
-            import pdb;pdb.set_trace()
+            pass
         return target
 
     def __repr__(self):
@@ -429,14 +442,18 @@ if __name__ == '__main__':
   * Omit/Drop singleton
 * More supported target types
   * Django and SQLAlchemy Models and QuerySets
-* Support unregistering types
+* Support unregistering target types
+* Eventually: Support registering handlers for new spec types in the
+  main glom function. allows users to handle types beyond the glom
+  builtins. Will require really defining the function interface for
+  what a glom takes; currently: target, spec, _path, _inspect.
 
-glom({
+glom(contact, {
     'name': 'name',  # simple get-attr
     'primary_email': 'primary_email.email',  # multi-level get-attr
     'emails': ('email_set', ['email']),  # get-attr + sequence unpack + fetch one attr
     'roles': ('vendor_roles', [{'role': 'role'}]),  # get-attr + sequence unpack + sub-glom
-}, contact)
+})
 
 ideas from this:
 every value of the dict is moving down a level, the algorithm is to repeatedly
