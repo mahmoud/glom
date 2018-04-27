@@ -88,8 +88,10 @@ class Path(object):
     strings with dots that shouldn't be expanded.
 
     >>> target = {'a': {'b': 'c', 'd.e': 'f', 2: 3}}
-    >>> glom(target, {'a_2': Path('a', 2), 'a_d.e': Path('a', 'd.e')})
-    {'a_2': 3, 'a_d.e': 'f'}
+    >>> glom(target, Path('a', 2))
+    3
+    >>> glom(target, Path('a', 'd.e'))
+    'f'
     """
     def __init__(self, *path_parts):
         self.path_parts = path_parts
@@ -195,7 +197,7 @@ class Glommer(object):
     def _get_closest_type(self, obj, _type_tree=None):
         type_tree = _type_tree if _type_tree is not None else self._type_tree
         default = None
-        for cur_type, sub_tree in reversed(type_tree.items()):
+        for cur_type, sub_tree in reversed(list(type_tree.items())):
             if isinstance(obj, cur_type):
                 sub_type = self._get_closest_type(obj, _type_tree=sub_tree)
                 ret = cur_type if sub_type is None else sub_type
