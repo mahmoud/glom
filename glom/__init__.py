@@ -63,6 +63,8 @@ class TypeHandler(object):
         self.type = type_obj
         if iterate is True:
             iterate = iter
+        # TODO: better default, check for __iter__ and if it's
+        # present/callable, use iter()?
         if iterate is not False and not callable(iterate):
             raise ValueError('expected callable or bool for iterate, not: %r'
                              % iterate)
@@ -178,9 +180,13 @@ class Inspect(object):
 
 
 class Glommer(object):
-    def __init__(self):
+    def __init__(self, register_default_types=True):
         self._type_map = OrderedDict()
         self._type_tree = OrderedDict()  # see _register_fuzzy_type for details
+
+        if register_default_types:
+            self._register_default_types()
+        return
 
     def _get_type(self, obj):
         "return the closest-matching type config for an object *instance*, obj"
@@ -197,12 +203,17 @@ class Glommer(object):
     def _get_closest_type(self, obj, _type_tree=None):
         type_tree = _type_tree if _type_tree is not None else self._type_tree
         default = None
-        for cur_type, sub_tree in reversed(list(type_tree.items())):
+        for cur_type, sub_tree in type_tree.items():
             if isinstance(obj, cur_type):
                 sub_type = self._get_closest_type(obj, _type_tree=sub_tree)
                 ret = cur_type if sub_type is None else sub_type
                 return ret
         return default
+
+    def _register_default_types(self):
+        self.register(object, getattr)
+        self.register(dict, operator.getitem)
+        self.register(list, operator.getitem, True)  # TODO: are iterate and getter mutually exclusive or?
 
     def _register_fuzzy_type(self, new_type, _type_tree=None):
         """Build a "type tree", an OrderedDict mapping registered types to
@@ -337,7 +348,7 @@ class Glommer(object):
                     ret = self.glom(target, sub_spec, _path=path, _inspect=next_inspector)
                     if not spec.skip_func(ret):
                         break
-                except spec.skip_exc as e:
+                except spec.skip_exc:
                     pass
             else:
                 if spec.default is not _MISSING:
@@ -357,43 +368,13 @@ class Glommer(object):
         return ret
 
 
-_DEFAULT = Glommer()
+_DEFAULT = Glommer(register_default_types=True)
 glom = _DEFAULT.glom
 register = _DEFAULT.register
 
 
-_DEFAULT.register(object, getattr)
-_DEFAULT.register(dict, operator.getitem)
-_DEFAULT.register(list, operator.getitem, True)  # TODO: are iterate and getter mutually exclusive or?
-
-
 def _main():
-
-    class A(object):
-        pass
-
-    class B(object):
-        pass
-
-    class C(A):
-        pass
-
-    class D(B):
-        pass
-
-    class E(C, D, A):
-        pass
-
-    class F(E):
-        pass
-
-    register = _DEFAULT.register
-    get = lambda x: x
-    for t in [E, D, A, C, B]:
-        register(t, get)
-
-    assert _DEFAULT._get_closest_type(F()) is E
-    return
+    pass  # TODO: take a json and a spec (flag for safe eval vs non-safe eval)
 
 
 if __name__ == '__main__':
