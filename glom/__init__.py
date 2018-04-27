@@ -157,7 +157,7 @@ class Inspect(object):
 
         post_mortem = kw.pop('post_mortem', False)
         if post_mortem is True:
-            post_mortem = pdb.set_trace
+            post_mortem = pdb.post_mortem
         if post_mortem and not callable(post_mortem):
             raise TypeError('post_mortem expected bool or callable, not: %r' % post_mortem)
         self.post_mortem = post_mortem
@@ -286,14 +286,14 @@ class Glommer(object):
                 print('path:  ', path + [spec])
                 print('target:', target)
             if inspector.breakpoint:
-                import pdb;pdb.set_trace()
+                inspector.breakpoint()
 
         if isinstance(spec, Inspect):
             try:
                 ret = self.glom(target, spec.wrapped, _path=path, _inspect=spec)
             except Exception:
                 if spec.post_mortem:
-                    import pdb;pdb.post_mortem()
+                    spec.post_mortem()
                 raise
         elif isinstance(spec, dict):
             ret = type(spec)()
@@ -366,44 +366,6 @@ _DEFAULT.register(list, operator.getitem, True)  # TODO: are iterate and getter 
 
 
 def _main():
-    class Example(object):
-        pass
-
-    example = Example()
-    subexample = Example()
-    subexample.name = 'good_name'
-    example.mapping = {'key': subexample}
-
-    val = {'a': {'b': 'c'},
-           'example': example,
-           'd': {'e': ['f'],
-                 'g': 'h'},
-           'i': [{'j': 'k', 'l': 'm'}],
-           'n': 'o'}
-
-    spec = {'a': (Inspect(recursive=True), 'a', 'b'),
-            'name': 'example.mapping.key.name',  # test object access
-            'e': 'd.e',  # d.e[0] or d.e: (callable to fetch 0)
-            'i': ('i', [{'j': 'j'}]),  # TODO: support True for cases when the value should simply be mapped into the field name?
-            'n': ('n', lambda n: n.upper()),
-            'p': Coalesce('xxx',
-                          'yyy',
-                          default='zzz')}
-
-    ret = glom(val, spec)
-
-    print('in: ', val)
-    print('got:', ret)
-    expected = {'a': 'c',
-                'name': 'good_name',
-                'e': ['f'],
-                'i': [{'j': 'k'}],
-                'n': 'O',
-                'p': 'zzz'}
-    print('exp:', expected)
-
-    print(glom(list(range(10)), Path(1)))  # test list getting and Path
-    print(glom(val, ('d.e', [(lambda x: {'f': x[0]}, 'f')])))
 
     class A(object):
         pass
