@@ -88,8 +88,8 @@ class Path(object):
     strings with dots that shouldn't be expanded.
 
     >>> target = {'a': {'b': 'c', 'd.e': 'f', 2: 3}}
-    >>> glom(target, {'a_d': Path('a', 'd.e'), 'a_2': Path('a', 2)})
-    {'a_de': 'f', 'a_2': 3}
+    >>> glom(target, {'a_2': Path('a', 2), 'a_d.e': Path('a', 'd.e')})
+    {'a_2': 3, 'a_d.e': 'f'}
     """
     def __init__(self, *path_parts):
         self.path_parts = path_parts
