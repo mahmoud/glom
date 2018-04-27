@@ -1,0 +1,12 @@
+[run]
+branch = True
+source =
+    glom
+    ../glom
+
+[paths]
+source =
+   ../glom
+   */lib/python*/site-packages/glom
+   */Lib/site-packages/glom
+   */pypy/site-packages/glom
