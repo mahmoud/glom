@@ -1,10 +1,12 @@
+attrs==17.4.0
 boltons==17.2.0
 coverage==4.5.1
 -e git+git@github.com:mahmoud/face.git@dbc9763556242d441257191c035af1f6c82c8514#egg=face
 funcsigs==1.0.2
+more-itertools==4.1.0
 pluggy==0.6.0
 py==1.5.2
-pytest==3.4.2
+pytest==3.5.1
 six==1.11.0
 tox==2.9.1
 virtualenv==15.1.0

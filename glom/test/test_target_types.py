@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 import pytest
+
 from glom import Glommer, PathAccessError
 
 

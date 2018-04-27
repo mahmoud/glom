@@ -1,5 +1,6 @@
 include README.md LICENSE CHANGELOG.md tox.ini requirements-test.txt .coveragerc Makefile pytest.ini .tox-coveragerc
-exclude TODO.md appveyor.yml flycheck__*
+exclude TODO.md appveyor.yml
+global-exclude flycheck__*
 
 graft docs
 prune docs/_build
