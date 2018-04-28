@@ -77,7 +77,7 @@ class CoalesceError(GlomError):
                         else '<skipped %s>' % v.__class__.__name__
                         for v in self.skipped]
         msg = ('no valid values found while coalescing. Tried %r and got (%s)'
-               % (missed_specs, skipped_vals))
+               % (missed_specs, ', '.join(skipped_vals)))
         if self.coal_obj.skip is not _MISSING:
             msg += ', skip set to %r' % (self.coal_obj.skip,)
         if self.coal_obj.skip_exc is not GlomError:
@@ -168,7 +168,6 @@ class Literal(object):
         return '%s(%r)' % (cn, self.value)
 
 
-# TODO: exception for coalesces that represents all sub_specs tried
 class Coalesce(object):
     def __init__(self, *sub_specs, **kwargs):
         self.sub_specs = sub_specs
