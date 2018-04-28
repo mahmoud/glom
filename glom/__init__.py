@@ -80,28 +80,24 @@ class UnregisteredTarget(GlomError):
 
 
 class TargetHandler(object):
-    def __init__(self, type_obj, get, iterate):
+    def __init__(self, type_obj, get=None, iterate=None):
         self.type = type_obj
-        if iterate is True:
-            iterate = iter
-        # TODO: better default, check for __iter__ and if it's
-        # present/callable, use iter()?
+
+        if iterate is None:
+            if callable(getattr(type_obj, '__iter__', None)):
+                iterate = iter
+            else:
+                iterate = False
         if iterate is not False and not callable(iterate):
-            raise ValueError('expected callable or bool for iterate, not: %r'
+            raise ValueError('expected iterable type or callable for iterate, not: %r'
                              % iterate)
         self.iterate = iterate
 
-        if get is False:
-            self.get_func = self._missing_get_func
-        elif not callable(get):
+        if get is None:
+            get = getattr
+        if get is not False and not callable(get):
             raise ValueError('expected callable for get, not: %r' % (get,))
         self.get = get
-
-    def _missing_get_func(self, target, path=None):
-        msg = 'type %r not registered for iteration' % self.type.__name__
-        if path is not None:
-            msg += ' (at %r)' % Path(*path)
-        raise GlomError(msg)  # TODO: dedicated exception type for this?
 
 
 class Path(object):
@@ -191,6 +187,11 @@ class Inspect(object):
 
 
 class Glommer(object):
+    """All the wholesome goodness that it takes to make glom work. This
+    type mostly serves to encapsulate the type registration context so
+    that advanced uses of glom don't need to worry about stepping on
+    each other's toes.
+    """
     def __init__(self, register_default_types=True):
         self._type_map = OrderedDict()
         self._type_tree = OrderedDict()  # see _register_fuzzy_type for details
@@ -226,7 +227,7 @@ class Glommer(object):
     def _register_default_types(self):
         self.register(object, getattr)
         self.register(dict, operator.getitem)
-        self.register(list, operator.getitem, True)  # TODO: are iterate and getter mutually exclusive or?
+        self.register(list, operator.getitem)
 
     def _register_fuzzy_type(self, new_type, _type_tree=None):
         """Build a "type tree", an OrderedDict mapping registered types to
@@ -262,10 +263,12 @@ class Glommer(object):
 
         return type_tree
 
-    def register(self, target_type, get, iterate=False, exact=False):
+    def register(self, target_type, get=None, iterate=None, exact=False):
         """Register a new type with the Glommer so it will know how to handle
         it as a target.
         """
+        if not isinstance(target_type, type):
+            raise TypeError('register expected a type, not an instance: %r' % (target_type,))
         self._type_map[target_type] = TargetHandler(target_type, get=get, iterate=iterate)
         if not exact:
             self._register_fuzzy_type(target_type)
@@ -293,7 +296,6 @@ class Glommer(object):
 
     def glom(self, target, spec, **kwargs):
         # TODO: check spec up front
-        # TODO: good error
         # TODO: default
         # TODO: de-recursivize this
         # TODO: rearrange the branching below by frequency of use
@@ -319,9 +321,7 @@ class Glommer(object):
                     spec.post_mortem()
                 raise
         elif isinstance(spec, dict):
-            ret = type(spec)()
-            # TODO: the above works for dict + ordereddict, but is it
-            # sufficient for other cases?
+            ret = type(spec)() # TODO: works for dict + ordereddict, but sufficient for all?
 
             for field, sub_spec in spec.items():
                 ret[field] = self.glom(target, sub_spec, _path=path, _inspect=next_inspector)
@@ -405,6 +405,7 @@ if __name__ == '__main__':
   main glom function. allows users to handle types beyond the glom
   builtins. Will require really defining the function interface for
   what a glom takes; currently: target, spec, _path, _inspect.
+
 
 glom(contact, {
     'name': 'name',  # simple get-attr

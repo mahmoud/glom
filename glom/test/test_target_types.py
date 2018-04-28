@@ -65,3 +65,32 @@ def test_types_bare():
 
 
     return
+
+
+def test_invalid_register():
+    glommer = Glommer()
+    with pytest.raises(TypeError):
+        glommer.register(1)
+    return
+
+
+def test_duck_register():
+    class LilRanger(object):
+        def __init__(self):
+            self.lil_list = list(range(5))
+
+        def __iter__(self):
+            return iter(self.lil_list)
+
+    glommer = Glommer(register_default_types=False)
+
+    target = LilRanger()
+
+    with pytest.raises(UnregisteredTarget):
+        float_range = glommer.glom(target, [lambda x: float(x)])
+
+    glommer.register(LilRanger)
+
+    float_range = glommer.glom(target, [lambda x: float(x)])
+
+    assert float_range == [0.0, 1.0, 2.0, 3.0, 4.0]
