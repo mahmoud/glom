@@ -51,3 +51,15 @@ def test_list_item_lift_and_access():
 
     assert glom(val, ('d.e', lambda x: x[0])) == 'f'
     assert glom(val, ('d.e', [(lambda x: {'f': x[0]}, 'f')])) == ['f']
+
+
+def test_empty_path_access():
+    target = {}
+
+    assert glom(target, Path()) is target
+    assert glom(target, (Path(), Path(), Path())) is target
+
+    dup_dict = glom(target, {'target': Path(),
+                             'target2': Path()})
+    dup_dict['target'] is target
+    dup_dict['target2'] is target
