@@ -1,5 +1,5 @@
 
-from glom import glom, Path, Inspect, Coalesce
+from glom import glom, Path, Inspect, Coalesce, CoalesceError
 
 
 def test_initial_integration():
@@ -63,3 +63,33 @@ def test_empty_path_access():
                              'target2': Path()})
     dup_dict['target'] is target
     dup_dict['target2'] is target
+
+
+def test_coalesce():
+    val = {'a': {'b': 'c'},  # basic dictionary nesting
+           'd': {'e': ['f'],    # list in dictionary
+                 'g': 'h'},
+           'i': [{'j': 'k', 'l': 'm'}],  # list of dictionaries
+           'n': 'o'}
+
+    assert glom(val, 'a.b') == 'c'
+    assert glom(val, Coalesce('xxx', 'yyy', 'a.b')) == 'c'
+
+    try:
+        glom(val, Coalesce('xxx', 'yyy'))
+    except CoalesceError as ce:
+        msg = str(ce)
+        assert "'xxx'" in msg
+        assert "'yyy'" in msg
+        assert msg.count('PathAccessError') == 2
+    else:
+        assert False, 'expected a CoalesceError'
+
+    # check that defaulting works
+    assert glom(val, Coalesce('xxx', 'yyy', default='zzz')) == 'zzz'
+
+    # check that arbitrary values can be skipped
+    assert glom(val, Coalesce('xxx', 'yyy', 'a.b', default='zzz', skip='c')) == 'zzz'
+
+    # check that arbitrary exceptions can be ignored
+    assert glom(val, Coalesce(lambda x: 1/0, 'a.b', skip_exc=ZeroDivisionError)) == 'c'

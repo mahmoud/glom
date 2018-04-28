@@ -104,7 +104,7 @@ def test_duck_register():
 def test_bypass_getitem():
     target = list(range(3)) * 3
 
-    with pytest.raises(TypeError):
+    with pytest.raises(PathAccessError):
         glom.glom(target, 'count')
 
     res = glom.glom(target, lambda list_obj: list_obj.count(1))

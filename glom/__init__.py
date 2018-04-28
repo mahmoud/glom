@@ -41,11 +41,11 @@ class GlomError(Exception):
     pass
 
 
-class PathAccessError(KeyError, IndexError, TypeError, GlomError):
-    '''An amalgamation of KeyError, IndexError, and TypeError,
+class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
+    """An amalgamation of KeyError, IndexError, and TypeError,
     representing what can occur when looking up a path in a nested
     object.
-    '''
+    """
     def __init__(self, exc, seg, path):
         self.exc = exc
         self.seg = seg
@@ -60,9 +60,32 @@ class PathAccessError(KeyError, IndexError, TypeError, GlomError):
                 % (self.seg, self.path, self.exc))
 
 
-class CoalesceError(GlomError):  # TODO
-    pass
+class CoalesceError(GlomError):
+    def __init__(self, coal_obj, skipped, path):
+        self.coal_obj = coal_obj
+        self.skipped = skipped
+        self.path = path
 
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r, %r, %r)' % (cn, self.coal_obj, self.skipped, self.path)
+
+    def __str__(self):
+        missed_specs = tuple(self.coal_obj.sub_specs)
+        skipped_vals = [v.__class__.__name__
+                        if isinstance(v, self.coal_obj.skip_exc)
+                        else '<skipped %s>' % v.__class__.__name__
+                        for v in self.skipped]
+        msg = ('no valid values found while coalescing. Tried %r and got (%s)'
+               % (missed_specs, skipped_vals))
+        if self.coal_obj.skip is not _MISSING:
+            msg += ', skip set to %r' % (self.coal_obj.skip,)
+        if self.coal_obj.skip_exc is not GlomError:
+            msg += ', skip_exc set to %r' % (self.coal_obj.skip_exc,)
+        if self.path is not None:
+            msg += ' (at path %r)' % (self.path,)
+
+        return msg
 
 class UnregisteredTarget(GlomError):
     def __init__(self, op, target_type, type_map, path):
@@ -372,19 +395,21 @@ class Glommer(object):
                 pae.path = Path(*(path + list(pae.path)))
                 raise
         elif isinstance(spec, Coalesce):
+            skipped = []
             for sub_spec in spec.sub_specs:
                 try:
                     ret = self.glom(target, sub_spec, _path=path, _inspect=next_inspector)
                     if not spec.skip_func(ret):
                         break
-                except spec.skip_exc:
-                    pass
+                    skipped.append(ret)
+                except spec.skip_exc as e:
+                    skipped.append(e)
+                    continue
             else:
                 if spec.default is not _MISSING:
                     ret = spec.default
                 else:
-                    # TODO: exception for coalesces that represents all sub_specs tried
-                    raise CoalesceError('no valid values found while coalescing')
+                    raise CoalesceError(spec, skipped, path)
         elif isinstance(spec, Literal):
             ret = spec.value
         else:
