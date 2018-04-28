@@ -383,7 +383,7 @@ class Glommer(object):
                 res = self.glom(res, sub_spec, _path=path, _inspect=next_inspector)
                 next_inspector = sub_spec if (isinstance(sub_spec, Inspect) and sub_spec.recursive) else next_inspector
                 if not isinstance(sub_spec, list):
-                    path = path + [getattr(sub_spec, 'func_name', sub_spec)]  # TODO: py3 __name__ (use inspect)
+                    path = path + [getattr(sub_spec, '__name__', sub_spec)]
             ret = res
         elif callable(spec):
             ret = spec(target)
