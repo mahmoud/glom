@@ -140,3 +140,11 @@ def test_iter_str():
     glommer.register(str, iterate=iter)
     res = glommer.glom(glom_buddy, {'name_chars_for_some_reason': [str]})
     assert len(res['name_chars_for_some_reason']) == 4
+
+    # the better way, for any dissenter reading this
+
+    assert glom.glom(glom_buddy, {'name_chars': list}) == {'name_chars': ['k', 'u', 'r', 't']}
+
+    # and for the really passionate: how about making strings
+    # non-iterable and just giving them a .chars() method that returns
+    # a list of single-character strings.

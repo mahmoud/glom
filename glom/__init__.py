@@ -34,8 +34,10 @@ _MISSING = object()
 
 
 class GlomError(Exception):
-    "A base exception for all the errors that might be raised from"
-    " calling the glom function."
+    """A base exception for all the errors that might be raised from glom
+    logic. By default, exceptions raised from within functions passed
+    to glom will not be wrapped in a GlomError.
+    """
     pass
 
 
@@ -428,6 +430,9 @@ if __name__ == '__main__':
 * Flag (and exception type) to gather all errors, instead of raising
   the first
 * Contact example
+* Which Exception approach is preferable, PAE or UnregisteredTarget. That
+  is, call super().__init__ with the exception message or implement
+  __str__ (and separate __repr__)?
 
 glom(contact, {
     'name': 'name',  # simple get-attr
