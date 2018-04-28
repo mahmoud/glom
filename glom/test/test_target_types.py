@@ -88,11 +88,11 @@ def test_duck_register():
     target = LilRanger()
 
     with pytest.raises(UnregisteredTarget):
-        float_range = glommer.glom(target, [lambda x: float(x)])
+        float_range = glommer.glom(target, [float])
 
     glommer.register(LilRanger)
 
-    float_range = glommer.glom(target, [lambda x: float(x)])
+    float_range = glommer.glom(target, [float])
 
     assert float_range == [0.0, 1.0, 2.0, 3.0, 4.0]
 
