@@ -167,8 +167,6 @@ class Inspect(object):
     positional argument), or two, as a posarg-less placeholder in a
     tuple.
     """
-    # TODO: the latter can be achieved without special handling in the
-    # tuple branch, by making this callable.
     def __init__(self, *a, **kw):
         self.wrapped = a[0] if a else Path()
         self.recursive = kw.pop('recursive', False)
@@ -187,15 +185,6 @@ class Inspect(object):
         if post_mortem and not callable(post_mortem):
             raise TypeError('post_mortem expected bool or callable, not: %r' % post_mortem)
         self.post_mortem = post_mortem
-
-    def __call__(self, target):
-        print()
-        print('cur spec:', self.wrapped)
-        print('target:  ', target)
-        print()
-        if self.breakpoint:
-            pass
-        return target
 
     def __repr__(self):
         return '<INSPECT>'
@@ -316,7 +305,6 @@ class Glommer(object):
         next_inspector = inspector if (inspector and inspector.recursive) else None
         if inspector:
             if inspector.echo:
-                # TODO: need output/exceptions
                 print()
                 print('path:  ', path + [spec])
                 print('target:', target)
