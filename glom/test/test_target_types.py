@@ -3,7 +3,7 @@ from __future__ import print_function
 
 import pytest
 
-from glom import Glommer, PathAccessError
+from glom import Glommer, PathAccessError, UnregisteredTarget
 
 
 class A(object):
@@ -50,7 +50,18 @@ def test_types_bare():
     assert glommer._get_closest_type(object()) is None
 
     # test that bare glommers can't glom anything
-    with pytest.raises(PathAccessError):  # TODO: better error type?
+    with pytest.raises(UnregisteredTarget):
         glommer.glom(object(), {'object_repr': '__class__.__name__'})
+
+    with pytest.raises(UnregisteredTarget):
+        glommer.glom([{'hi': 'hi'}], ['hi'])
+
+    glommer.register(object, getattr)
+
+    # check again that registering object for 'get' doesn't change the
+    # fact that we don't have iterate support yet
+    with pytest.raises(UnregisteredTarget):
+        glommer.glom([{'hi': 'hi'}], ['hi'])
+
 
     return

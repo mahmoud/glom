@@ -58,7 +58,28 @@ class CoalesceError(GlomError):  # TODO
     pass
 
 
-class TypeHandler(object):
+class UnregisteredTarget(GlomError):
+    def __init__(self, op, target_type, known_types, path):
+        self.op = op
+        self.target_type = target_type
+        self.known_types = sorted(known_types)
+        self.path = path
+
+        if not known_types:
+            msg = ("glom() called without registering any types. see glom.register()"
+                   " or Glommer's constructor for details.")
+        else:
+            reg_types = [t.__name__ for t in known_types if getattr(t, op, None)]
+            reg_types_str = '()' if not reg_types else ('(%s)' % ', '.join(reg_types))
+            msg = ("target type %r not registered for '%s', expected one of"
+                   " registered types: %s" % (target_type, op, reg_types_str))
+            if path:
+                msg += ' (at %r)' % (self.path,)
+
+        super(UnregisteredTarget, self).__init__(msg)
+
+
+class TargetHandler(object):
     def __init__(self, type_obj, get, iterate):
         self.type = type_obj
         if iterate is True:
@@ -69,17 +90,18 @@ class TypeHandler(object):
             raise ValueError('expected callable or bool for iterate, not: %r'
                              % iterate)
         self.iterate = iterate
-        if not callable(get):
-            raise ValueError('expected callable for get, not: %r' % (get,))
-        self.get_func = get
 
-    def iter_func(self, target, path=None):
-        if not self.iterate:
-            msg = 'type %r not registered for iteration' % self.type.__name__
-            if path is not None:
-                msg += ' (at %r)' % Path(*path)
-            raise GlomError(msg)  # TODO: dedicated exception type for this?
-        return self.iterate(target)
+        if get is False:
+            self.get_func = self._missing_get_func
+        elif not callable(get):
+            raise ValueError('expected callable for get, not: %r' % (get,))
+        self.get = get
+
+    def _missing_get_func(self, target, path=None):
+        msg = 'type %r not registered for iteration' % self.type.__name__
+        if path is not None:
+            msg += ' (at %r)' % Path(*path)
+        raise GlomError(msg)  # TODO: dedicated exception type for this?
 
 
 class Path(object):
@@ -186,19 +208,21 @@ class Glommer(object):
 
         if register_default_types:
             self._register_default_types()
+
+        self._unreg_handler = TargetHandler(None, get=False, iterate=False)
+
         return
 
-    def _get_type(self, obj):
+    def _get_handler(self, obj):
         "return the closest-matching type config for an object *instance*, obj"
         try:
             return self._type_map[type(obj)]
         except KeyError:
-            closest = self._get_closest_type(obj)
-            if closest is not None:
-                return self._type_map[closest]
-            raise TypeError('expected instance of registered types (%r), not %r'
-                            % (', '.join([t.__name__ for t in self._type_map]),
-                               obj.__class__.__name__))  # TODO: instance or type repr?
+            pass
+        closest = self._get_closest_type(obj)
+        if closest is None:
+            return self._unreg_handler
+        return self._type_map[closest]
 
     def _get_closest_type(self, obj, _type_tree=None):
         type_tree = _type_tree if _type_tree is not None else self._type_tree
@@ -253,7 +277,7 @@ class Glommer(object):
         """Register a new type with the Glommer so it will know how to handle
         it as a target.
         """
-        self._type_map[target_type] = TypeHandler(target_type, get=get, iterate=iterate)
+        self._type_map[target_type] = TargetHandler(target_type, get=get, iterate=iterate)
         if not exact:
             self._register_fuzzy_type(target_type)
         return
@@ -267,14 +291,12 @@ class Glommer(object):
                 raise TypeError('path expected str or Path object, not: %r' % path)
 
         cur, val = target, target
-        for part in parts:
+        for i, part in enumerate(parts):
+            handler = self._get_handler(cur)
+            if not handler.get:
+                raise UnregisteredTarget('get', type(target), self._type_map, path=path[:i])
             try:
-                getter = self._get_type(cur).get_func
-            except TypeError:
-                e = TypeError('type %r not registered for access' % type(cur))
-                raise PathAccessError(e, part, parts)
-            try:
-                val = getter(cur, part)
+                val = handler.get(cur, part)
             except Exception as e:
                 raise PathAccessError(e, part, parts)
             cur = val
@@ -317,10 +339,12 @@ class Glommer(object):
                 ret[field] = self.glom(target, sub_spec, _path=path, _inspect=next_inspector)
         elif isinstance(spec, list):
             sub_spec = spec[0]
-            _iter = self._get_type(target).iter_func
+            handler = self._get_handler(target)
+            if not handler.iterate:
+                raise UnregisteredTarget('iterate', type(target), self._type_map, path=path)
 
             try:
-                iterator = _iter(target, path=path)
+                iterator = handler.iterate(target)
             except TypeError as te:
                 raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
                                 % (target.__class__.__name__, Path(*path), te))
@@ -385,6 +409,7 @@ if __name__ == '__main__':
 * More subspecs
   * Inspect
   * Omit/Drop singleton
+  * Construct()
 * More supported target types
   * Django and SQLAlchemy Models and QuerySets
 * Support unregistering target types
@@ -416,37 +441,5 @@ would be cool to have glom gracefully degrade to a get_path:
 
 (spec is just a string instead of a dict, target is still a dict obvs)
 
----
-
-Need to raise a good exception on failure to fetch. Maybe:
-
-class PathAccessError(KeyError, IndexError, TypeError):
-    '''An amalgamation of KeyError, IndexError, and TypeError,
-    representing what can occur when looking up a path in a nested
-    object.
-    '''
-    def __init__(self, exc, seg, path):
-        self.exc = exc
-        self.seg = seg
-        self.path = path
-
-    def __repr__(self):
-        cn = self.__class__.__name__
-        return '%s(%r, %r, %r)' % (cn, self.exc, self.seg, self.path)
-
-    def __str__(self):
-        return ('could not access %r from path %r, got error: %r'
-                % (self.seg, self.path, self.exc))
-
-
-Also need the ability to specify defaults if something is not found,
-as opposed to raising an error. Default varies by whether or not to
-iterate. Empty list if yes, None if no.
-
----
-tests
-
-obj = {}
-assert glom.glom(obj, (glom.Path(), glom.Path(), glom.Path())) is obj
 
 """
