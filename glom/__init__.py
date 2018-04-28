@@ -16,15 +16,19 @@ higher-level objects.
 
 from __future__ import print_function
 
+import sys
 import pdb
 import operator
+from abc import ABCMeta
 from collections import OrderedDict
 
-try:
-    basestring
-except NameError:
-    basestring = str
 
+PY2 = (sys.version_info[0] == 2)
+if PY2:
+    _AbstractIterableBase = object
+else:
+    basestring = str
+    _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
 
 _MISSING = object()
 
@@ -59,20 +63,21 @@ class CoalesceError(GlomError):  # TODO
 
 
 class UnregisteredTarget(GlomError):
-    def __init__(self, op, target_type, known_types, path):
+    def __init__(self, op, target_type, type_map, path):
         self.op = op
         self.target_type = target_type
-        self.known_types = sorted(known_types)
+        self.type_map = type_map
         self.path = path
 
-        if not known_types:
+        if not type_map:
             msg = ("glom() called without registering any types. see glom.register()"
                    " or Glommer's constructor for details.")
         else:
-            reg_types = [t.__name__ for t in known_types if getattr(t, op, None)]
+            reg_types = sorted([t.__name__ for t, h in type_map.items()
+                                if getattr(h, op, None)])
             reg_types_str = '()' if not reg_types else ('(%s)' % ', '.join(reg_types))
             msg = ("target type %r not registered for '%s', expected one of"
-                   " registered types: %s" % (target_type, op, reg_types_str))
+                   " registered types: %s" % (target_type.__name__, op, reg_types_str))
             if path:
                 msg += ' (at %r)' % (self.path,)
 
@@ -186,6 +191,18 @@ class Inspect(object):
         return '<INSPECT>'
 
 
+class _AbstractIterable(_AbstractIterableBase):
+    __metaclass__ = ABCMeta
+
+    @classmethod
+    def __subclasshook__(cls, C):
+        if cls is _AbstractIterable:
+            if C in (str, bytes):
+                return False
+            return callable(getattr(C, "__iter__", None))
+        return NotImplemented
+
+
 class Glommer(object):
     """All the wholesome goodness that it takes to make glom work. This
     type mostly serves to encapsulate the type registration context so
@@ -225,9 +242,11 @@ class Glommer(object):
         return default
 
     def _register_default_types(self):
-        self.register(object, getattr)
+        self.register(object)
         self.register(dict, operator.getitem)
         self.register(list, operator.getitem)
+        self.register(tuple, operator.getitem)
+        self.register(_AbstractIterable, iterate=iter)
 
     def _register_fuzzy_type(self, new_type, _type_tree=None):
         """Build a "type tree", an OrderedDict mapping registered types to
@@ -405,6 +424,7 @@ if __name__ == '__main__':
   main glom function. allows users to handle types beyond the glom
   builtins. Will require really defining the function interface for
   what a glom takes; currently: target, spec, _path, _inspect.
+* What to do with empty list and empty tuple (in spec)?
 
 
 glom(contact, {

@@ -96,6 +96,10 @@ def test_duck_register():
 
     assert float_range == [0.0, 1.0, 2.0, 3.0, 4.0]
 
+    glommer = Glommer()  # now with just defaults
+    float_range = glommer.glom(target, [float])
+    assert float_range == [0.0, 1.0, 2.0, 3.0, 4.0]
+
 
 def test_bypass_getitem():
     target = list(range(3)) * 3
@@ -106,3 +110,33 @@ def test_bypass_getitem():
     res = glom.glom(target, lambda list_obj: list_obj.count(1))
 
     assert res == 3
+
+
+def test_iter_set():
+    some_ints = set(range(5))
+    some_floats = glom.glom(some_ints, [float])
+
+    assert sorted(some_floats) == [0.0, 1.0, 2.0, 3.0, 4.0]
+
+    # now without defaults
+    glommer = Glommer(register_default_types=False)
+    glommer.register(set, iterate=iter)
+    some_floats = glom.glom(some_ints, [float])
+
+    assert sorted(some_floats) == [0.0, 1.0, 2.0, 3.0, 4.0]
+
+
+def test_iter_str():
+    # check that strings are not iterable by default, one of the most
+    # common sources of bugs
+    glom_buddy = 'kurt'
+
+    with pytest.raises(UnregisteredTarget):
+        glom.glom(glom_buddy, {'name': [glom_buddy]})
+
+    # also check that someone can override this
+
+    glommer = Glommer()
+    glommer.register(str, iterate=iter)
+    res = glommer.glom(glom_buddy, {'name_chars_for_some_reason': [str]})
+    assert len(res['name_chars_for_some_reason']) == 4
