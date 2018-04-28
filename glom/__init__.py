@@ -416,7 +416,11 @@ if __name__ == '__main__':
 * More subspecs
   * Inspect
   * Omit/Drop singleton
-  * Construct()
+  * Call() - Call(func) for kwargs into function, Call.method for kwargs into method
+  * Target() - Do anything Target[1].method(), etc.
+
+(Call and Target have better aesthetics and repr compared to lambdas, but are otherwise no more capable)
+
 * More supported target types
   * Django and SQLAlchemy Models and QuerySets
 * Support unregistering target types
@@ -425,7 +429,9 @@ if __name__ == '__main__':
   builtins. Will require really defining the function interface for
   what a glom takes; currently: target, spec, _path, _inspect.
 * What to do with empty list and empty tuple (in spec)?
-
+* Flag (and exception type) to gather all errors, instead of raising
+  the first
+* Contact example
 
 glom(contact, {
     'name': 'name',  # simple get-attr
@@ -449,6 +455,5 @@ would be cool to have glom gracefully degrade to a get_path:
   glob({'a': {'b': 'c'}}, 'a.b') -> 'c'
 
 (spec is just a string instead of a dict, target is still a dict obvs)
-
 
 """
