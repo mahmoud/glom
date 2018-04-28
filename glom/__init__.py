@@ -263,10 +263,6 @@ class Glommer(object):
         registered = False
         for cur_type, sub_tree in list(type_tree.items()):
             if issubclass(cur_type, new_type):
-                if issubclass(new_type, cur_type):
-                    raise ValueError('inheritance cycles not supported'
-                                     ' (detected between %r and %r)'
-                                     % (new_type, cur_type))
                 sub_tree = type_tree.pop(cur_type)  # mutation for recursion brevity
                 try:
                     type_tree[new_type][cur_type] = sub_tree
