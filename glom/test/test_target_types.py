@@ -3,6 +3,7 @@ from __future__ import print_function
 
 import pytest
 
+import glom
 from glom import Glommer, PathAccessError, UnregisteredTarget
 
 
@@ -94,3 +95,14 @@ def test_duck_register():
     float_range = glommer.glom(target, [lambda x: float(x)])
 
     assert float_range == [0.0, 1.0, 2.0, 3.0, 4.0]
+
+
+def test_bypass_getitem():
+    target = list(range(3)) * 3
+
+    with pytest.raises(TypeError):
+        glom.glom(target, 'count')
+
+    res = glom.glom(target, lambda list_obj: list_obj.count(1))
+
+    assert res == 3
