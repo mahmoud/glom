@@ -87,6 +87,7 @@ class CoalesceError(GlomError):
 
         return msg
 
+
 class UnregisteredTarget(GlomError):
     def __init__(self, op, target_type, type_map, path):
         self.op = op
@@ -94,19 +95,25 @@ class UnregisteredTarget(GlomError):
         self.type_map = type_map
         self.path = path
 
-        if not type_map:
-            msg = ("glom() called without registering any types. see glom.register()"
-                   " or Glommer's constructor for details.")
-        else:
-            reg_types = sorted([t.__name__ for t, h in type_map.items()
-                                if getattr(h, op, None)])
-            reg_types_str = '()' if not reg_types else ('(%s)' % ', '.join(reg_types))
-            msg = ("target type %r not registered for '%s', expected one of"
-                   " registered types: %s" % (target_type.__name__, op, reg_types_str))
-            if path:
-                msg += ' (at %r)' % (self.path,)
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return ('%s(%r, %r, %r, %r)'
+                % (cn, self.op, self.target_type, self.type_map, self.path))
 
-        super(UnregisteredTarget, self).__init__(msg)
+    def __str__(self):
+        if not self.type_map:
+            return ("glom() called without registering any types. see glom.register()"
+                    " or Glommer's constructor for details.")
+
+        reg_types = sorted([t.__name__ for t, h in self.type_map.items()
+                            if getattr(h, self.op, None)])
+        reg_types_str = '()' if not reg_types else ('(%s)' % ', '.join(reg_types))
+        msg = ("target type %r not registered for '%s', expected one of"
+               " registered types: %s" % (self.target_type.__name__, self.op, reg_types_str))
+        if self.path:
+            msg += ' (at %r)' % (self.path,)
+
+        return msg
 
 
 class TargetHandler(object):
@@ -454,9 +461,6 @@ if __name__ == '__main__':
 * Flag (and exception type) to gather all errors, instead of raising
   the first
 * Contact example
-* Which Exception approach is preferable, PAE or UnregisteredTarget. That
-  is, call super().__init__ with the exception message or implement
-  __str__ (and separate __repr__)?
 
 glom(contact, {
     'name': 'name',  # simple get-attr
