@@ -451,7 +451,6 @@ if __name__ == '__main__':
 
 * More subspecs
   * Inspect
-  * Omit/Drop singleton
   * Call() - Call(func) for kwargs into function, Call.method for kwargs into method
   * Target() - Do anything Target[1].method(), etc.
 
@@ -459,6 +458,14 @@ if __name__ == '__main__':
 
 * More supported target types
   * Django and SQLAlchemy Models and QuerySets
+
+## Django models registration:
+
+glom.register(django.db.models.Manager, iterate=lambda m: m.all())
+glom.register(django.db.models.QuerySet, iterate=lambda qs: qs.all())
+
+
+
 * Support unregistering target types
 * Eventually: Support registering handlers for new spec types in the
   main glom function. allows users to handle types beyond the glom
