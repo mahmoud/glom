@@ -1,5 +1,5 @@
 
-from glom import glom, Path, Inspect, Coalesce, CoalesceError
+from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError
 
 
 def test_initial_integration():
@@ -93,3 +93,24 @@ def test_coalesce():
 
     # check that arbitrary exceptions can be ignored
     assert glom(val, Coalesce(lambda x: 1/0, 'a.b', skip_exc=ZeroDivisionError)) == 'c'
+
+
+def test_omit():
+    target = {'a': {'b': 'c'},  # basic dictionary nesting
+           'd': {'e': ['f'],    # list in dictionary
+                 'g': 'h'},
+           'i': [{'j': 'k', 'l': 'm'}],  # list of dictionaries
+           'n': 'o'}
+
+    res = glom(target, {'a': 'a.b',
+                        'z': Coalesce('x', 'y', default=OMIT)})
+    assert res['a'] == 'c'  # sanity check
+
+    assert 'x' not in target
+    assert 'y' not in target
+    assert 'z' not in res
+
+    # test that it works on lists
+    target = range(7)
+    res = glom(target, [lambda t: t if t % 2 else OMIT])
+    assert res == [1, 3, 5]

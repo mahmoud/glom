@@ -31,7 +31,7 @@ else:
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
 
 _MISSING = object()
-
+OMIT = object()
 
 class GlomError(Exception):
     """A base exception for all the errors that might be raised from glom
@@ -370,7 +370,10 @@ class Glommer(object):
             ret = type(spec)() # TODO: works for dict + ordereddict, but sufficient for all?
 
             for field, sub_spec in spec.items():
-                ret[field] = self.glom(target, sub_spec, _path=path, _inspect=next_inspector)
+                val = self.glom(target, sub_spec, _path=path, _inspect=next_inspector)
+                if val is OMIT:
+                    continue
+                ret[field] = val
         elif isinstance(spec, list):
             sub_spec = spec[0]
             handler = self._get_handler(target)
@@ -382,8 +385,12 @@ class Glommer(object):
             except TypeError as te:
                 raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
                                 % (target.__class__.__name__, Path(*path), te))
-
-            ret = [self.glom(t, sub_spec, _path=path + [i]) for i, t in enumerate(iterator)]
+            ret = []
+            for i, t in enumerate(iterator):
+                val = self.glom(t, sub_spec, _path=path + [i])
+                if val is OMIT:
+                    continue
+                ret.append(val)
         elif isinstance(spec, tuple):
             res = target
             for sub_spec in spec:
