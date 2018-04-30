@@ -18,7 +18,7 @@ from setuptools import setup
 
 
 __author__ = 'Mahmoud Hashemi'
-__version__ = '0.0.4dev'
+__version__ = '18.0.0'
 __contact__ = 'mahmoud@hatnote.com'
 __url__ = 'https://github.com/mahmoud/glom'
 __license__ = 'BSD'
@@ -26,7 +26,7 @@ __license__ = 'BSD'
 
 setup(name='glom',
       version=__version__,
-      description="A declarative object transformer and formatter, for conglomerating results.",
+      description="A declarative object transformer and formatter, for conglomerating nested data.",
       long_description=__doc__,
       author=__author__,
       author_email=__contact__,
