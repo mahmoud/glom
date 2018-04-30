@@ -1,6 +1,10 @@
 """\
-Wrestling with Data
-===================
+
+*Note: glom's tutorial is a runnable module, feel free to import it
+ and glom along*.
+
+Dealing with Data
+=================
 
 Every application deals with data, and these days, even the simplest
 applications deals with rich, heavily-nested data.
