@@ -449,6 +449,7 @@ if __name__ == '__main__':
 
 """TODO:
 
+* Add extra top-level coalesce for default behavior
 * More subspecs
   * Inspect
   * Call() - Call(func) for kwargs into function, Call.method for kwargs into method

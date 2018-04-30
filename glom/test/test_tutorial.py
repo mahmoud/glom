@@ -3,7 +3,7 @@ from glom import glom, tutorial
 from glom.tutorial import Contact, Email
 
 def test_tutorial_data():
-    assert len(tutorial.CONTACTS) == 4
+    assert 4 < len(tutorial.CONTACTS) < 10
 
 
 def test_tutorial():
