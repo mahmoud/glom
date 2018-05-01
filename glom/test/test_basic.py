@@ -114,3 +114,15 @@ def test_omit():
     target = range(7)
     res = glom(target, [lambda t: t if t % 2 else OMIT])
     assert res == [1, 3, 5]
+
+
+def test_top_level_default():
+    expected = object()
+    val = glom({}, 'a.b.c', default=expected)
+    assert val is expected
+
+    val = glom({}, lambda x: 1/0, skip_exc=ZeroDivisionError)
+    assert val is None
+
+    val = glom({}, lambda x: 1/0, skip_exc=ZeroDivisionError, default=expected)
+    assert val is expected

@@ -154,7 +154,10 @@ class Path(object):
     'f'
     """
     def __init__(self, *path_parts):
-        self.path_parts = path_parts
+        self.path_parts = list(path_parts)
+
+    def append(self, part):
+        self.path_parts.append(part)
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -345,14 +348,26 @@ class Glommer(object):
 
     def glom(self, target, spec, **kwargs):
         # TODO: check spec up front
-        # TODO: default
+        default = kwargs.pop('default', None if 'skip_exc' in kwargs else _MISSING)
+        skip_exc = kwargs.pop('skip_exc', () if default is _MISSING else GlomError)
+        path = kwargs.pop('path', [])
+        inspector = kwargs.pop('inspector', None)
+        if kwargs:
+            raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
+        try:
+            ret = self._glom(target, spec, path=path, inspector=inspector)
+        except skip_exc:
+            if default is _MISSING:
+                raise
+            ret = default
+        return ret
+
+    def _glom(self, target, spec, path, inspector):
         # TODO: de-recursivize this
         # TODO: rearrange the branching below by frequency of use
 
-        # self.glom() calls should pass path=path to elide the current
-        # step, otherwise add themselves in some fashion.
-        path = kwargs.pop('_path', [])
-        inspector = kwargs.pop('_inspect', None)
+        # recursive self._glom() calls should pass path=path to elide the current
+        # step, otherwise add the current spec in some fashion
         next_inspector = inspector if (inspector and inspector.recursive) else None
         if inspector:
             if inspector.echo:
@@ -364,7 +379,7 @@ class Glommer(object):
 
         if isinstance(spec, Inspect):
             try:
-                ret = self.glom(target, spec.wrapped, _path=path, _inspect=spec)
+                ret = self._glom(target, spec.wrapped, path=path, inspector=spec)
             except Exception:
                 if spec.post_mortem:
                     spec.post_mortem()
@@ -373,7 +388,7 @@ class Glommer(object):
             ret = type(spec)() # TODO: works for dict + ordereddict, but sufficient for all?
 
             for field, sub_spec in spec.items():
-                val = self.glom(target, sub_spec, _path=path, _inspect=next_inspector)
+                val = self._glom(target, sub_spec, path=path, inspector=next_inspector)
                 if val is OMIT:
                     continue
                 ret[field] = val
@@ -390,14 +405,14 @@ class Glommer(object):
                                 % (target.__class__.__name__, Path(*path), te))
             ret = []
             for i, t in enumerate(iterator):
-                val = self.glom(t, sub_spec, _path=path + [i])
+                val = self._glom(t, sub_spec, path=path + [i], inspector=inspector)
                 if val is OMIT:
                     continue
                 ret.append(val)
         elif isinstance(spec, tuple):
             res = target
             for sub_spec in spec:
-                res = self.glom(res, sub_spec, _path=path, _inspect=next_inspector)
+                res = self._glom(res, sub_spec, path=path, inspector=next_inspector)
                 next_inspector = sub_spec if (isinstance(sub_spec, Inspect) and sub_spec.recursive) else next_inspector
                 if not isinstance(sub_spec, list):
                     path = path + [getattr(sub_spec, '__name__', sub_spec)]
@@ -414,7 +429,7 @@ class Glommer(object):
             skipped = []
             for sub_spec in spec.sub_specs:
                 try:
-                    ret = self.glom(target, sub_spec, _path=path, _inspect=next_inspector)
+                    ret = self._glom(target, sub_spec, path=path, inspector=next_inspector)
                     if not spec.skip_func(ret):
                         break
                     skipped.append(ret)
