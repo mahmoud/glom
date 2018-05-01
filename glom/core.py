@@ -458,16 +458,36 @@ glom = _DEFAULT.glom
 register = _DEFAULT.register
 
 
-def _main():
-    pass  # TODO: take a json and a spec (flag for safe eval vs non-safe eval)
+def main(argv):
+    print(argv)
+    spec_text = argv[1]
+    target_text = argv[2]
 
+    # TODO --unsafe
+    import ast
+    if not spec_text:
+        spec = Path()
+    else:
+        if spec_text[0] not in ('"', "'", "[", "{", "("):
+            spec_text = '"' + spec_text + '"'
+        spec = ast.literal_eval(spec_text)
 
-if __name__ == '__main__':
-    _main()
+    import json
+    target = json.loads(target_text)
+
+    try:
+        result = glom(target, spec)
+    except GlomError as ge:
+        print('%s: %s' % (ge.__class__.__name__, ge))
+        return 1
+
+    print(json.dumps(result, indent=2, sort_keys=True))
+
+    return 0
+
 
 """TODO:
 
-* Add extra top-level coalesce for default behavior
 * More subspecs
   * Inspect
   * Call() - Call(func) for kwargs into function, Call.method for kwargs into method
@@ -478,7 +498,6 @@ if __name__ == '__main__':
 * More supported target types
   * Django and SQLAlchemy Models and QuerySets
   * API for (bypassing) registering known 3rd party integrations like the above
-* Top-level default/skip/skip_exc (coalesce-like)
 * Top-level option to collect all the errors instead of just the first.
 * Wrap global default glom() with a function that has a docstring
 * Need a main
