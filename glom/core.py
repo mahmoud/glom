@@ -228,6 +228,105 @@ class Inspect(object):
         return '<INSPECT>'
 
 
+class _target_kwarg(str): pass
+# one of the very rare cases where subclassing string is okay --
+# interpreter requires args be strings, this lets us unambiguously
+# mark that a Target class got **'d into a Call
+
+
+class Call(object):
+    '''Represents a call to a function later.  Can be combined
+    with glom.Target to reduce the need for lambdas.
+
+    e.g. to generate a dict and then pass it to a constructor:
+    ({argname: spec}, Call(MyClass, **Target))
+    is equivalent to
+    (spec, lambda target: MyClass(argname=target))
+    '''
+    def __init__(self, func, *args, **kwargs):
+        self.func, self.args, self.kwargs = func, args, kwargs
+
+    def run(self, target):
+        'run against the current target'
+        target_sofar = {}
+        args = []
+        for arg in self.args:
+            if type(arg) is Target:
+                args.append(arg._eval(target, target_sofar)[0])
+            else:
+                args.append(arg)
+        kwargs = dict(self.kwargs)
+        for name, val in self.kwargs.items():
+            if type(name) is _target_kwarg:
+                # means Target was **'d in
+                kwargs.update(val.parent._eval(target, target_sofar)[0])
+                # eval the parent, since child will be getitem on the sentinel
+            elif type(val) is Target:
+                kwargs[name] = val._eval(target, target_sofar)[0]
+        return self.func(*args, **kwargs)
+
+
+
+class Target(object):
+    '''Represents the current target, for deferred operations.
+    Most operations that can be overloaded can be applied to the
+    Target instance rather than using a lambda.
+
+    e.g. (lambda t: t.field[5]) could be written (Target().field[5])
+    '''
+    def __init__(self, parent=None, operation=None, arg=None):
+        self.parent, self.operation, self.arg = parent, operation, arg
+
+    def eval(self, target):
+        'derive the value of this Target against a given glom target'
+        return self._eval(target, {})[0]
+
+    def _eval(self, target, sofar):
+        # sofar is an optimization -- as long as the target is
+        # constant, sofar is valid (i.e. Foo.a.b is not the same as Bar.a.b)
+        # TODO: non-recursive implementation
+        if type(self.arg) is Target:
+            arg = self.arg._eval(target, sofar)
+        else:
+            arg = self.arg
+        if self.parent:
+            target, path = self.parent._eval(target, sofar)
+        else:
+            path = ()
+        if self.operation is None:  # root
+            return target, path
+        path += (self.operation, self.arg)
+        if path in sofar:
+            return sofar[path], path
+        if self.operation == '.':
+            try:
+                ret = getattr(target, arg, _MISSING)
+            except AttributeError:
+                raise PathAccessError()  # TODO: path
+            if ret is _MISSING:
+                raise PathAccessError()  # TODO: path
+        elif self.operation == '[':
+            try:
+                ret = target[arg]
+            except KeyError:
+                raise PathAccessError()  # TODO: path
+        sofar[path] = ret
+        return ret, path
+
+    def __getattr__(self, name):
+        return Target(self, '.', name)
+
+    def __getitem__(self, item):
+        return Target(self, '[', item)
+
+    def items(self):  # needed for ** to work in python 2
+        raise NotImplemented
+
+    # only used to get ** to work
+    def keys(self): return [_target_kwarg('_TARGET')]
+
+
+
 class _AbstractIterable(_AbstractIterableBase):
     __metaclass__ = ABCMeta
 
@@ -443,6 +542,8 @@ class Glommer(object):
                     raise CoalesceError(spec, skipped, path)
         elif isinstance(spec, Literal):
             ret = spec.value
+        elif isinstance(spec, Call):
+            ret = spec.run(target)
         else:
             raise TypeError('expected spec to be dict, list, tuple,'
                             ' callable, or string, not: %r' % spec)
