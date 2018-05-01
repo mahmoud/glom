@@ -84,7 +84,7 @@ Paradigm shifts always raise a question or two.
 
 "glom" is short for "conglomerate", and can be used as a noun or
 verb. An astronomer might say, "space dust gloms together to create
-planets and planetoids". Got some data you need to transform? Glom it!
+planets and planetoids". Got some data you need to transform? Glom it! ☄️ 
 
 ### Any other handy terminology?
 
