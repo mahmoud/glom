@@ -22,6 +22,7 @@ import operator
 from abc import ABCMeta
 from collections import OrderedDict
 
+from boltons.typeutils import make_sentinel
 
 PY2 = (sys.version_info[0] == 2)
 if PY2:
@@ -30,8 +31,10 @@ else:
     basestring = str
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
 
-_MISSING = object()
-OMIT = object()
+
+_MISSING = make_sentinel('_MISSING')
+OMIT =  make_sentinel('OMIT')
+
 
 class GlomError(Exception):
     """A base exception for all the errors that might be raised from glom
@@ -459,6 +462,9 @@ if __name__ == '__main__':
 
 * More supported target types
   * Django and SQLAlchemy Models and QuerySets
+  * API for (bypassing) registering known 3rd party integrations like the above
+* Top-level default/skip/skip_exc (coalesce-like)
+* Top-level option to collect all the errors instead of just the first.
 
 ## Django models registration:
 
