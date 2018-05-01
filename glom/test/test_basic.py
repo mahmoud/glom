@@ -139,3 +139,5 @@ def test_call_and_target():
     assert val.a == 'two'
     val = glom({'a': 1}, Call(F, **Target()))
     assert val.a == 1
+    val = glom([1], Call(F, *Target()))
+    assert val.a == 1

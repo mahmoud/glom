@@ -232,6 +232,8 @@ class _target_kwarg(str): pass
 # one of the very rare cases where subclassing string is okay --
 # interpreter requires args be strings, this lets us unambiguously
 # mark that a Target class got **'d into a Call
+_TARGET_ARG = object()  # TODO: marker?
+# used to mark that a Target has been *'d into a Call
 
 
 class Call(object):
@@ -253,8 +255,12 @@ class Call(object):
         for arg in self.args:
             if type(arg) is Target:
                 args.append(arg._eval(target, target_sofar)[0])
+            elif arg is _TARGET_ARG:
+                break
             else:
                 args.append(arg)
+        if len(self.args) >= 2 and self.args[-2] is _TARGET_ARG:
+            args.extend(self.args[-1]._eval(target, target_sofar)[0])
         kwargs = dict(self.kwargs)
         for name, val in self.kwargs.items():
             if type(name) is _target_kwarg:
@@ -325,6 +331,11 @@ class Target(object):
 
     # only used to get ** to work
     def keys(self): return [_target_kwarg('_TARGET')]
+
+    # only used to get * to work
+    def __iter__(self):
+        yield _TARGET_ARG
+        yield self
 
 
 
