@@ -10,13 +10,15 @@ data. A sort of *object templating*.
 
 ## Introduction
 
-At its most basic, have you ever seen code like this?
+Think back, probably not too far, to a time you saw code like this:
 
 ```python
 value = target.a['b']['c']
 ```
 
-This code can raise any of the following:
+This code probably gives you back the value you want. But experienced
+developers know how fragile it can be. This tiny line can raise any of
+the following:
 
 ```
 AttributeError: 'TargetType' object has no attribute 'a'
@@ -26,9 +28,13 @@ TypeError: list indices must be integers, not str
 ```
 
 And for those last two, where in the line did the failure occur? `a`
-or `a['b']` or `a['b']['c']`? Splitting this code up to be more
-debuggable leads to verbose, tedious code with its own maintenance
-issues.
+or `a['b']` or `a['b']['c']`?
+
+Experienced developers will often split this code up to be more
+debuggable, but this leads to verbose, tedious code, with its own set
+of maintenance issues.
+
+Enter glom.
 
 glom is a new, Pythonic approach to nested data that makes all these
 problems go away.

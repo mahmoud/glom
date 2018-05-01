@@ -465,6 +465,8 @@ if __name__ == '__main__':
   * API for (bypassing) registering known 3rd party integrations like the above
 * Top-level default/skip/skip_exc (coalesce-like)
 * Top-level option to collect all the errors instead of just the first.
+* Wrap global default glom() with a function that has a docstring
+* Need a main
 
 ## Django models registration:
 
