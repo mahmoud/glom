@@ -261,6 +261,7 @@ class Call(object):
                 # means Target was **'d in
                 kwargs.update(val.parent._eval(target, target_sofar)[0])
                 # eval the parent, since child will be getitem on the sentinel
+                del kwargs[name]
             elif type(val) is Target:
                 kwargs[name] = val._eval(target, target_sofar)[0]
         return self.func(*args, **kwargs)
