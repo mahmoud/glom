@@ -138,3 +138,10 @@ def test_literal():
     assert val == expected
 
     assert glom(None, Literal('success')) == 'success'
+
+
+def test_path():
+    _obj = object()
+    target = {'a': {'b.b': [None, {_obj: [None, None, 'd']}]}}
+
+    assert glom(target, Path('a', 'b.b', 1, _obj, -1)) == 'd'
