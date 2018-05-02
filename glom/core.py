@@ -238,11 +238,13 @@ _TARGET_ARG = object()  # TODO: marker?
 
 class Call(object):
     """Specifies when a target should be passed to a function,
-    *func*. ``Call`` is no more powerful than ``lambda`` or other
-    functions, but often more readable, with a better ``repr``.
+    *func*. ``Call`` is similar to :class:`~functools.partial` in that
+    it is no more powerful than ``lambda`` or other functions, but
+    it is designed to be more readable, with a better ``repr``.
 
     Args:
-       func (callable):
+       func (callable): a function or other callable to be called with
+          the target
 
     Call also combines well with :class:`Target` to construct
     objects. For instance, to generate a dict and then pass it to a
@@ -259,6 +261,7 @@ class Call(object):
     Which is of course equivalent to is equivalent to ``glom(target,
     lambda target: ExampleClass(**target))``, but it's easy to see
     which one reads better.
+
     """
     def __init__(self, func, *args, **kwargs):
         if not callable(func):
@@ -304,12 +307,12 @@ class Call(object):
 
 
 class Target(object):
-    '''Represents the current target, for deferred operations.
+    """Represents the current target, for deferred operations.
     Most operations that can be overloaded can be applied to the
     Target instance rather than using a lambda.
 
     e.g. (lambda t: t.field[5]) could be written (Target().field[5])
-    '''
+    """
     def __init__(self, parent=None, operation=None, arg=None):
         self.parent, self.operation, self.arg = parent, operation, arg
 
