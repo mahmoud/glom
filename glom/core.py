@@ -237,15 +237,33 @@ _TARGET_ARG = object()  # TODO: marker?
 
 
 class Call(object):
-    '''Represents a call to a function later.  Can be combined
-    with glom.Target to reduce the need for lambdas.
+    """Specifies when a target should be passed to a function,
+    *func*. ``Call`` is no more powerful than ``lambda`` or other
+    functions, but often more readable, with a better ``repr``.
 
-    e.g. to generate a dict and then pass it to a constructor:
-    ({argname: spec}, Call(MyClass, **Target))
-    is equivalent to
-    (spec, lambda target: MyClass(argname=target))
-    '''
+    Args:
+       func (callable):
+
+    Call also combines well with :class:`Target` to construct
+    objects. For instance, to generate a dict and then pass it to a
+    constructor:
+
+    >>> class ExampleClass(object):
+    ...    def __init__(self, attr):
+    ...        self.attr = attr
+    ...
+    >>> target = {'attr': 3.14}
+    >>> glom(target, Call(ExampleClass, **Target())).attr
+    3.14
+
+    Which is of course equivalent to is equivalent to ``glom(target,
+    lambda target: ExampleClass(**target))``, but it's easy to see
+    which one reads better.
+    """
     def __init__(self, func, *args, **kwargs):
+        if not callable(func):
+            raise TypeError('Call constructor expected func to be a callable,'
+                            ' not: %r' % func)
         self.func, self.args, self.kwargs = func, args, kwargs
 
     def run(self, target):
@@ -271,6 +289,17 @@ class Call(object):
             elif type(val) is Target:
                 kwargs[name] = val._eval(target, target_sofar)[0]
         return self.func(*args, **kwargs)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        func_name = self.func.__name__
+        ret = '%s(%s' % (cn, func_name)
+        if self.args:
+            ret += ', ' + ', '.join([repr(a) for a in self.args])
+        if self.kwargs:
+            ret += (', **%r' % (self.kwargs,))
+        ret += ')'
+        return ret
 
 
 
@@ -330,7 +359,8 @@ class Target(object):
         raise NotImplemented
 
     # only used to get ** to work
-    def keys(self): return [_target_kwarg('_TARGET')]
+    def keys(self):
+        return [_target_kwarg('_TARGET')]
 
     # only used to get * to work
     def __iter__(self):
