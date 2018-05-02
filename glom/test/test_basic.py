@@ -1,5 +1,5 @@
 
-from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError
+from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Literal
 
 
 def test_initial_integration():
@@ -126,3 +126,15 @@ def test_top_level_default():
 
     val = glom({}, lambda x: 1/0, skip_exc=ZeroDivisionError, default=expected)
     assert val is expected
+
+
+def test_literal():
+    expected = {'value': 'c',
+                'type': 'a.b'}
+    target = {'a': {'b': 'c'}}
+    val = glom(target, {'value': 'a.b',
+                        'type': Literal('a.b')})
+
+    assert val == expected
+
+    assert glom(None, Literal('success')) == 'success'
