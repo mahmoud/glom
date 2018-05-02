@@ -635,9 +635,10 @@ def main(argv):
 """TODO:
 
 * More subspecs
-  * Inspect
+  * Inspect - mostly done, but performance checking
   * Call() - Call(func) for kwargs into function, Call.method for kwargs into method
   * Target() - Do anything Target[1].method(), etc.
+  * Assert, assert some property before continuing the glomming.
 
 (Call and Target have better aesthetics and repr compared to lambdas, but are otherwise no more capable)
 
@@ -646,6 +647,10 @@ def main(argv):
     take more arguments with more options. Supporting * and ** was
     cool, but it interacts with supporting methods
   * Make callable (Call is basically a partial)
+  * If callable is not intrinsically sufficient for good error
+    reporting, make whatever method it has compatible with the _glom()
+    signature
+  * skip_exc and default arguments to Call, like glom(), for easy try/except
 * Target
   * De-recursivize by making merging a Target's state with its child
     target, so a child is a flattened, independent
