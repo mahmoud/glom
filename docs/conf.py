@@ -41,6 +41,15 @@ version = u'18.0'
 release = u'18.0.0'
 
 
+todo_add_to_theme_to_keep_menus_expanded = """
+
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script>$(document).ready(function() {$('.wy-side-scroll').on('click', function() {$('.toctree-l1').addClass('current')}); $('.toctree-l1').first().click(); });</script>
+
+<!-- window.SphinxRtdTheme.ThemeNav.toggleCurrent = function(elem) {}; -->
+"""
+
+
 # -- General configuration ---------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -107,11 +116,10 @@ else: # only import and set the theme if we're building docs locally
     html_theme = 'sphinx_rtd_theme'
     html_theme_path = ['_themes', sphinx_rtd_theme.get_html_theme_path()]
 
-# Theme options are theme-specific and customize the look and feel of a theme
-# further.  For a list of options available for each theme, see the
-# documentation.
-#
-# html_theme_options = {}
+html_theme_options = {
+    'navigation_depth': 4,
+    'collapse_navigation': False,
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

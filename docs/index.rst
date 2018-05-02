@@ -17,9 +17,9 @@ glom
 .. toctree::
    :maxdepth: 2
 
-   api
    tutorial
-
+   api
+   cli
 
 Installation and Integration
 ----------------------------
@@ -31,11 +31,12 @@ PyPy. Installation is easy::
 
 Then you're ready to get glomming!::
 
-  from glom import glom
+  from  glom import glom
 
   target = {'a': {'b': {'c': 'd'}}}
   glom(target, 'a.b.c')  # returns 'd'
 
-There's a lot more to glom, check out the tutorial and API reference!
+There's much, much more to glom, check out the tutorial and API reference!
 
-*Glom it! ☄️*
+
+*Just glom it! ☄️*

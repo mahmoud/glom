@@ -4,7 +4,7 @@ To be more precise, glom helps pull together objects from other
 objects in a declarative, dynamic, and downright simple way.
 
 Built with services, APIs, and general serialization in mind, glom
-helps filter objects as well as perform deep fetches which would be
+helps filter objects, as well as perform deep fetches which would be
 tedious to perform in a procedural manner.
 
 Where "schema" and other libraries focus on validation and parsing
@@ -347,6 +347,9 @@ class Glommer(object):
         return val
 
     def glom(self, target, spec, **kwargs):
+        """
+        Where it all happens.
+        """
         # TODO: check spec up front
         default = kwargs.pop('default', None if 'skip_exc' in kwargs else _MISSING)
         skip_exc = kwargs.pop('skip_exc', () if default is _MISSING else GlomError)
