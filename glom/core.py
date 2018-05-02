@@ -347,8 +347,19 @@ class Glommer(object):
         return val
 
     def glom(self, target, spec, **kwargs):
-        """
-        Where it all happens.
+        """Where it all happens.
+
+        Args:
+           target (object): the object on which the glom will operate.
+           spec (object): Description of the output object in the form
+             of a dict, list, tuple, string, other glom construct, or
+             any composition of these.
+           default (object): An optional default to return in the case
+             an exception, specified by *skip_exc*, is raised.
+           skip_exc (Exception): An optional exception or tuple of
+             exceptions to ignore and return *default* (None if
+             omitted). By default glom raises errors through.
+
         """
         # TODO: check spec up front
         default = kwargs.pop('default', None if 'skip_exc' in kwargs else _MISSING)
