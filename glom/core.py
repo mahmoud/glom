@@ -37,9 +37,12 @@ OMIT =  make_sentinel('OMIT')
 
 
 class GlomError(Exception):
-    """A base exception for all the errors that might be raised from glom
-    logic. By default, exceptions raised from within functions passed
-    to glom will not be wrapped in a GlomError.
+    """A base exception for all the errors that might be raised from
+    :func:`glom` processing logic.
+
+    By default, exceptions raised from within functions passed to glom
+    (e.g., ``len``, ``sum``, any ``lambda``s) will not be wrapped in a
+    GlomError.
     """
     pass
 
@@ -64,6 +67,22 @@ class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
 
 
 class CoalesceError(GlomError):
+    """This :exc:`GlomError` subtype is raised from within a
+    :class:`Coalesce` spec's processing, when none of the subspecs
+    match and no default is provided.
+
+    The exception object itself keeps track of several values which
+    may be useful for processing:
+
+    Args:
+       coal_obj (Coalese): The original failing spec, see
+          :class:`Coalesce`'s docs for details.
+       skipped (list): A list of ignored values and exceptions, in the
+          order that their respective subspecs appear in the original
+          *coal_obj*.
+       path: Like many GlomErrors, this exception knows the path at
+          which it occurred.
+    """
     def __init__(self, coal_obj, skipped, path):
         self.coal_obj = coal_obj
         self.skipped = skipped
@@ -92,6 +111,28 @@ class CoalesceError(GlomError):
 
 
 class UnregisteredTarget(GlomError):
+    """This :class:`GlomError` subtype is raised when a spec calls for an
+    unsupported action on a target type. For instance, trying to
+    iterate on an non-iterable target:
+
+    >>> glom(object(), ['a.b.c'])
+    Traceback (most recent call last):
+    ...
+    UnregisteredTarget: target type 'object' not registered for 'iterate', expected one of registered types: (...)
+
+    It should be noted that this is a pretty uncommon occurrence in
+    production glom usage. See the "Setup and registration" section
+    for details on how to avoid this error.
+
+    An UnregisteredTarget takes and tracks a few values:
+
+    Args:
+       op (str): The name of the operation being performed ('get' or 'iterate')
+       target_type (type): The type of the target being processed.
+       type_map (dict): A mapping of target types that do support this operation
+       path: The path at which the error occurred.
+
+    """
     def __init__(self, op, target_type, type_map, path):
         self.op = op
         self.target_type = target_type
