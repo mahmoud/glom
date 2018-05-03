@@ -276,6 +276,7 @@ class Call(object):
             raise TypeError('func must be a callable or child of T')
         self.func, self.args, self.kwargs = func, args, kwargs
 
+    # TODO: make this take 4 arguments like other spec handlers
     def __call__(self, target):
         'run against the current target'
         def eval(t):
@@ -341,6 +342,37 @@ def _target_child(parent, operation, arg):
     return t
 
 
+class GlomAttributeError(GlomError, AttributeError): pass
+class GlomKeyError(GlomError, KeyError): pass
+class GlomIndexError(GlomError, IndexError): pass
+
+
+def _path_fmt(path):
+    def kwarg_fmt(kw):
+        if isinstance(kw, str):
+            return kw
+        return repr(kw)
+    prepr = []
+    i = 0
+    # TODO: % not format()
+    while i < len(path):
+        op, arg = path[i], path[i + 1]
+        if op == '.':
+            prepr.append('.' + arg)
+        elif op == '[':
+            prepr.append("[{0:r}]".format(arg))
+        elif op == '{':
+            args, kwargs = arg
+            prepr.append("({})".format(
+                ", ".join(
+                    [repr(a) for a in args] +
+                    ["{}={}".format(kwarg_fmt(k), repr(v))
+                     for k, v in kwargs.items()])))
+        i += 2
+    return "".join(prepr)
+
+
+# TODO: make this take 4 arguments like other spec handlers
 def _target_eval(_target, target):
     path = _TARGET_PATHS[_target]
     i = 0
@@ -350,12 +382,14 @@ def _target_eval(_target, target):
         if op == '.':
             cur = getattr(cur, arg, _MISSING)
             if cur is _MISSING:
-                raise PathAccessError()  # TODO path
+                raise GlomAttributeError(_path_fmt(path[:i]))
         elif op == '[':
             try:
                 cur = cur[arg]
-            except KeyError, IndexError:
-                raise PathAccessError()  # TODO path
+            except KeyError:
+                raise GlomKeyError(_path_fmt(path[:i]))
+            except IndexError:
+                raise GlomIndexError(_path_fmt(path[:i]))
         elif op == '(':
             args, kwargs = arg
             cur = Call(cur, args, kwargs)(target)
