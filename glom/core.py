@@ -233,11 +233,9 @@ class _AbstractIterable(_AbstractIterableBase):
 
     @classmethod
     def __subclasshook__(cls, C):
-        if cls is _AbstractIterable:
-            if C in (str, bytes):
-                return False
-            return callable(getattr(C, "__iter__", None))
-        return NotImplemented
+        if C in (str, bytes):
+            return False
+        return callable(getattr(C, "__iter__", None))
 
 
 class Glommer(object):
