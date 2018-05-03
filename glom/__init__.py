@@ -12,4 +12,4 @@ from glom.core import (glom,
                        CoalesceError,
                        UnregisteredTarget,
                        Call,
-                       Target)
+                       T, UP)

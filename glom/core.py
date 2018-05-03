@@ -21,6 +21,7 @@ import pdb
 import operator
 from abc import ABCMeta
 from collections import OrderedDict
+import weakref
 
 from boltons.typeutils import make_sentinel
 
@@ -263,36 +264,35 @@ class Call(object):
     which one reads better.
 
     """
-    def __init__(self, func, *args, **kwargs):
+    def __init__(self, func, args=None, kwargs=None):
         if not callable(func):
             raise TypeError('Call constructor expected func to be a callable,'
                             ' not: %r' % func)
+        if args is None:
+            args = ()
+        if kwargs is None:
+            kwargs = {}
+        if not callable(func) or isinstance(func, _Target):
+            raise TypeError('func must be a callable or child of T')
         self.func, self.args, self.kwargs = func, args, kwargs
 
-    def run(self, target):
+    def __call__(self, target):
         'run against the current target'
-        target_sofar = {}
-        args = []
-        for arg in self.args:
-            if type(arg) is Target:
-                args.append(arg._eval(target, target_sofar)[0])
-            elif arg is _TARGET_ARG:
-                break
-            else:
-                args.append(arg)
-        if len(self.args) >= 2 and self.args[-2] is _TARGET_ARG:
-            args.extend(self.args[-1]._eval(target, target_sofar)[0])
-        kwargs = dict(self.kwargs)
-        for name, val in self.kwargs.items():
-            if type(name) is _target_kwarg:
-                # means Target was **'d in
-                kwargs.update(val.parent._eval(target, target_sofar)[0])
-                # eval the parent, since child will be getitem on the sentinel
-                del kwargs[name]
-            elif type(val) is Target:
-                kwargs[name] = val._eval(target, target_sofar)[0]
-        return self.func(*args, **kwargs)
+        def eval(t):
+            if type(t) is not _Target:
+                return t
+            return _target_eval(t, target)
+        if type(self.args) is _Target:
+            args = _target_eval(self.args, target)
+        else:
+            args = [eval(a) for a in self.args]
+        if type(self.kwargs) is _Target:
+            kwargs = _target_eval(self.kwargs, target)
+        else:
+            kwargs = {name: eval(val) for name, val in self.kwargs.items()}
+        return eval(self.func)(*args, **kwargs)
 
+    ''' # TODO: this is infinite looping or something
     def __repr__(self):
         cn = self.__class__.__name__
         func_name = self.func.__name__
@@ -303,73 +303,74 @@ class Call(object):
             ret += (', **%r' % (self.kwargs,))
         ret += ')'
         return ret
+    '''
 
 
-
-class Target(object):
+class _Target(object):
     """Represents the current target, for deferred operations.
     Most operations that can be overloaded can be applied to the
     Target instance rather than using a lambda.
 
     e.g. (lambda t: t.field[5]) could be written (Target().field[5])
     """
-    def __init__(self, parent=None, operation=None, arg=None):
-        self.parent, self.operation, self.arg = parent, operation, arg
-
-    def eval(self, target):
-        'derive the value of this Target against a given glom target'
-        return self._eval(target, {})[0]
-
-    def _eval(self, target, sofar):
-        # sofar is an optimization -- as long as the target is
-        # constant, sofar is valid (i.e. Foo.a.b is not the same as Bar.a.b)
-        # TODO: non-recursive implementation
-        if type(self.arg) is Target:
-            arg = self.arg._eval(target, sofar)
-        else:
-            arg = self.arg
-        if self.parent:
-            target, path = self.parent._eval(target, sofar)
-        else:
-            path = ()
-        if self.operation is None:  # root
-            return target, path
-        path += (self.operation, self.arg)
-        if path in sofar:
-            return sofar[path], path
-        if self.operation == '.':
-            try:
-                ret = getattr(target, arg, _MISSING)
-            except AttributeError:
-                raise PathAccessError()  # TODO: path
-            if ret is _MISSING:
-                raise PathAccessError()  # TODO: path
-        elif self.operation == '[':
-            try:
-                ret = target[arg]
-            except KeyError:
-                raise PathAccessError()  # TODO: path
-        sofar[path] = ret
-        return ret, path
+    __slots__ = ('__weakref__',)
 
     def __getattr__(self, name):
-        return Target(self, '.', name)
+        return _target_child(self, '.', name)
 
     def __getitem__(self, item):
-        return Target(self, '[', item)
+        if item is UP:
+            newpath = _TARGET_PATHS[self][:-2]
+            if not newpath:
+                return T
+            t = _Target()
+            _TARGET_PATHS[t] = _TARGET_PATHS[self][:-2]
+            return t
+        return _target_child(self, '[', item)
 
-    def items(self):  # needed for ** to work in python 2
-        raise NotImplemented
+    def __call__(self, *args, **kwargs):
+        return _target_child(self, '(', (args, kwargs))
 
-    # only used to get ** to work
-    def keys(self):
-        return [_target_kwarg('_TARGET')]
 
-    # only used to get * to work
-    def __iter__(self):
-        yield _TARGET_ARG
-        yield self
+_TARGET_PATHS = weakref.WeakKeyDictionary()
 
+
+def _target_child(parent, operation, arg):
+    t = _Target()
+    _TARGET_PATHS[t] = _TARGET_PATHS[parent] + (operation, arg)
+    return t
+
+
+def _target_eval(_target, target):
+    path = _TARGET_PATHS[_target]
+    i = 0
+    cur = target
+    while i < len(path):
+        op, arg = path[i], path[i + 1]
+        if op == '.':
+            cur = getattr(cur, arg, _MISSING)
+            if cur is _MISSING:
+                raise PathAccessError()  # TODO path
+        elif op == '[':
+            try:
+                cur = cur[arg]
+            except KeyError, IndexError:
+                raise PathAccessError()  # TODO path
+        elif op == '(':
+            args, kwargs = arg
+            cur = Call(cur, args, kwargs)(target)
+            # call with target rather than cur,
+            # because it is probably more intuitive
+            # if args to the call "reset" their path
+            # e.g. "T.a" should mean the same thing
+            # in both of these specs: T.a and T.b(T.a)
+        i += 2
+    return cur
+
+
+T = _Target()
+_TARGET_PATHS[T] = ()
+UP = make_sentinel('UP')
 
 
 class _AbstractIterable(_AbstractIterableBase):
@@ -561,6 +562,8 @@ class Glommer(object):
                 if not isinstance(sub_spec, list):
                     path = path + [getattr(sub_spec, '__name__', sub_spec)]
             ret = res
+        elif isinstance(spec, _Target):  # NOTE: must come before callable b/c _Target is also callable
+            ret = _target_eval(spec, target)
         elif callable(spec):
             ret = spec(target)
         elif isinstance(spec, (basestring, Path)):
@@ -587,8 +590,6 @@ class Glommer(object):
                     raise CoalesceError(spec, skipped, path)
         elif isinstance(spec, Literal):
             ret = spec.value
-        elif isinstance(spec, Call):
-            ret = spec.run(target)
         else:
             raise TypeError('expected spec to be dict, list, tuple,'
                             ' callable, or string, not: %r' % spec)

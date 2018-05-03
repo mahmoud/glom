@@ -1,5 +1,5 @@
 
-from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Call, Target
+from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Call, T, UP
 
 
 def test_initial_integration():
@@ -131,13 +131,14 @@ def test_top_level_default():
 def test_call_and_target():
     class F(object):
         def __init__(s, a, b, c): s.a, s.b, s.c = a, b, c
-    val = glom(1, Call(F, a=Target(), b=Target(), c=Target()))
+    val = glom(1, Call(F, kwargs=dict(a=T, b=T, c=T)))
     assert (val.a, val.b, val.c) == (1, 1, 1)
     class F(object):
         def __init__(s, a): s.a = a
-    val = glom({'one': F('two')}, Call(F, Target()['one'].a))
+    val = glom({'one': F('two')}, Call(F, args=(T['one'].a,)))
     assert val.a == 'two'
-    val = glom({'a': 1}, Call(F, **Target()))
-    assert val.a == 1
-    val = glom([1], Call(F, *Target()))
-    assert val.a == 1
+    assert glom({'a': 1}, Call(F, kwargs=T)).a == 1
+    assert glom([1], Call(F, args=T)).a == 1
+    assert glom(F, T(T)).a == F
+    assert glom([F, 1], T[0](T[1]).a) == 1
+    assert glom([[1]], T[0][0][0][UP]) == 1
