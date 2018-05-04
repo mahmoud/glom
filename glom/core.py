@@ -161,6 +161,12 @@ class UnregisteredTarget(GlomError):
 
 
 class TargetHandler(object):
+    """The TargetHandler is a construct used internally to register
+    general actions on types of targets. The logic for matching a
+    target to its handler based on type is in
+    :meth:`Glommer._get_handler()`.
+
+    """
     def __init__(self, type_obj, get=None, iterate=None):
         self.type = type_obj
 
@@ -182,8 +188,9 @@ class TargetHandler(object):
 
 
 class Path(object):
-    """Used to represent explicit paths when the default 'a.b.c'-style
-    syntax won't work or isn't desirable.
+    """Path objects are used as specs to represent explicit paths when
+    the default 'a.b.c'-style general access syntax won't work or
+    isn't desirable.
 
     Use this to wrap ints, datetimes, and other valid keys, as well as
     strings with dots that shouldn't be expanded.
@@ -206,13 +213,17 @@ class Path(object):
 
 
 class Literal(object):
-    """Used to represent a literal value in a spec. Wherever a Literal
-    object is encountered in a spec, it is replaced with its *value*
-    in the output.
+    """Literal objects are used as specs to wrap a literal value in
+    rare cases when part of the spec should not be interpreted as a
+    glommable subspec. Wherever a Literal object is encountered in a
+    spec, it is replaced with its *value* in the output.
+
+    Args:
+       value: The literal value that should appear in the glom output.
 
     This could also be achieved with a callable, e.g., `lambda _:
     'literal'` in the spec, but using a Literal object adds some
-    explicitness and clarity.
+    explicitness and code clarity.
     """
     def __init__(self, value):
         self.value = value
@@ -223,6 +234,9 @@ class Literal(object):
 
 
 class Coalesce(object):
+    """Coalesce objects are specs used to achieve fallback behavior for a
+    list of subspecs.
+    """
     def __init__(self, *sub_specs, **kwargs):
         self.sub_specs = sub_specs
         self.default = kwargs.pop('default', _MISSING)
