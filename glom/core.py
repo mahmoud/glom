@@ -678,25 +678,13 @@ def main(argv):
 (Call and Target have better aesthetics and repr compared to lambdas, but are otherwise no more capable)
 
 * Call
-  * Scale Call back to taking args and kwargs so that Call itself can
-    take more arguments with more options. Supporting * and ** was
-    cool, but it interacts with supporting methods
-  * Make callable (Call is basically a partial)
   * If callable is not intrinsically sufficient for good error
     reporting, make whatever method it has compatible with the _glom()
     signature
   * skip_exc and default arguments to Call, like glom(), for easy try/except
 * Target
-  * De-recursivize by making merging a Target's state with its child
-    target, so a child is a flattened, independent
-    instance.
   * Effectively a path, but with an unambiguous
     getitem/getattr. (should Path and Target merge??)
-  * Support Target(), that is, making calling a Target possible, for
-    method calls, e.g., Target.keys(). Relatedly...
-  * Target should become an instance of another, private type. The
-    public way to make a target is to work from the root
-    Target. Target instance might need to be TARGET or maybe T.
 * Path note: path is ambiguous wrt what access is performed (getitem
   or getattr), should this be rectified, or is it ok to have TARGET be
   a more powerful alternative?
