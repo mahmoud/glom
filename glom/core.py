@@ -717,7 +717,9 @@ def main(argv):
   * Inspect - mostly done, but performance checking
   * Call() - Call(func) for kwargs into function, Call.method for kwargs into method
   * Target() - Do anything Target[1].method(), etc.
-  * Assert, assert some property before continuing the glomming.
+  * Check() - wraps a subspec, performing checking on its
+    return. e.g., Check('a.b.c', type=int, value=1, action='raise') #
+    action='omit' maybe also supported, other actions?
 (Call and Target have better aesthetics and repr compared to lambdas, but are otherwise no more capable)
 * Call
   * If callable is not intrinsically sufficient for good error
@@ -734,8 +736,10 @@ def main(argv):
   * Django and SQLAlchemy Models and QuerySets
   * API for (bypassing) registering known 3rd party integrations like the above
 * Top-level option to collect all the errors instead of just the first.
-* Wrap global default glom() with a function that has a docstring
-* Need a main
+  * This will probably require another context object in addition to
+    inspector and path.
+
+
 ## Django models registration:
 glom.register(django.db.models.Manager, iterate=lambda m: m.all())
 glom.register(django.db.models.QuerySet, iterate=lambda qs: qs.all())
@@ -767,4 +771,5 @@ glom([
 would be cool to have glom gracefully degrade to a get_path:
   glob({'a': {'b': 'c'}}, 'a.b') -> 'c'
 (spec is just a string instead of a dict, target is still a dict obvs)
+
 """
