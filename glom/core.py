@@ -291,8 +291,10 @@ class _TType(object):
     e.g. (lambda t: t.field[5]) could be written (Target().field[5])
     """
     __slots__ = ('__weakref__',)
+
     def __getattr__(self, name):
         return _t_child(self, '.', name)
+
     def __getitem__(self, item):
         if item is UP:
             newpath = _T_PATHS[self][:-2]
@@ -302,6 +304,7 @@ class _TType(object):
             _T_PATHS[t] = _T_PATHS[self][:-2]
             return t
         return _t_child(self, '[', item)
+
     def __call__(self, *args, **kwargs):
         return _t_child(self, '(', (args, kwargs))
 
