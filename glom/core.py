@@ -1,22 +1,28 @@
 """*glom gets results.*
 To be more precise, glom helps pull together objects from other
 objects in a declarative, dynamic, and downright simple way.
+
 Built with services, APIs, and general serialization in mind, glom
 helps filter objects as well as perform deep fetches which would be
 tedious to perform in a procedural manner.
+
 Where "schema" and other libraries focus on validation and parsing
 less-structured data into Python objects, glom goes the other
 direction, producing more-readily serializable data from valid
 higher-level objects.
 """
+
 from __future__ import print_function
+
 import sys
 import pdb
 import operator
 from abc import ABCMeta
 from collections import OrderedDict
 import weakref
+
 from boltons.typeutils import make_sentinel
+
 PY2 = (sys.version_info[0] == 2)
 if PY2:
     _AbstractIterableBase = object
@@ -24,8 +30,10 @@ else:
     basestring = str
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
 
+
 _MISSING = make_sentinel('_MISSING')
 OMIT =  make_sentinel('OMIT')
+
 
 class GlomError(Exception):
     """A base exception for all the errors that might be raised from glom
@@ -33,6 +41,7 @@ class GlomError(Exception):
     to glom will not be wrapped in a GlomError.
     """
     pass
+
 
 class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
     """An amalgamation of KeyError, IndexError, and TypeError,
@@ -43,21 +52,26 @@ class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
         self.exc = exc
         self.seg = seg
         self.path = path
+
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r, %r, %r)' % (cn, self.exc, self.seg, self.path)
+
     def __str__(self):
         return ('could not access %r from path %r, got error: %r'
                 % (self.seg, self.path, self.exc))
+
 
 class CoalesceError(GlomError):
     def __init__(self, coal_obj, skipped, path):
         self.coal_obj = coal_obj
         self.skipped = skipped
         self.path = path
+
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r, %r, %r)' % (cn, self.coal_obj, self.skipped, self.path)
+
     def __str__(self):
         missed_specs = tuple(self.coal_obj.sub_specs)
         skipped_vals = [v.__class__.__name__
@@ -74,16 +88,19 @@ class CoalesceError(GlomError):
             msg += ' (at path %r)' % (self.path,)
         return msg
 
+
 class UnregisteredTarget(GlomError):
     def __init__(self, op, target_type, type_map, path):
         self.op = op
         self.target_type = target_type
         self.type_map = type_map
         self.path = path
+
     def __repr__(self):
         cn = self.__class__.__name__
         return ('%s(%r, %r, %r, %r)'
                 % (cn, self.op, self.target_type, self.type_map, self.path))
+
     def __str__(self):
         if not self.type_map:
             return ("glom() called without registering any types. see glom.register()"
@@ -96,6 +113,7 @@ class UnregisteredTarget(GlomError):
         if self.path:
             msg += ' (at %r)' % (self.path,)
         return msg
+
 
 class TargetHandler(object):
     def __init__(self, type_obj, get=None, iterate=None):
@@ -115,12 +133,15 @@ class TargetHandler(object):
             raise ValueError('expected callable for get, not: %r' % (get,))
         self.get = get
 
+
 class Path(object):
     """Used to represent explicit paths when the default 'a.b.c'-style
     syntax won't work or isn't desirable.
+
     Use this to wrap ints, datetimes, and other valid keys, as well as
     strings with dots that shouldn't be expanded.
     >>> target = {'a': {'b': 'c', 'd.e': 'f', 2: 3}}
+
     >>> glom(target, Path('a', 2))
     3
     >>> glom(target, Path('a', 'd.e'))
@@ -128,25 +149,31 @@ class Path(object):
     """
     def __init__(self, *path_parts):
         self.path_parts = list(path_parts)
+
     def append(self, part):
         self.path_parts.append(part)
+
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%s)' % (cn, ', '.join([repr(p) for p in self.path_parts]))
+
 
 class Literal(object):
     """Used to represent a literal value in a spec. Wherever a Literal
     object is encountered in a spec, it is replaced with its *value*
     in the output.
+
     This could also be achieved with a callable, e.g., `lambda _:
     'literal'` in the spec, but using a Literal object adds some
     explicitness and clarity.
     """
     def __init__(self, value):
         self.value = value
+
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r)' % (cn, self.value)
+
 
 class Coalesce(object):
     def __init__(self, *sub_specs, **kwargs):
@@ -164,6 +191,7 @@ class Coalesce(object):
         self.skip_exc = kwargs.pop('skip_exc', GlomError)
         if kwargs:
             raise TypeError('unexpected keyword args: %r' % (sorted(kwargs.keys()),))
+
 
 class Inspect(object):
     """Can be used two ways, one as a wrapper around a spec (passed a
@@ -186,6 +214,7 @@ class Inspect(object):
         if post_mortem and not callable(post_mortem):
             raise TypeError('post_mortem expected bool or callable, not: %r' % post_mortem)
         self.post_mortem = post_mortem
+
     def __repr__(self):
         return '<INSPECT>'
 
@@ -223,6 +252,7 @@ class Call(object):
         if not callable(func) or isinstance(func, _TType):
             raise TypeError('func must be a callable or child of T')
         self.func, self.args, self.kwargs = func, args, kwargs
+
     # TODO: make this take 4 arguments like other spec handlers
     def __call__(self, target):
         'run against the current target'
@@ -239,6 +269,7 @@ class Call(object):
         else:
             kwargs = {name: eval(val) for name, val in self.kwargs.items()}
         return eval(self.func)(*args, **kwargs)
+
     ''' # TODO: this is infinite looping or something
     def __repr__(self):
         cn = self.__class__.__name__
@@ -251,6 +282,7 @@ class Call(object):
         ret += ')'
         return ret
     '''
+
 
 class _TType(object):
     """Represents the current target, for deferred operations.
@@ -273,16 +305,20 @@ class _TType(object):
     def __call__(self, *args, **kwargs):
         return _t_child(self, '(', (args, kwargs))
 
+
 _T_PATHS = weakref.WeakKeyDictionary()
+
 
 def _t_child(parent, operation, arg):
     t = _TType()
     _T_PATHS[t] = _T_PATHS[parent] + (operation, arg)
     return t
 
+
 class GlomAttributeError(GlomError, AttributeError): pass
 class GlomKeyError(GlomError, KeyError): pass
 class GlomIndexError(GlomError, IndexError): pass
+
 
 def _path_fmt(path):
     def kwarg_fmt(kw):
@@ -307,6 +343,7 @@ def _path_fmt(path):
                      for k, v in kwargs.items()])))
         i += 2
     return "".join(prepr)
+
 
 # TODO: make this take 4 arguments like other spec handlers
 def _t_eval(_t, target):
@@ -337,9 +374,11 @@ def _t_eval(_t, target):
         i += 2
     return cur
 
+
 T = _TType()
 _T_PATHS[T] = ()
 UP = make_sentinel('UP')
+
 
 class _AbstractIterable(_AbstractIterableBase):
     __metaclass__ = ABCMeta
@@ -350,6 +389,7 @@ class _AbstractIterable(_AbstractIterableBase):
                 return False
             return callable(getattr(C, "__iter__", None))
         return NotImplemented
+
 
 class Glommer(object):
     """All the wholesome goodness that it takes to make glom work. This
@@ -364,6 +404,7 @@ class Glommer(object):
             self._register_default_types()
         self._unreg_handler = TargetHandler(None, get=False, iterate=False)
         return
+
     def _get_handler(self, obj):
         "return the closest-matching type config for an object *instance*, obj"
         try:
@@ -374,6 +415,7 @@ class Glommer(object):
         if closest is None:
             return self._unreg_handler
         return self._type_map[closest]
+
     def _get_closest_type(self, obj, _type_tree=None):
         type_tree = _type_tree if _type_tree is not None else self._type_tree
         default = None
@@ -383,17 +425,21 @@ class Glommer(object):
                 ret = cur_type if sub_type is None else sub_type
                 return ret
         return default
+
     def _register_default_types(self):
         self.register(object)
         self.register(dict, operator.getitem)
         self.register(list, operator.getitem)
         self.register(tuple, operator.getitem)
         self.register(_AbstractIterable, iterate=iter)
+
     def _register_fuzzy_type(self, new_type, _type_tree=None):
         """Build a "type tree", an OrderedDict mapping registered types to
         their subtypes
+
         The type tree's invariant is that a key in the mapping is a
         valid parent type of all its children.
+
         Order is preserved such that non-overlapping parts of the
         subtree take precedence by which was most recently added.
         """
@@ -413,6 +459,7 @@ class Glommer(object):
         if not registered:
             type_tree[new_type] = OrderedDict()
         return type_tree
+
     def register(self, target_type, get=None, iterate=None, exact=False):
         """Register a new type with the Glommer so it will know how to handle
         it as a target.
@@ -423,6 +470,7 @@ class Glommer(object):
         if not exact:
             self._register_fuzzy_type(target_type)
         return
+
     def _get_path(self, target, path):
         try:
             parts = path.split('.')
@@ -441,6 +489,7 @@ class Glommer(object):
                 raise PathAccessError(e, part, parts)
             cur = val
         return val
+
     def glom(self, target, spec, **kwargs):
         # TODO: check spec up front
         default = kwargs.pop('default', None if 'skip_exc' in kwargs else _MISSING)
@@ -456,6 +505,7 @@ class Glommer(object):
                 raise
             ret = default
         return ret
+
     def _glom(self, target, spec, path, inspector):
         # TODO: de-recursivize this
         # TODO: rearrange the branching below by frequency of use
@@ -543,14 +593,17 @@ class Glommer(object):
             print()
         return ret
 
+
 _DEFAULT = Glommer(register_default_types=True)
 glom = _DEFAULT.glom
 register = _DEFAULT.register
+
 
 def main(argv):
     print(argv)
     spec_text = argv[1]
     target_text = argv[2]
+
     # TODO --unsafe
     import ast
     if not spec_text:
@@ -559,14 +612,18 @@ def main(argv):
         if spec_text[0] not in ('"', "'", "[", "{", "("):
             spec_text = '"' + spec_text + '"'
         spec = ast.literal_eval(spec_text)
+
     import json
     target = json.loads(target_text)
+
     try:
         result = glom(target, spec)
     except GlomError as ge:
         print('%s: %s' % (ge.__class__.__name__, ge))
         return 1
+
     print(json.dumps(result, indent=2, sort_keys=True))
+
     return 0
 
 """TODO:
@@ -612,6 +669,7 @@ glom(contact, {
     'emails': ('email_set', ['email']),  # get-attr + sequence unpack + fetch one attr
     'roles': ('vendor_roles', [{'role': 'role'}]),  # get-attr + sequence unpack + sub-glom
 })
+
 ideas from this:
 every value of the dict is moving down a level, the algorithm is to repeatedly
 walk down levels via get-attr + sequence unpacks until you run out of levels
