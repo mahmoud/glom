@@ -308,6 +308,9 @@ class _TType(object):
     def __call__(self, *args, **kwargs):
         return _t_child(self, '(', (args, kwargs))
 
+    def __repr__(self):
+        return "T" + _path_fmt(_T_PATHS[self])
+
 
 _T_PATHS = weakref.WeakKeyDictionary()
 
@@ -336,8 +339,8 @@ def _path_fmt(path):
         if op == '.':
             prepr.append('.' + arg)
         elif op == '[':
-            prepr.append("[{0:r}]".format(arg))
-        elif op == '{':
+            prepr.append("[{0!r}]".format(arg))
+        elif op == '(':
             args, kwargs = arg
             prepr.append("({})".format(
                 ", ".join(
