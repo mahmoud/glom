@@ -92,7 +92,7 @@ class CoalesceError(GlomError):
         return '%s(%r, %r, %r)' % (cn, self.coal_obj, self.skipped, self.path)
 
     def __str__(self):
-        missed_specs = tuple(self.coal_obj.sub_specs)
+        missed_specs = tuple(self.coal_obj.subspecs)
         skipped_vals = [v.__class__.__name__
                         if isinstance(v, self.coal_obj.skip_exc)
                         else '<skipped %s>' % v.__class__.__name__
@@ -188,8 +188,8 @@ class Path(object):
 
     Use this to wrap ints, datetimes, and other valid keys, as well as
     strings with dots that shouldn't be expanded.
-    >>> target = {'a': {'b': 'c', 'd.e': 'f', 2: 3}}
 
+    >>> target = {'a': {'b': 'c', 'd.e': 'f', 2: 3}}
     >>> glom(target, Path('a', 2))
     3
     >>> glom(target, Path('a', 'd.e'))
@@ -229,10 +229,53 @@ class Literal(object):
 
 class Coalesce(object):
     """Coalesce objects are specs used to achieve fallback behavior for a
-    list of subspecs.
+    list of subspecs. Each subspec is passed as a positional argument,
+    and keyword arguments control the fallback and default behaviors.
+
+    In practice, this fallback behavior is as straightforward as it is useful:
+
+    >>> target = {'c': 'd'}
+    >>> glom(target, Coalesce('a', 'b', 'c'))
+    'd'
+
+    glom tries to get ``'a'`` from ``target``, but gets a
+    KeyError. Rather than raise a :exc:`~glom.core.PathAccessError` as usual,
+    glom *coalesces* into the next subspec, ``'b'``. The process
+    repeats until it gets to ``'c'``, which returns our value,
+    ``'d'``. If our value weren't present, we'd see:
+
+    >>> target = {}
+    >>> glom(target, Coalesce('a', 'b'))
+    Traceback (most recent call last):
+    ...
+    CoalesceError: no valid values found while coalescing. Tried ('a', 'b') and got (PathAccessError, PathAccessError) ...
+
+    Same process, but because ``target`` is empty, we get a
+    :exc:`CoalesceError`. If we want to avoid an exception, and we
+    know which value we want by default, we can set *default*:
+
+    >>> target = {}
+    >>> glom(target, Coalesce('a', 'b', 'c'), default='d-fault')
+    'd-fault'
+
+    ``'a'``, ``'b'``, and ``'c'`` weren't present so we got ``'d-fault'``.
+
+    Args:
+
+       subspecs: One or more glommable subspecs
+       default: A value to return if no subspec results in a valid value
+       skip: A value, tuple of values, or predicate function
+         representing values to ignore
+       skip_exc: An exception or tuple of exception types to catch and
+         move on to the next subspec. Defaults to :exc:`GlomError`, the
+         parent type of all glom runtime exceptions.
+
+    If all subspecs produce skipped values or exceptions, a
+    :exc:`CoalesceError` will be raised.
+
     """
-    def __init__(self, *sub_specs, **kwargs):
-        self.sub_specs = sub_specs
+    def __init__(self, *subspecs, **kwargs):
+        self.subspecs = subspecs
         self.default = kwargs.pop('default', _MISSING)
         self.skip = kwargs.pop('skip', _MISSING)
         if self.skip is _MISSING:
@@ -544,7 +587,14 @@ class Glommer(object):
         return val
 
     def glom(self, target, spec, **kwargs):
-        """Where it all happens.
+        """Fetch or construct a new value from a given *target* based on the
+        specification declared by *spec*.
+
+        ``glom`` also takes a keyword-argument, *default*. When set, a
+        ``glom`` operation fails with a :exc:`GlomError`, the
+        *default* will be returned, like :meth:`dict.get()`. The
+        *skip_exc* keyword argument allows for setting which errors
+        should be ignored
 
         Args:
            target (object): the object on which the glom will operate.
@@ -553,9 +603,11 @@ class Glommer(object):
              any composition of these.
            default (object): An optional default to return in the case
              an exception, specified by *skip_exc*, is raised.
+
            skip_exc (Exception): An optional exception or tuple of
              exceptions to ignore and return *default* (None if
-             omitted). By default glom raises errors through.
+             omitted). If *skip_exc* and *default* are both not set,
+             glom raises errors through.
 
         """
         # TODO: check spec up front
@@ -636,7 +688,7 @@ class Glommer(object):
                 raise
         elif isinstance(spec, Coalesce):
             skipped = []
-            for sub_spec in spec.sub_specs:
+            for sub_spec in spec.subspecs:
                 try:
                     ret = self._glom(target, sub_spec, path=path, inspector=next_inspector)
                     if not spec.skip_func(ret):

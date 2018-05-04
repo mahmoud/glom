@@ -6,10 +6,12 @@
 The ``glom`` Function
 ---------------------
 
+Where it all happens. The reason for the season. The eponymous function, ``glom``.
+
 .. autofunction:: glom.glom
 
 
-Advanced specification
+Advanced Specification
 ----------------------
 
 .. autoclass:: glom.Path
