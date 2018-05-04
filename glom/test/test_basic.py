@@ -1,7 +1,7 @@
 
 import pytest
 
-from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Literal
+from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, UP
 import glom.core as glom_core
 
 
@@ -131,8 +131,10 @@ def test_top_level_default():
     assert val is expected
 
     with pytest.raises(KeyError):
-         # p degenerate case if you ask me
+        # p degenerate case if you ask me
         glom({}, 'x', skip_exc=KeyError, default=glom_core._MISSING)
+
+    return
 
 
 def test_literal():
@@ -163,3 +165,19 @@ def test_abstract_iterable():
             return iter([1, 2, 3])
 
     assert isinstance(MyIterable(), glom_core._AbstractIterable)
+
+
+def test_call_and_target():
+    class F(object):
+        def __init__(s, a, b, c): s.a, s.b, s.c = a, b, c
+    val = glom(1, Call(F, kwargs=dict(a=T, b=T, c=T)))
+    assert (val.a, val.b, val.c) == (1, 1, 1)
+    class F(object):
+        def __init__(s, a): s.a = a
+    val = glom({'one': F('two')}, Call(F, args=(T['one'].a,)))
+    assert val.a == 'two'
+    assert glom({'a': 1}, Call(F, kwargs=T)).a == 1
+    assert glom([1], Call(F, args=T)).a == 1
+    assert glom(F, T(T)).a == F
+    assert glom([F, 1], T[0](T[1]).a) == 1
+    assert glom([[1]], T[0][0][0][UP]) == 1
