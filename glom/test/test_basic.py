@@ -1,5 +1,8 @@
 
-from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Call, T, UP
+import pytest
+
+from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, UP
+import glom.core as glom_core
 
 
 def test_initial_integration():
@@ -126,6 +129,42 @@ def test_top_level_default():
 
     val = glom({}, lambda x: 1/0, skip_exc=ZeroDivisionError, default=expected)
     assert val is expected
+
+    with pytest.raises(KeyError):
+        # p degenerate case if you ask me
+        glom({}, 'x', skip_exc=KeyError, default=glom_core._MISSING)
+
+    return
+
+
+def test_literal():
+    expected = {'value': 'c',
+                'type': 'a.b'}
+    target = {'a': {'b': 'c'}}
+    val = glom(target, {'value': 'a.b',
+                        'type': Literal('a.b')})
+
+    assert val == expected
+
+    assert glom(None, Literal('success')) == 'success'
+    assert repr(Literal(3.14)) == 'Literal(3.14)'
+
+
+def test_path():
+    _obj = object()
+    target = {'a': {'b.b': [None, {_obj: [None, None, 'd']}]}}
+
+    assert glom(target, Path('a', 'b.b', 1, _obj, -1)) == 'd'
+
+
+def test_abstract_iterable():
+    assert isinstance([], glom_core._AbstractIterable)
+
+    class MyIterable(object):
+        def __iter__(self):
+            return iter([1, 2, 3])
+
+    assert isinstance(MyIterable(), glom_core._AbstractIterable)
 
 
 def test_call_and_target():

@@ -82,6 +82,24 @@ def test_invalid_register():
     return
 
 
+def test_exact_register():
+    glommer = Glommer(register_default_types=False)
+
+    class BetterList(list):
+        pass
+
+    glommer.register(BetterList, iterate=iter, exact=True)
+
+    expected = [0, 2, 4]
+    value = glommer.glom(BetterList(range(3)), [lambda x: x * 2])
+    assert value == expected
+
+    with pytest.raises(UnregisteredTarget):
+        glommer.glom(list(range(3)), [lambda x: x * 2])
+
+    return
+
+
 def test_duck_register():
     class LilRanger(object):
         def __init__(self):

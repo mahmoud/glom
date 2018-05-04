@@ -1,7 +1,6 @@
 """\
 
-*Note: glom's tutorial is a runnable module, feel free to import it
- and glom along*.
+*Note: glom's tutorial is a runnable module, feel free to import it and glom along*.
 
 Dealing with Data
 =================

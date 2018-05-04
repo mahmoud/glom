@@ -1,7 +1,6 @@
 attrs==17.4.0
 boltons==17.2.0
 coverage==4.5.1
--e git+git@github.com:mahmoud/face.git@dbc9763556242d441257191c035af1f6c82c8514#egg=face
 funcsigs==1.0.2
 more-itertools==4.1.0
 pluggy==0.6.0

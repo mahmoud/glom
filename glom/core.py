@@ -3,7 +3,7 @@ To be more precise, glom helps pull together objects from other
 objects in a declarative, dynamic, and downright simple way.
 
 Built with services, APIs, and general serialization in mind, glom
-helps filter objects as well as perform deep fetches which would be
+helps filter objects, as well as perform deep fetches which would be
 tedious to perform in a procedural manner.
 
 Where "schema" and other libraries focus on validation and parsing
@@ -36,9 +36,12 @@ OMIT =  make_sentinel('OMIT')
 
 
 class GlomError(Exception):
-    """A base exception for all the errors that might be raised from glom
-    logic. By default, exceptions raised from within functions passed
-    to glom will not be wrapped in a GlomError.
+    """A base exception for all the errors that might be raised from
+    :func:`glom` processing logic.
+
+    By default, exceptions raised from within functions passed to glom
+    (e.g., ``len``, ``sum``, any ``lambda``s) will not be wrapped in a
+    GlomError.
     """
     pass
 
@@ -63,6 +66,22 @@ class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
 
 
 class CoalesceError(GlomError):
+    """This :exc:`GlomError` subtype is raised from within a
+    :class:`Coalesce` spec's processing, when none of the subspecs
+    match and no default is provided.
+
+    The exception object itself keeps track of several values which
+    may be useful for processing:
+
+    Args:
+       coal_obj (Coalese): The original failing spec, see
+          :class:`Coalesce`'s docs for details.
+       skipped (list): A list of ignored values and exceptions, in the
+          order that their respective subspecs appear in the original
+          *coal_obj*.
+       path: Like many GlomErrors, this exception knows the path at
+          which it occurred.
+    """
     def __init__(self, coal_obj, skipped, path):
         self.coal_obj = coal_obj
         self.skipped = skipped
@@ -90,6 +109,28 @@ class CoalesceError(GlomError):
 
 
 class UnregisteredTarget(GlomError):
+    """This :class:`GlomError` subtype is raised when a spec calls for an
+    unsupported action on a target type. For instance, trying to
+    iterate on an non-iterable target:
+
+    >>> glom(object(), ['a.b.c'])
+    Traceback (most recent call last):
+    ...
+    UnregisteredTarget: target type 'object' not registered for 'iterate', expected one of registered types: (...)
+
+    It should be noted that this is a pretty uncommon occurrence in
+    production glom usage. See the "Setup and registration" section
+    for details on how to avoid this error.
+
+    An UnregisteredTarget takes and tracks a few values:
+
+    Args:
+       op (str): The name of the operation being performed ('get' or 'iterate')
+       target_type (type): The type of the target being processed.
+       type_map (dict): A mapping of target types that do support this operation
+       path: The path at which the error occurred.
+
+    """
     def __init__(self, op, target_type, type_map, path):
         self.op = op
         self.target_type = target_type
@@ -116,6 +157,12 @@ class UnregisteredTarget(GlomError):
 
 
 class TargetHandler(object):
+    """The TargetHandler is a construct used internally to register
+    general actions on types of targets. The logic for matching a
+    target to its handler based on type is in
+    :meth:`Glommer._get_handler()`.
+
+    """
     def __init__(self, type_obj, get=None, iterate=None):
         self.type = type_obj
         if iterate is None:
@@ -135,8 +182,9 @@ class TargetHandler(object):
 
 
 class Path(object):
-    """Used to represent explicit paths when the default 'a.b.c'-style
-    syntax won't work or isn't desirable.
+    """Path objects are used as specs to represent explicit paths when
+    the default 'a.b.c'-style general access syntax won't work or
+    isn't desirable.
 
     Use this to wrap ints, datetimes, and other valid keys, as well as
     strings with dots that shouldn't be expanded.
@@ -159,13 +207,17 @@ class Path(object):
 
 
 class Literal(object):
-    """Used to represent a literal value in a spec. Wherever a Literal
-    object is encountered in a spec, it is replaced with its *value*
-    in the output.
+    """Literal objects are used as specs to wrap a literal value in
+    rare cases when part of the spec should not be interpreted as a
+    glommable subspec. Wherever a Literal object is encountered in a
+    spec, it is replaced with its *value* in the output.
+
+    Args:
+       value: The literal value that should appear in the glom output.
 
     This could also be achieved with a callable, e.g., `lambda _:
     'literal'` in the spec, but using a Literal object adds some
-    explicitness and clarity.
+    explicitness and code clarity.
     """
     def __init__(self, value):
         self.value = value
@@ -176,6 +228,9 @@ class Literal(object):
 
 
 class Coalesce(object):
+    """Coalesce objects are specs used to achieve fallback behavior for a
+    list of subspecs.
+    """
     def __init__(self, *sub_specs, **kwargs):
         self.sub_specs = sub_specs
         self.default = kwargs.pop('default', _MISSING)
@@ -235,8 +290,9 @@ class Call(object):
     ...        self.attr = attr
     ...
     >>> target = {'attr': 3.14}
-    >>> glom(target, Call(ExampleClass, **Target())).attr
+    >>> glom(target, Call(ExampleClass, kwargs=T)).attr
     3.14
+
     Which is of course equivalent to is equivalent to ``glom(target,
     lambda target: ExampleClass(**target))``, but it's easy to see
     which one reads better.
@@ -287,12 +343,14 @@ class Call(object):
 class _TType(object):
     """Represents the current target, for deferred operations.
     Most operations that can be overloaded can be applied to the
-    Target instance rather than using a lambda.
-    e.g. (lambda t: t.field[5]) could be written (Target().field[5])
+    T instance rather than using a lambda.
+    e.g. (lambda t: t.field[5]) could be written (T.field[5])
     """
     __slots__ = ('__weakref__',)
 
     def __getattr__(self, name):
+        if name.startswith('__'):
+            raise AttributeError('T instances reserve dunder attributes')
         return _t_child(self, '.', name)
 
     def __getitem__(self, item):
@@ -390,11 +448,9 @@ class _AbstractIterable(_AbstractIterableBase):
     __metaclass__ = ABCMeta
     @classmethod
     def __subclasshook__(cls, C):
-        if cls is _AbstractIterable:
-            if C in (str, bytes):
-                return False
-            return callable(getattr(C, "__iter__", None))
-        return NotImplemented
+        if C in (str, bytes):
+            return False
+        return callable(getattr(C, "__iter__", None))
 
 
 class Glommer(object):
@@ -497,6 +553,20 @@ class Glommer(object):
         return val
 
     def glom(self, target, spec, **kwargs):
+        """Where it all happens.
+
+        Args:
+           target (object): the object on which the glom will operate.
+           spec (object): Description of the output object in the form
+             of a dict, list, tuple, string, other glom construct, or
+             any composition of these.
+           default (object): An optional default to return in the case
+             an exception, specified by *skip_exc*, is raised.
+           skip_exc (Exception): An optional exception or tuple of
+             exceptions to ignore and return *default* (None if
+             omitted). By default glom raises errors through.
+
+        """
         # TODO: check spec up front
         default = kwargs.pop('default', None if 'skip_exc' in kwargs else _MISSING)
         skip_exc = kwargs.pop('skip_exc', () if default is _MISSING else GlomError)
@@ -606,16 +676,35 @@ register = _DEFAULT.register
 
 
 def main(argv):
+    """glom.py [FLAGS]] <spec> <target>
+    TODO:
+
+    --unsafe  (does a full eval() of spec, with many glom builtins available)
+    --target-file <path> (can be -)
+    --target-format  (anything other than json out there?)
+    --indent <num_of_spaces> (defaults to 2)
+    --debug (Inspect post mortem)
+    --inspect  (Inspect breakpoint)
+
+    if target-file is not set, target is either what's on the command
+    line, or stdin.
+    (i.e., if not os.isatty(sys.stdin.fileno()): sys.stdin.read()
+    or something)
+
+    results come out on stdout, but errors and any trace/debug info
+    should be on stderr, at least in CLI mode.
+
+    """
     print(argv)
     spec_text = argv[1]
     target_text = argv[2]
 
-    # TODO --unsafe
     import ast
     if not spec_text:
         spec = Path()
     else:
         if spec_text[0] not in ('"', "'", "[", "{", "("):
+            # intention: handle trivial path access
             spec_text = '"' + spec_text + '"'
         spec = ast.literal_eval(spec_text)
 
@@ -688,4 +777,3 @@ would be cool to have glom gracefully degrade to a get_path:
   glob({'a': {'b': 'c'}}, 'a.b') -> 'c'
 (spec is just a string instead of a dict, target is still a dict obvs)
 """
-
