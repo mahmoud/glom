@@ -305,7 +305,7 @@ class Call(object):
             args = ()
         if kwargs is None:
             kwargs = {}
-        if not callable(func) or isinstance(func, _TType):
+        if not (callable(func) or isinstance(func, _TType)):
             raise TypeError('func must be a callable or child of T')
         self.func, self.args, self.kwargs = func, args, kwargs
 
@@ -326,18 +326,9 @@ class Call(object):
             kwargs = {name: eval(val) for name, val in self.kwargs.items()}
         return eval(self.func)(*args, **kwargs)
 
-    ''' # TODO: this is infinite looping or something
+
     def __repr__(self):
-        cn = self.__class__.__name__
-        func_name = self.func.__name__
-        ret = '%s(%s' % (cn, func_name)
-        if self.args:
-            ret += ', ' + ', '.join([repr(a) for a in self.args])
-        if self.kwargs:
-            ret += (', **%r' % (self.kwargs,))
-        ret += ')'
-        return ret
-    '''
+        return 'Call(%r, args=%r, kwargs=%r)' % (self.func, self.args, self.kwargs)
 
 
 class _TType(object):
