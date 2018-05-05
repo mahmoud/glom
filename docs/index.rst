@@ -1,14 +1,14 @@
 glom
 ====
 
-*Declarative object access and templating*
+*Restructuring data through declarative object access and templating*
 
 |release| |calver|
 
 **glom** is a new approach to working with data in Python.
 
-.. |release| image:: https://img.shields.io/pypi/v/boltons.svg
-             :target: https://pypi.python.org/pypi/boltons
+.. |release| image:: https://img.shields.io/pypi/v/glom.svg
+             :target: https://pypi.org/project/glom/
 
 .. |calver| image:: https://img.shields.io/badge/calver-YY.MINOR.MICRO-22bfda.svg
             :target: https://calver.org

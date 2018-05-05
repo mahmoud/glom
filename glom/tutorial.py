@@ -1,6 +1,7 @@
 """\
 
-*Note: glom's tutorial is a runnable module, feel free to import it and glom along*.
+*Note: glom's tutorial is a runnable module, feel free to run "from
+ glom.tutorial import *" in the Python REPL and glom along*.
 
 Dealing with Data
 =================
@@ -8,37 +9,45 @@ Dealing with Data
 Every application deals with data, and these days, even the simplest
 applications deals with rich, heavily-nested data.
 
-What does nested data looks like? In its most basic form:
+What does nested data looks like? In its most basic form::
 
->>> data = {'a': {'b': {'c': 'd'}}}
->>> data['a']['b']['c']
-'d'
+  >>> data = {'a': {'b': {'c': 'd'}}}
+  >>> data['a']['b']['c']
+  'd'
 
 Pretty simple right? On a good day, it certainly can be. But other
-days, a value might not be set:
+days, a value might not be set::
 
->>> data2 = {'a': {'b': None}}
->>> data2['a']['b']['c']
-Traceback (most recent call last):
-...
-TypeError: 'NoneType' object is not subscriptable
+  >>> data2 = {'a': {'b': None}}
+  >>> data2['a']['b']['c']
+  Traceback (most recent call last):
+  ...
+  TypeError: 'NoneType' object is not subscriptable
 
-Well that's no good. We didn't get our value, and the error message we
-got was no help at all. The error doesn't even tell us which access
-failed.
+Well that's no good. We didn't get our value. We got a TypeError, a
+type of error that doesn't help us at all. The error message doesn't
+even tell us which access failed. If ``data2`` had been passed to us,
+we wouldn't know if ``'a'``, ``'b'``, or ``'c'`` had been set to
+``None``.
 
-What we need is a more semantically powerful accessor. Something like:
+What we need is a more semantically powerful accessor.
 
->>> glom(data, 'a.b.c')
-'d'
->>> glom(data2, 'a.b.c')
-Traceback (most recent call last):
-...
-PathAccessError: could not access 'c' from path Path('a', 'b', 'c'), got error: 'NoneType' object has no attribute 'c'
+Maybe something like::
 
-And just like that, we have a function that can give us our data, or
-give us an error message we can read, understand, and act upon. And
-would you believe this "deep access" example doesn't even scratch
+  >>> glom(data, 'a.b.c')
+  'd'
+
+Well that's short, and reads fine, but what about in the error case?
+
+  >>> glom(data2, 'a.b.c')
+  Traceback (most recent call last):
+  ...
+  PathAccessError: could not access 'c' from path Path('a', 'b', 'c'), got error: 'NoneType' object has no attribute 'c'
+
+That's more like it! We have a function that can give us our data, or
+give us an error message we can read, understand, and act upon.
+
+And would you believe this "deep access" example doesn't even scratch
 the surface of the tip of the iceberg? Welcome to glom.
 
 Point of Contact
@@ -51,16 +60,16 @@ ORM/database and compatible with web and mobile frontends.
 
 Let's create a Contact to familiarize ourselves with our test data:
 
->>> contact = Contact('Julian',
-...                   emails=[Email(email='jlahey@svtp.info')],
-...                   location='Canada')
->>> contact.save()
->>> contact.primary_email
-Email(id=5, email='jlahey@svtp.info', email_type='personal')
->>> contact.add_date
-datetime.datetime(...)
->>> contact.id
-5
+  >>> contact = Contact('Julian',
+  ...                   emails=[Email(email='jlahey@svtp.info')],
+  ...                   location='Canada')
+  >>> contact.save()
+  >>> contact.primary_email
+  Email(id=5, email='jlahey@svtp.info', email_type='personal')
+  >>> contact.add_date
+  datetime.datetime(...)
+  >>> contact.id
+  5
 
 As you can see, the Contact object has fields for ``primary_email``,
 defaulting to the first email in the email list, and ``add_date``, to
@@ -68,31 +77,47 @@ track the date the contact was added. And as the unique,
 autoincrementing ``id`` suggests, there appear to be a few other
 contacts already in our system.
 
->>> len(Contact.objects.all())
-5
+  >>> len(Contact.objects.all())
+  5
 
 Sure enough, we've got a little address book going here. But right now
 it consists of plain Python objects, not very API friendly:
 
->>> json.dumps(Contact.objects.all())
-Traceback (most recent call last):
-...
-TypeError: Contact(id=1, name='Kurt', ...) ... is not JSON serializable
+  >>> json.dumps(Contact.objects.all())
+  Traceback (most recent call last):
+  ...
+  TypeError: Contact(id=1, name='Kurt', ...) ... is not JSON serializable
 
 But at least we know our data, so let's get to building the API
-response with glom:
+response with glom.
+
+First, let's set our source object, conventionally named *target*:
 
 >>> target = Contact.objects.all()  # here we could do filtering, etc.
->>> resp = glom(target, {'results': [{'id': 'id',
-...                                   'name': 'name',
-...                                   'add_date': ('add_date', str),
-...                                   'emails': ('emails', [{'id': 'id', 'email': 'email', 'type': 'email_type'}]),
-...                                   'primary_email': Coalesce('primary_email.email', default=None),
-...                                   'pref_name': Coalesce('pref_name', 'name', skip='', default=''),
-...                                   'detail': Coalesce('company',
-...                                                      'location',
-...                                                      ('add_date.year', str),
-...                                                      skip='', default='')}]})
+
+Next, let's specify the format of our result. Remember, the processing
+is not happening here, this is just declaring the format. We'll be
+going over the specifics of what each line does after we get our
+results.
+
+>>> spec = {'results': [{'id': 'id',
+...                      'name': 'name',
+...                      'add_date': ('add_date', str),
+...                      'emails': ('emails', [{'id': 'id',
+...                                             'email': 'email',
+...                                             'type': 'email_type'}]),
+...                      'primary_email': Coalesce('primary_email.email', default=None),
+...                      'pref_name': Coalesce('pref_name', 'name', skip='', default=''),
+...                      'detail': Coalesce('company',
+...                                         'location',
+...                                         ('add_date.year', str),
+...                                         skip='', default='')}]}
+
+
+With *target* and *spec* in hand, we're ready to glom, build our
+response, and take a look the final json-serialized form:
+
+>>> resp = glom(target, spec)
 >>> print(json.dumps(resp, indent=2, sort_keys=True))
 {
   "results": [
@@ -119,6 +144,9 @@ specification. This type of WYSIWYG code is one of glom's most
 important features. After we've appreciated that simple fact, let's
 look at it line by line.
 
+Reviewing the Specification
+===========================
+
 For ``id`` and ``name``, we're just doing simple copy-overs. For
 ``add_date``, we use a tuple to denote repeated gloms; we access
 ``add_date`` and pass the result to ``str`` to convert it to a string.
@@ -144,7 +172,7 @@ for ``pref_name``, we want to return the stored ``pref_name``, or fall
 back to the normal name. Again, we use ``Coalesce``, but this time we
 tell it not only to ignore the default ``GlomError`` exceptions, but
 also ignore empty string values, and finally default to empty string
-if all specs result in empty strings or ``GlomError``s.
+if all specs result in empty strings or :exc:`~glom.core.GlomError`.
 
 And finally, for our last field, ``detail``, we want to conjure up a
 bit of info that'll help jog the user's memory. We're going to include
