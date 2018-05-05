@@ -804,8 +804,6 @@ def main(argv):
 
 * More subspecs
   * Inspect - mostly done, but performance checking
-  * Call() - Call(func) for kwargs into function, Call.method for kwargs into method
-  * Target() - Do anything Target[1].method(), etc.
   * Check() - wraps a subspec, performing checking on its
     return. e.g., Check('a.b.c', type=int, value=1, action='raise') #
     action='omit' maybe also supported, other actions?
@@ -851,17 +849,5 @@ glom(contact, {
     'emails': ('email_set', ['email']),  # get-attr + sequence unpack + fetch one attr
     'roles': ('vendor_roles', [{'role': 'role'}]),  # get-attr + sequence unpack + sub-glom
 })
-
-ideas from this:
-every value of the dict is moving down a level, the algorithm is to repeatedly
-walk down levels via get-attr + sequence unpacks until you run out of levels
-and then whatever you have arrived at goes in that spot
-you could also maybe glom to a list by just taking the values() of the above dict
-glom([
-   'name', 'primary_email.email', ('email_set', ['email']), ('vendor_roles', [{'role': 'role'}])
-], contact)
-would be cool to have glom gracefully degrade to a get_path:
-  glob({'a': {'b': 'c'}}, 'a.b') -> 'c'
-(spec is just a string instead of a dict, target is still a dict obvs)
 
 """
