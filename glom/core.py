@@ -497,6 +497,26 @@ class Glommer(object):
     type mostly serves to encapsulate the type registration context so
     that advanced uses of glom don't need to worry about stepping on
     each other's toes.
+
+    Glommer objects are lightweight and, once instantiated, provide
+    the :func:`glom()` method we know and love:
+
+    >>> glommer = Glommer()
+    >>> glommer.glom({}, 'a.b.c', default='d')
+    'd'
+    >>> Glommer().glom({'vals': list(range(3))}, ('vals', len))
+    3
+
+    Instances also provide :meth:`~Glommer.register()` method for
+    localized control over type handling.
+
+    Args:
+       register_default_types (bool): Whether or not to enable the
+          handling behaviors of the default :func:`glom()`. These
+          default actions include dict access, list and iterable
+          iteration, and generic object attribute access. Defaults to
+          True.
+
     """
     def __init__(self, register_default_types=True):
         self._type_map = OrderedDict()
@@ -562,8 +582,8 @@ class Glommer(object):
         return type_tree
 
     def register(self, target_type, get=None, iterate=None, exact=False):
-        """Register a new type with the Glommer so :meth:`Glommer.glom()` will
-        know how to handle instances of it as targets.
+        """Register *target_type* so :meth:`~Glommer.glom()` will
+        know how to handle instances of that type as targets.
 
         Args:
            target_type (type): A type expected to appear in a glom()
@@ -576,6 +596,16 @@ class Glommer(object):
               *target_type* appears to be iterable.
            exact (bool): Whether or not to match instances of subtypes
               of *target_type*.
+
+        .. note::
+
+           The module-level :func:`register()` function affects the
+           module-level :func:`glom()` function's behavior. If this
+           global effect is undesirable for your application, or
+           you're implementing a library, consider instantiating a
+           :class:`Glommer` instance, and using the
+           :meth:`~Glommer.register()` and :meth:`Glommer.glom()`
+           methods instead.
 
         """
         if not isinstance(target_type, type):
