@@ -487,6 +487,10 @@ class _AbstractIterable(_AbstractIterableBase):
         return callable(getattr(C, "__iter__", None))
 
 
+def _get_sequence_item(target, index):
+    return target[int(index)]
+
+
 class Glommer(object):
     """All the wholesome goodness that it takes to make glom work. This
     type mostly serves to encapsulate the type registration context so
@@ -525,8 +529,8 @@ class Glommer(object):
     def _register_default_types(self):
         self.register(object)
         self.register(dict, operator.getitem)
-        self.register(list, operator.getitem)
-        self.register(tuple, operator.getitem)
+        self.register(list, _get_sequence_item)
+        self.register(tuple, _get_sequence_item)
         self.register(_AbstractIterable, iterate=iter)
 
     def _register_fuzzy_type(self, new_type, _type_tree=None):

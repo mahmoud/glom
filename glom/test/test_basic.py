@@ -181,3 +181,11 @@ def test_call_and_target():
     assert glom(F, T(T)).a == F
     assert glom([F, 1], T[0](T[1]).a) == 1
     assert glom([[1]], T[0][0][0][UP]) == 1
+
+
+def test_seq_getitem():
+    assert glom({'items': [0, 1, 2, 3]}, 'items.1') == 1
+    assert glom({'items': (9, 8, 7, 6)}, 'items.-3') == 8
+
+    with pytest.raises(glom_core.PathAccessError):
+        assert glom({'items': (9, 8, 7, 6)}, 'items.fun')
