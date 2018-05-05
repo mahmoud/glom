@@ -16,10 +16,11 @@ from __future__ import print_function
 
 import sys
 import pdb
+import weakref
 import operator
 from abc import ABCMeta
+from pprint import pprint
 from collections import OrderedDict
-import weakref
 
 from boltons.typeutils import make_sentinel
 
@@ -36,7 +37,7 @@ OMIT =  make_sentinel('OMIT')
 
 
 class GlomError(Exception):
-    """A base exception for all the errors that might be raised from
+    """The base exception for all the errors that might be raised from
     :func:`glom` processing logic.
 
     By default, exceptions raised from within functions passed to glom
@@ -561,8 +562,21 @@ class Glommer(object):
         return type_tree
 
     def register(self, target_type, get=None, iterate=None, exact=False):
-        """Register a new type with the Glommer so it will know how to handle
-        it as a target.
+        """Register a new type with the Glommer so :meth:`Glommer.glom()` will
+        know how to handle instances of it as targets.
+
+        Args:
+           target_type (type): A type expected to appear in a glom()
+              call target
+           get (callable): A function which takes a target object and
+              a name, acting as a default accessor. Defaults to
+              :func:`getattr`.
+           iterate (callable): A function which takes a target object
+              and returns an iterator. Defaults to :func:`iter` if
+              *target_type* appears to be iterable.
+           exact (bool): Whether or not to match instances of subtypes
+              of *target_type*.
+
         """
         if not isinstance(target_type, type):
             raise TypeError('register expected a type, not an instance: %r' % (target_type,))
@@ -597,12 +611,27 @@ class Glommer(object):
         ``glom`` also takes a keyword-argument, *default*. When set, a
         ``glom`` operation fails with a :exc:`GlomError`, the
         *default* will be returned, like :meth:`dict.get()`. The
-        *skip_exc* keyword argument allows for setting which errors
-        should be ignored
+        *skip_exc* keyword argument controls which errors should be
+        ignored.
+
+        Fetch, aka deep-get:
+
+        >>> target = {'a': {'b': 'c'}}
+        >>> glom(target, 'a.b')
+        'c'
+
+        Construct, aka restructure, aka conglomerate:
+
+        >>> target = {'a': {'b': 'c', 'd': 'e'}, 'f': 'g', 'h': [0, 1, 2]}
+        >>> output = glom(target, {'a': 'a.b', 'd': 'a.d', 'h': ('h', [lambda x: x * 2])})
+        >>> pprint(output)
+        {'a': 'c', 'd': 'e', 'h': [0, 2, 4]}
+
+        Glom's power is only surpassed by its intuitiveness. Give it a whirl!
 
         Args:
            target (object): the object on which the glom will operate.
-           spec (object): Description of the output object in the form
+           spec (object): Specification of the output object in the form
              of a dict, list, tuple, string, other glom construct, or
              any composition of these.
            default (object): An optional default to return in the case
