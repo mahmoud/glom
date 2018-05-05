@@ -172,7 +172,7 @@ for ``pref_name``, we want to return the stored ``pref_name``, or fall
 back to the normal name. Again, we use ``Coalesce``, but this time we
 tell it not only to ignore the default ``GlomError`` exceptions, but
 also ignore empty string values, and finally default to empty string
-if all specs result in empty strings or :exc:`~glom.core.GlomError`.
+if all specs result in empty strings or :exc:`~glom.GlomError`.
 
 And finally, for our last field, ``detail``, we want to conjure up a
 bit of info that'll help jog the user's memory. We're going to include

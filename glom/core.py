@@ -261,7 +261,7 @@ class Coalesce(object):
     'd'
 
     glom tries to get ``'a'`` from ``target``, but gets a
-    KeyError. Rather than raise a :exc:`~glom.core.PathAccessError` as usual,
+    KeyError. Rather than raise a :exc:`~glom.PathAccessError` as usual,
     glom *coalesces* into the next subspec, ``'b'``. The process
     repeats until it gets to ``'c'``, which returns our value,
     ``'d'``. If our value weren't present, we'd see:
@@ -314,9 +314,46 @@ class Coalesce(object):
 
 
 class Inspect(object):
-    """Can be used two ways, one as a wrapper around a spec (passed a
-    positional argument), or two, as a posarg-less placeholder in a
-    tuple.
+    """The Inspect specifier type provides a way to get visibility into
+    glom's evaluation of a specification, enabling debugging of those
+    tricky problems that may arise with unexpected data.
+
+    Inspect can be inserted into an existing spec in one of two
+    ways. First, as a wrapper around the spec in question, or second,
+    as an argument-less placeholder wherever a spec could be.
+
+    Inspect supports several modes, controlled by keyword
+    arguments. Its default, no-argument mode, simply echos the state
+    of the glom at the point where it appears.
+
+      >>> target = {'a': {'b': {}}}
+      >>> val = glom(target, Inspect('a.b'))  # wrapping a spec
+      ---
+      path:   ['a.b']
+      target: {'a': {'b': {}}}
+      output: {}
+      ---
+
+    Args:
+       echo (bool): Whether to print the path, target, and output of
+         each inspected glom. Defaults to True.
+       recursive (bool): Whether or not the Inspect should be applied
+         at every level, at or below the spec that it wraps. Defaults
+         to False.
+       breakpoint (bool): This flag controls whether a debuggin prompt
+         should appear before evaluating each inspected spec. Can also
+         take a callable. Defaults to False.
+       post_mortem (bool): This flag controls whether exceptions
+         should be caught and interactively debugged with :mod:`pdb` on
+         inspected specs.
+
+    All arguments above are keyword-only.
+
+    .. note::
+
+       Just like ``pdb.set_trace()``, be careful about leaving stray
+       ``Inspect()`` instances in production glom specs.
+
     """
     def __init__(self, *a, **kw):
         self.wrapped = a[0] if a else Path()
@@ -721,7 +758,7 @@ class Glommer(object):
         next_inspector = inspector if (inspector and inspector.recursive) else None
         if inspector:
             if inspector.echo:
-                print()
+                print('---')
                 print('path:  ', path + [spec])
                 print('target:', target)
             if inspector.breakpoint:
@@ -806,7 +843,7 @@ class Glommer(object):
                             ' not: %r'% spec)
         if inspector and inspector.echo:
             print('output:', ret)
-            print()
+            print('---')
         return ret
 
 

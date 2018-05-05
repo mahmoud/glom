@@ -34,15 +34,19 @@ from spec construction or glom type registration. Those declarative
 and setup operations raise :exc:`ValueError`, :exc:`TypeError`, and
 other standard Python exceptions as appropriate.
 
-.. autoclass:: glom.core.PathAccessError
+.. autoclass:: glom.PathAccessError
 
-.. autoclass:: glom.core.CoalesceError
+.. autoclass:: glom.CoalesceError
 
-.. autoclass:: glom.core.UnregisteredTarget
+.. autoclass:: glom.UnregisteredTarget
 
-.. autoclass:: glom.core.GlomError
+.. autoclass:: glom.GlomError
 
 Debugging
 ---------
+
+Even the most carefully-constructed specfications eventually need
+debugging. If the error message isn't enough to fix your glom issues,
+that's where **Inspect** comes in.
 
 .. autoclass:: glom.Inspect
