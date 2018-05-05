@@ -52,18 +52,18 @@ class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
     representing what can occur when looking up a path in a nested
     object.
     """
-    def __init__(self, exc, seg, path):
+    def __init__(self, exc, path, idx):
         self.exc = exc
-        self.seg = seg
         self.path = path
+        self.path_idx = idx
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r, %r, %r)' % (cn, self.exc, self.seg, self.path)
+        return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.path_idx)
 
     def __str__(self):
-        return ('could not access %r from path %r, got error: %r'
-                % (self.seg, self.path, self.exc))
+        return ('could not access %r, part %r in path %r, got error: %r'
+                % (self.path[self.path_idx], self.path_idx, self.path, self.exc))
 
 
 class CoalesceError(GlomError):
@@ -201,6 +201,9 @@ class Path(object):
 
     def append(self, part):
         self.path_parts.append(part)
+
+    def __getitem__(self, idx):
+        return self.path_parts.__getitem__(idx)
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -431,6 +434,8 @@ def _t_child(parent, operation, arg):
     return t
 
 
+# TODO: merge _t_eval with Path access somewhat and remove these exceptions.
+# T should be a valid path segment, we just need to keep path/path_idx up to date on the PAE
 class GlomAttributeError(GlomError, AttributeError): pass
 class GlomKeyError(GlomError, KeyError): pass
 class GlomIndexError(GlomError, IndexError): pass
@@ -461,7 +466,6 @@ def _path_fmt(path):
     return "".join(prepr)
 
 
-# TODO: make this take 4 arguments like other spec handlers
 def _t_eval(_t, target, path, inspector, recurse):
     t_path = _T_PATHS[_t]
     i = 0
@@ -477,7 +481,8 @@ def _t_eval(_t, target, path, inspector, recurse):
         elif op == '[':
             try:
                 cur = cur[arg]
-            except KeyError:
+            except (KeyError, IndexError) as e:
+                path = _path_fmt(t_path[:i])
                 raise GlomKeyError(_path_fmt(t_path[:i]))
             except IndexError:
                 raise GlomIndexError(_path_fmt(t_path[:i]))
@@ -650,7 +655,7 @@ class Glommer(object):
             try:
                 val = handler.get(cur, part)
             except Exception as e:
-                raise PathAccessError(e, part, parts)
+                raise PathAccessError(e, parts, i)
             cur = val
         return val
 
@@ -770,6 +775,7 @@ class Glommer(object):
                 ret = self._get_path(target, spec)
             except PathAccessError as pae:
                 pae.path = Path(*(path + list(pae.path)))
+                pae.path_idx += len(path)
                 raise
         elif isinstance(spec, Coalesce):
             skipped = []
@@ -796,7 +802,8 @@ class Glommer(object):
             ret = self._glom(target, spec.value, path=path, inspector=inspector)
         else:
             raise TypeError('expected spec to be dict, list, tuple,'
-                            ' callable, or string, not: %r' % spec)
+                            ' callable, string, or other specifier type,'
+                            ' not: %r'% spec)
         if inspector and inspector.echo:
             print('output:', ret)
             print()
@@ -808,62 +815,17 @@ glom = _DEFAULT.glom
 register = _DEFAULT.register
 
 
-def main(argv):
-    """glom.py [FLAGS]] <spec> <target>
-    TODO:
-
-    --unsafe  (does a full eval() of spec, with many glom builtins available)
-    --target-file <path> (can be -)
-    --target-format  (anything other than json out there?)
-    --indent <num_of_spaces> (defaults to 2)
-    --debug (Inspect post mortem)
-    --inspect  (Inspect breakpoint)
-
-    if target-file is not set, target is either what's on the command
-    line, or stdin.
-    (i.e., if not os.isatty(sys.stdin.fileno()): sys.stdin.read()
-    or something)
-
-    results come out on stdout, but errors and any trace/debug info
-    should be on stderr, at least in CLI mode.
-
-    """
-    print(argv)
-    spec_text = argv[1]
-    target_text = argv[2]
-
-    import ast
-    if not spec_text:
-        spec = Path()
-    else:
-        if spec_text[0] not in ('"', "'", "[", "{", "("):
-            # intention: handle trivial path access
-            spec_text = '"' + spec_text + '"'
-        spec = ast.literal_eval(spec_text)
-
-    import json
-    target = json.loads(target_text)
-
-    try:
-        result = glom(target, spec)
-    except GlomError as ge:
-        print('%s: %s' % (ge.__class__.__name__, ge))
-        return 1
-
-    print(json.dumps(result, indent=2, sort_keys=True))
-
-    return 0
-
 """TODO:
 * "Restructuring Data" / "Restructured Data"
-* Dynamic, declarative
-
 
 * More subspecs
   * Inspect - mostly done, but performance checking
   * Check() - wraps a subspec, performing checking on its
     return. e.g., Check('a.b.c', type=int, value=1, action='raise') #
     action='omit' maybe also supported, other actions?
+  * Specifier types for all the shorthands (e.g., Assign() for {},
+    Iterate() for []), allows adding more options in situations that
+    need them.
 (Call and Target have better aesthetics and repr compared to lambdas, but are otherwise no more capable)
 * Call
   * If callable is not intrinsically sufficient for good error

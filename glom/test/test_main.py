@@ -1,5 +1,5 @@
 
-from glom.core import main
+from glom.cli import main
 
 
 def test_main_basic():
