@@ -1,7 +1,7 @@
 
 import pytest
 
-from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, UP
+from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, UP, Spec
 import glom.core as glom_core
 
 
@@ -181,6 +181,19 @@ def test_call_and_target():
     assert glom(F, T(T)).a == F
     assert glom([F, 1], T[0](T[1]).a) == 1
     assert glom([[1]], T[0][0][0][UP]) == 1
+
+
+def test_spec_and_recursion():
+    # Call doesn't normally recurse, but Spec can make it do so
+    assert glom(
+        ['a', 'b', 'c'],
+        Call(list, args=(
+            Spec(Call(reversed, args=(Spec(T),))),)
+        )) == ['c', 'b', 'a']
+    assert glom(['cat', {'cat': 1}], T[1][T[0]]) == 1
+    assert glom(
+        [['ab', 'cd', 'ef'], ''.join],
+        Call(T[1], args=(Spec((T[0], [T[1:]])),))) == 'bdf'
 
 
 def test_seq_getitem():
