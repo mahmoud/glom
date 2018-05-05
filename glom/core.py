@@ -228,6 +228,24 @@ class Literal(object):
         return '%s(%r)' % (cn, self.value)
 
 
+class Spec(object):
+    """Spec objects are the complement to Literals, wrapping a value
+    and marking that it should be interpreted as a glom spec, rather
+    than a literal value in places where it would be interpreted as
+    a value by defualt. (Such as T[key], Call(func) where key and
+    func are assumed to be literal values and not specs.)
+
+    Args:
+        value: The glom spec.
+    """
+    def __init__(self, value):
+        self.value = value
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r)' % (cn, self.value)
+
+
 class Coalesce(object):
     """Coalesce objects are specs used to achieve fallback behavior for a
     list of subspecs. Each subspec is passed as a positional argument,
@@ -353,19 +371,18 @@ class Call(object):
             raise TypeError('func must be a callable or child of T')
         self.func, self.args, self.kwargs = func, args, kwargs
 
-    # TODO: make this take 4 arguments like other spec handlers
-    def __call__(self, target):
+    def __call__(self, target, path, inspector, recurse):
         'run against the current target'
         def eval(t):
-            if type(t) is not _TType:
-                return t
-            return _t_eval(t, target)
+            if type(t) in (Spec, _TType):
+                return recurse(target, t, path, inspector)
+            return t
         if type(self.args) is _TType:
-            args = _t_eval(self.args, target)
+            args = eval(self.args)
         else:
             args = [eval(a) for a in self.args]
         if type(self.kwargs) is _TType:
-            kwargs = _t_eval(self.kwargs, target)
+            kwargs = eval(self.kwargs)
         else:
             kwargs = {name: eval(val) for name, val in self.kwargs.items()}
         return eval(self.func)(*args, **kwargs)
@@ -445,26 +462,29 @@ def _path_fmt(path):
 
 
 # TODO: make this take 4 arguments like other spec handlers
-def _t_eval(_t, target):
-    path = _T_PATHS[_t]
+def _t_eval(_t, target, path, inspector, recurse):
+    t_path = _T_PATHS[_t]
     i = 0
     cur = target
-    while i < len(path):
-        op, arg = path[i], path[i + 1]
+    while i < len(t_path):
+        op, arg = t_path[i], t_path[i + 1]
+        if type(arg) in (Spec, _TType):
+            arg = recurse(target, arg, path, inspector)
         if op == '.':
             cur = getattr(cur, arg, _MISSING)
             if cur is _MISSING:
-                raise GlomAttributeError(_path_fmt(path[:i]))
+                raise GlomAttributeError(_path_fmt(t_path[:i]))
         elif op == '[':
             try:
                 cur = cur[arg]
             except KeyError:
-                raise GlomKeyError(_path_fmt(path[:i]))
+                raise GlomKeyError(_path_fmt(t_path[:i]))
             except IndexError:
-                raise GlomIndexError(_path_fmt(path[:i]))
+                raise GlomIndexError(_path_fmt(t_path[:i]))
         elif op == '(':
             args, kwargs = arg
-            cur = Call(cur, args, kwargs)(target)
+            cur = recurse(  # TODO: mutate path correctly
+                target, Call(cur, args, kwargs), path, inspector)
             # call with target rather than cur,
             # because it is probably more intuitive
             # if args to the call "reset" their path
@@ -740,7 +760,9 @@ class Glommer(object):
                     path = path + [getattr(sub_spec, '__name__', sub_spec)]
             ret = res
         elif isinstance(spec, _TType):  # NOTE: must come before callable b/c T is also callable
-            ret = _t_eval(spec, target)
+            ret = _t_eval(spec, target, path, inspector, self._glom)
+        elif isinstance(spec, Call):
+            ret = spec(target, path, inspector, self._glom)
         elif callable(spec):
             ret = spec(target)
         elif isinstance(spec, (basestring, Path)):
@@ -767,6 +789,11 @@ class Glommer(object):
                     raise CoalesceError(spec, skipped, path)
         elif isinstance(spec, Literal):
             ret = spec.value
+        elif isinstance(spec, Spec):
+            # TODO: this could be switched to a while loop at the top for
+            # performance, but don't want to mess around too much yet
+            # while(type(target) is Spec): target = target.value
+            ret = self._glom(target, spec.value, path=path, inspector=inspector)
         else:
             raise TypeError('expected spec to be dict, list, tuple,'
                             ' callable, or string, not: %r' % spec)
