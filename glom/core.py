@@ -769,6 +769,10 @@ def main(argv):
     return 0
 
 """TODO:
+* "Restructuring Data" / "Restructured Data"
+* Dynamic, declarative
+
+
 * More subspecs
   * Inspect - mostly done, but performance checking
   * Call() - Call(func) for kwargs into function, Call.method for kwargs into method
@@ -794,7 +798,10 @@ def main(argv):
 * Top-level option to collect all the errors instead of just the first.
   * This will probably require another context object in addition to
     inspector and path.
-
+* check_spec / audit_spec
+  * Forward check all types (remap?)
+  * Call(func) <- func must take exactly one argument and have the rest fulfilled by args/kwargs
+  * lambdas must also take one argument
 
 ## Django models registration:
 glom.register(django.db.models.Manager, iterate=lambda m: m.all())
