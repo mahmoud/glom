@@ -1,8 +1,9 @@
 
 import pytest
 
-from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, UP, Spec
+from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T
 import glom.core as glom_core
+from glom.core import Spec, UP  # probationary
 
 
 def test_initial_integration():

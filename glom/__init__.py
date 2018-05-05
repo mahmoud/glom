@@ -5,7 +5,6 @@ from glom.core import (glom,
                        OMIT,
                        Path,
                        Literal,
-                       Spec,
                        Coalesce,
                        Inspect,
                        GlomError,
@@ -13,4 +12,4 @@ from glom.core import (glom,
                        CoalesceError,
                        UnregisteredTarget,
                        Call,
-                       T, UP)
+                       T)
