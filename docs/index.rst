@@ -20,6 +20,7 @@ glom
    tutorial
    api
    cli
+   faq
 
 Installation and Integration
 ----------------------------
