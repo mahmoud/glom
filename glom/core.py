@@ -287,8 +287,8 @@ class Literal(object):
     in the glom output.
 
     This could also be achieved with a callable, e.g., ``lambda x:
-    'literal_string'`` in the spec, but using a :class:`~glom.Literal` object adds,
-    explicitness, code clarity, and a clean :func:`repr`.
+    'literal_string'`` in the spec, but using a :class:`~glom.Literal`
+    object adds explicitness, code clarity, and a clean :func:`repr`.
 
     """
     def __init__(self, value):
@@ -427,7 +427,7 @@ class Inspect(object):
        recursive (bool): Whether or not the Inspect should be applied
          at every level, at or below the spec that it wraps. Defaults
          to False.
-       breakpoint (bool): This flag controls whether a debuggin prompt
+       breakpoint (bool): This flag controls whether a debugging prompt
          should appear before evaluating each inspected spec. Can also
          take a callable. Defaults to False.
        post_mortem (bool): This flag controls whether exceptions

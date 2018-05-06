@@ -33,7 +33,7 @@ six==1.11.0
 snowballstemmer==1.2.1
 Sphinx==1.7.4
 sphinx-autobuild==0.7.1
-sphinx-rtd-theme==0.3.0
+sphinx_rtd_theme>=0.3.1
 sphinxcontrib-napoleon==0.6.1
 sphinxcontrib-websupport==1.0.1
 tornado==5.0.2
