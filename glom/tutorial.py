@@ -1,7 +1,9 @@
 """\
 
-*Note: glom's tutorial is a runnable module, feel free to run "from
- glom.tutorial import *" in the Python REPL and glom along*.
+.. note::
+
+   glom's tutorial is a runnable module, feel free to run ``from
+   glom.tutorial import *`` in the Python REPL and glom along.
 
 Dealing with Data
 =================
@@ -144,8 +146,8 @@ specification. This type of WYSIWYG code is one of glom's most
 important features. After we've appreciated that simple fact, let's
 look at it line by line.
 
-Reviewing the Specification
-===========================
+Understanding the Specification
+===============================
 
 For ``id`` and ``name``, we're just doing simple copy-overs. For
 ``add_date``, we use a tuple to denote repeated gloms; we access

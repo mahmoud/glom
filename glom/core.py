@@ -34,6 +34,19 @@ else:
 
 _MISSING = make_sentinel('_MISSING')
 OMIT =  make_sentinel('OMIT')
+OMIT.__doc__ = """
+The ``OMIT`` singleton can be returned from a function or included
+via a :class:`~glom.Literal` to cancel assignment into the output
+object, be it a list dictionary, or anything else.
+
+>>> target = {'a': 'b'}
+>>> glom(target, {'a': lambda t: t['a'] if t['a'] == 'a' else OMIT})
+{}
+>>> target = {'a': 'a'}
+>>> glom(target, {'a': lambda t: t['a'] if t['a'] == 'a' else OMIT})
+{'a': 'b'}
+
+"""
 
 
 class GlomError(Exception):
@@ -183,9 +196,8 @@ class TargetHandler(object):
 
 
 class Path(object):
-    """Path objects are used as specs to represent explicit paths when
-    the default 'a.b.c'-style general access syntax won't work or
-    isn't desirable.
+    """Path objects specify explicit paths when the default ``'a.b.c'``-style
+    general access syntax won't work or isn't desirable.
 
     Use this to wrap ints, datetimes, and other valid keys, as well as
     strings with dots that shouldn't be expanded.
@@ -195,6 +207,7 @@ class Path(object):
     3
     >>> glom(target, Path('a', 'd.e'))
     'f'
+
     """
     def __init__(self, *path_parts):
         self.path_parts = list(path_parts)
@@ -211,17 +224,22 @@ class Path(object):
 
 
 class Literal(object):
-    """Literal objects are used as specs to wrap a literal value in
-    rare cases when part of the spec should not be interpreted as a
-    glommable subspec. Wherever a Literal object is encountered in a
-    spec, it is replaced with its *value* in the output.
+    """Literal objects specify literal values in rare cases when part of
+    the spec should not be interpreted as a glommable
+    subspec. Wherever a Literal object is encountered in a spec, it is
+    replaced with its wrapped *value* in the output.
 
-    Args:
-       value: The literal value that should appear in the glom output.
+    >>> target = {'a': {'b': 'c'}}
+    >>> pprint(glom(target, {'a': 'a.b', 'readability': Literal('counts')}))
+    {'a': 'c', 'readability': 'counts'}
 
-    This could also be achieved with a callable, e.g., `lambda _:
-    'literal'` in the spec, but using a Literal object adds some
+    ``Literal`` takes one argument, the literal value that should appear
+    in the glom output.
+
+    This could also be achieved with a callable, e.g., ``lambda x:
+    'literal_string'`` in the spec, but using a Literal object adds some
     explicitness and code clarity.
+
     """
     def __init__(self, value):
         self.value = value
@@ -250,9 +268,17 @@ class Spec(object):
 
 
 class Coalesce(object):
-    """Coalesce objects are specs used to achieve fallback behavior for a
-    list of subspecs. Each subspec is passed as a positional argument,
-    and keyword arguments control the fallback and default behaviors.
+    """Coalesce objects specify fallback behavior for a list of
+    subspecs. Subspecs are passed as positional arguments, and keyword
+    arguments control defaults. Each subspec is evaluated in turn, and
+    if none match, a :exc:`CoalesceError` is raised, or a default is
+    returned, depending on the options used.
+
+    .. note::
+
+      This operation may seem very familar if you have experience with
+      `SQL`_ or even `C# and others`_.
+
 
     In practice, this fallback behavior is as straightforward as it is useful:
 
@@ -293,7 +319,11 @@ class Coalesce(object):
          parent type of all glom runtime exceptions.
 
     If all subspecs produce skipped values or exceptions, a
-    :exc:`CoalesceError` will be raised.
+    :exc:`CoalesceError` will be raised. For more examples, check out
+    the :doc:`tutorial`, which makes extensive use of Coalesce.
+
+    .. _SQL: https://en.wikipedia.org/w/index.php?title=Null_(SQL)&oldid=833093792#COALESCE
+    .. _C# and others: https://en.wikipedia.org/w/index.php?title=Null_coalescing_operator&oldid=839493322#C#
 
     """
     def __init__(self, *subspecs, **kwargs):
@@ -377,16 +407,19 @@ class Inspect(object):
 
 
 class Call(object):
-    """Specifies when a target should be passed to a function,
-    *func*. ``Call`` is similar to :class:`~functools.partial` in that
+    """Call specifies when a target should be passed to a function,
+    *func*. ``Call`` is similar to :func:`~functools.partial` in that
     it is no more powerful than ``lambda`` or other functions, but
     it is designed to be more readable, with a better ``repr``.
+
     Args:
        func (callable): a function or other callable to be called with
           the target
-    Call also combines well with :class:`Target` to construct
+
+    Call also combines well with :attr:`T` to construct
     objects. For instance, to generate a dict and then pass it to a
     constructor:
+
     >>> class ExampleClass(object):
     ...    def __init__(self, attr):
     ...        self.attr = attr
@@ -395,7 +428,7 @@ class Call(object):
     >>> glom(target, Call(ExampleClass, kwargs=T)).attr
     3.14
 
-    Which is of course equivalent to is equivalent to ``glom(target,
+    That does the same thing as ``glom(target,
     lambda target: ExampleClass(**target))``, but it's easy to see
     which one reads better.
     """
@@ -536,7 +569,8 @@ def _t_eval(_t, target, path, inspector, recurse):
     return cur
 
 
-T = _TType()
+T = _TType()  # Mr. T aka "this"
+
 _T_PATHS[T] = ()
 UP = make_sentinel('UP')
 
@@ -886,6 +920,8 @@ pass # this line prevents the docstring below from attaching to register
   * Forward check all types (remap?)
   * Call(func) <- func must take exactly one argument and have the rest fulfilled by args/kwargs
   * lambdas must also take one argument
+  * empty coalesces?
+  * stray Inspect objects
 
 ## Django models registration:
 glom.register(django.db.models.Manager, iterate=lambda m: m.all())
