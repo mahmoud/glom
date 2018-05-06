@@ -3,7 +3,7 @@
 
 .. automodule:: glom.core
 
-.. contents::
+.. contents:: Contents
    :local:
 
 The ``glom`` Function

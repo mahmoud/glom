@@ -1,6 +1,12 @@
 Frequently Asked Questions
 ==========================
 
+Paradigm shifts always raise a question or two.
+
+.. contents:: Contents
+   :local:
+
+
 Why not just write more Python?
 -------------------------------
 
