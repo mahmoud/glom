@@ -3,13 +3,13 @@
 If there was ever a Python example of "big things come in small
 packages", ``glom`` might be it.
 
-The ``glom`` package has one Python entrypoint,
-:func:`glom.glom`. Almost everything else in the package are
-supporting utilities for usability and maintainability.
+The ``glom`` package has one central entrypoint,
+:func:`glom.glom`. Everything else in the package revolves around that
+one function.
 
 A couple of conventional terms you'll see repeated many times below:
 
-* **target** - glom operates on a variety of inputs, so we simply
+* **target** - glom is built to work on any data, so we simply
   refer to the object being accessed as the *"target"*
 * **spec** - *(aka "glomspec", short for specification)* The
   accompanying template used to specify the structure of the return
