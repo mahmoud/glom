@@ -6,6 +6,17 @@ Paradigm shifts always raise a question or two.
 .. contents:: Contents
    :local:
 
+What does "glom" mean?
+----------------------
+
+"glom" is short for "conglomerate", which means "gather into a compact
+form".
+
+glom can be used as a noun or verb. A developer might say, "I glommed
+together this API response." An astronomer might say, "space dust is
+forming gloms, creating planets and comets."
+
+Got some data you need to transform? **glom it! ☄️**
 
 Why not just write more Python?
 -------------------------------
