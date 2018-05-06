@@ -37,3 +37,54 @@ facility <glom.Inspect>`, and a compact, composable design.
 
 In short, thanks to Python, glom provides Pythonic solutions in
 specific cases when pure-Python might break down.
+
+
+How does glom work?
+-------------------
+
+The core conceptual engine of glom is a very simple recursive loop. It
+could fit on a business card. OK maybe a postcard.
+
+In fact, here it is, in literate form, modified from this `early point
+in glom history`_:
+
+.. code-block:: python
+
+    def glom(target, spec):
+
+        # if the spec is a string or a Path, perform a deep-get on the target
+        if isinstance(spec, (basestring, Path)):
+            return _get_path(target, spec)
+
+        # if the spec is callable, call it on the target
+        elif callable(spec):
+            return spec(target)
+
+        # if the spec is a dict, assign the result of
+        # the glom on the right to the field key on the left
+        elif isinstance(spec, dict):
+            ret = {}
+            for field, subspec in spec.items():
+               ret[field] = glom(target, subspec)
+            return ret
+
+        # if the spec is a list, run the spec inside the list on every
+        # element in the list and return the new list
+        elif isinstance(spec, list):
+            subspec = spec[0]
+            iterator = _get_iterator(target)
+            return [glom(t, subspec) for t in iterator]
+
+        # if the spec is a tuple of specs, chain the specs by running the
+        # first spec on the target, then running the second spec on the
+        # result of the first, and so on.
+        elif isinstance(spec, tuple):
+            res = target
+            for subspec in spec:
+                res = glom(res, subspec)
+            return res
+        else:
+            raise TypeError('expected one of the above types')
+
+
+.. _early point in glom history: https://github.com/mahmoud/glom/blob/186757b47af3d33901df4bf715874b5f3c781d8f/glom/__init__.py#L74-L91
