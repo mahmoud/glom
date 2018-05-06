@@ -37,14 +37,18 @@ OMIT =  make_sentinel('OMIT')
 OMIT.__doc__ = """
 The ``OMIT`` singleton can be returned from a function or included
 via a :class:`~glom.Literal` to cancel assignment into the output
-object, be it a list dictionary, or anything else.
+object.
 
 >>> target = {'a': 'b'}
->>> glom(target, {'a': lambda t: t['a'] if t['a'] == 'a' else OMIT})
+>>> spec = {'a': lambda t: t['a'] if t['a'] == 'a' else OMIT}
+>>> glom(target, spec)
 {}
 >>> target = {'a': 'a'}
->>> glom(target, {'a': lambda t: t['a'] if t['a'] == 'a' else OMIT})
+>>> glom(target, spec)
 {'a': 'b'}
+
+Mostly used to drop keys from dicts (as above) or filter objects from
+lists.
 
 """
 
@@ -54,28 +58,55 @@ class GlomError(Exception):
     :func:`glom` processing logic.
 
     By default, exceptions raised from within functions passed to glom
-    (e.g., ``len``, ``sum``, any ``lambda``s) will not be wrapped in a
+    (e.g., ``len``, ``sum``, any ``lambda``) will not be wrapped in a
     GlomError.
     """
     pass
 
 
 class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
-    """An amalgamation of KeyError, IndexError, and TypeError,
-    representing what can occur when looking up a path in a nested
-    object.
+    """This :exc:`GlomError` subtype represents a failure to access an
+    attribute as dictated by the spec. The most commonly-seen error
+    when using glom, it maintains a copy of the original exception and
+    produces a readable error message for easy debugging.
+
+    If you see this error, you may want to:
+
+       * Check the target data is accurate using :class:`~glom.Inspect`
+       * Catch the exception and return a semantically meaningful error message
+       * Use :class:`glom.Coalesce` to specify a default
+       * Use the top-level ``default`` kwarg on :func:`~glom.glom()`
+
+    In any case, be glad you got this error and not the one it was
+    wrapping!
+
+    Args:
+       exc (Exception): The error that arose when we tried to access
+          *path*. Typically an instance of KeyError, AttributeError,
+          IndexError, or TypeError, and sometimes others.
+       path (Path): The full Path glom was in the middle of accessing
+          when the error occurred.
+       path_idx (int): The index of the part of the *path* that caused
+          the error.
+
+    >>> target = {'a': {'b': None}}
+    >>> glom(target, 'a.b.c')
+    Traceback (most recent call last):
+    ...
+    PathAccessError: could not access 'c', index 2 in path Path('a', 'b', 'c'), got error: ...
+
     """
-    def __init__(self, exc, path, idx):
+    def __init__(self, exc, path, path_idx):
         self.exc = exc
         self.path = path
-        self.path_idx = idx
+        self.path_idx = path_idx
 
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.path_idx)
 
     def __str__(self):
-        return ('could not access %r, part %r in path %r, got error: %r'
+        return ('could not access %r, index %r in path %r, got error: %r'
                 % (self.path[self.path_idx], self.path_idx, self.path, self.exc))
 
 
@@ -88,13 +119,19 @@ class CoalesceError(GlomError):
     may be useful for processing:
 
     Args:
-       coal_obj (Coalese): The original failing spec, see
+       coal_obj (Coalesce): The original failing spec, see
           :class:`Coalesce`'s docs for details.
        skipped (list): A list of ignored values and exceptions, in the
           order that their respective subspecs appear in the original
           *coal_obj*.
        path: Like many GlomErrors, this exception knows the path at
           which it occurred.
+
+    >>> target = {}
+    >>> glom(target, Coalesce('a', 'b'))
+    Traceback (most recent call last):
+    ...
+    CoalesceError: no valid values found. Tried ('a', 'b') and got (PathAccessError, PathAccessError) ...
     """
     def __init__(self, coal_obj, skipped, path):
         self.coal_obj = coal_obj
@@ -111,7 +148,7 @@ class CoalesceError(GlomError):
                         if isinstance(v, self.coal_obj.skip_exc)
                         else '<skipped %s>' % v.__class__.__name__
                         for v in self.skipped]
-        msg = ('no valid values found while coalescing. Tried %r and got (%s)'
+        msg = ('no valid values found. Tried %r and got (%s)'
                % (missed_specs, ', '.join(skipped_vals)))
         if self.coal_obj.skip is not _MISSING:
             msg += ', skip set to %r' % (self.coal_obj.skip,)
@@ -133,8 +170,8 @@ class UnregisteredTarget(GlomError):
     UnregisteredTarget: target type 'object' not registered for 'iterate', expected one of registered types: (...)
 
     It should be noted that this is a pretty uncommon occurrence in
-    production glom usage. See the "Setup and registration" section
-    for details on how to avoid this error.
+    production glom usage. See the :ref:`setup-and-registration`
+    section for details on how to avoid this error.
 
     An UnregisteredTarget takes and tracks a few values:
 
@@ -230,15 +267,20 @@ class Literal(object):
     replaced with its wrapped *value* in the output.
 
     >>> target = {'a': {'b': 'c'}}
-    >>> pprint(glom(target, {'a': 'a.b', 'readability': Literal('counts')}))
+    >>> spec = {'a': 'a.b', 'readability': Literal('counts')}
+    >>> pprint(glom(target, spec))
     {'a': 'c', 'readability': 'counts'}
 
-    ``Literal`` takes one argument, the literal value that should appear
+    Instead of accessing ``'counts'`` as a key like it did with
+    ``'a.b'``, :func:`~glom.glom` just unwrapped the literal and
+    included the value.
+
+    :class:`~glom.Literal` takes one argument, the literal value that should appear
     in the glom output.
 
     This could also be achieved with a callable, e.g., ``lambda x:
-    'literal_string'`` in the spec, but using a Literal object adds some
-    explicitness and code clarity.
+    'literal_string'`` in the spec, but using a :class:`~glom.Literal` object adds,
+    explicitness, code clarity, and a clean :func:`repr`.
 
     """
     def __init__(self, value):
@@ -269,10 +311,12 @@ class Spec(object):
 
 class Coalesce(object):
     """Coalesce objects specify fallback behavior for a list of
-    subspecs. Subspecs are passed as positional arguments, and keyword
-    arguments control defaults. Each subspec is evaluated in turn, and
-    if none match, a :exc:`CoalesceError` is raised, or a default is
-    returned, depending on the options used.
+    subspecs.
+
+    Subspecs are passed as positional arguments, and keyword arguments
+    control defaults. Each subspec is evaluated in turn, and if none
+    match, a :exc:`CoalesceError` is raised, or a default is returned,
+    depending on the options used.
 
     .. note::
 
@@ -280,7 +324,8 @@ class Coalesce(object):
       `SQL`_ or even `C# and others`_.
 
 
-    In practice, this fallback behavior is as straightforward as it is useful:
+    In practice, this fallback behavior's simplicity is only surpassed
+    by its utility:
 
     >>> target = {'c': 'd'}
     >>> glom(target, Coalesce('a', 'b', 'c'))
@@ -296,7 +341,7 @@ class Coalesce(object):
     >>> glom(target, Coalesce('a', 'b'))
     Traceback (most recent call last):
     ...
-    CoalesceError: no valid values found while coalescing. Tried ('a', 'b') and got (PathAccessError, PathAccessError) ...
+    CoalesceError: no valid values found. Tried ('a', 'b') and got (PathAccessError, PathAccessError) ...
 
     Same process, but because ``target`` is empty, we get a
     :exc:`CoalesceError`. If we want to avoid an exception, and we
@@ -344,17 +389,18 @@ class Coalesce(object):
 
 
 class Inspect(object):
-    """The Inspect specifier type provides a way to get visibility into
-    glom's evaluation of a specification, enabling debugging of those
-    tricky problems that may arise with unexpected data.
+    """The :class:`~glom.Inspect` specifier type provides a way to get
+    visibility into glom's evaluation of a specification, enabling
+    debugging of those tricky problems that may arise with unexpected
+    data.
 
-    Inspect can be inserted into an existing spec in one of two
+    :class:`~glom.Inspect` can be inserted into an existing spec in one of two
     ways. First, as a wrapper around the spec in question, or second,
     as an argument-less placeholder wherever a spec could be.
 
-    Inspect supports several modes, controlled by keyword
-    arguments. Its default, no-argument mode, simply echos the state
-    of the glom at the point where it appears.
+    :class:`~glom.Inspect` supports several modes, controlled by
+    keyword arguments. Its default, no-argument mode, simply echos the
+    state of the glom at the point where it appears:
 
       >>> target = {'a': {'b': {}}}
       >>> val = glom(target, Inspect('a.b'))  # wrapping a spec
@@ -363,6 +409,9 @@ class Inspect(object):
       target: {'a': {'b': {}}}
       output: {}
       ---
+
+    Debugging behavior aside, :class:`~glom.Inspect` has no effect on
+    values in the target, spec, or result.
 
     Args:
        echo (bool): Whether to print the path, target, and output of
@@ -377,7 +426,8 @@ class Inspect(object):
          should be caught and interactively debugged with :mod:`pdb` on
          inspected specs.
 
-    All arguments above are keyword-only.
+    All arguments above are keyword-only to avoid overlap with a
+    wrapped spec.
 
     .. note::
 
@@ -407,8 +457,10 @@ class Inspect(object):
 
 
 class Call(object):
-    """Call specifies when a target should be passed to a function,
-    *func*. ``Call`` is similar to :func:`~functools.partial` in that
+    """:class:`Call` specifies when a target should be passed to a function,
+    *func*.
+
+    :class:`Call` is similar to :func:`~functools.partial` in that
     it is no more powerful than ``lambda`` or other functions, but
     it is designed to be more readable, with a better ``repr``.
 
@@ -416,9 +468,8 @@ class Call(object):
        func (callable): a function or other callable to be called with
           the target
 
-    Call also combines well with :attr:`T` to construct
-    objects. For instance, to generate a dict and then pass it to a
-    constructor:
+    :class:`Call` combines well with :attr:`~glom.T` to construct objects. For
+    instance, to generate a dict and then pass it to a constructor:
 
     >>> class ExampleClass(object):
     ...    def __init__(self, attr):
@@ -428,9 +479,15 @@ class Call(object):
     >>> glom(target, Call(ExampleClass, kwargs=T)).attr
     3.14
 
-    That does the same thing as ``glom(target,
-    lambda target: ExampleClass(**target))``, but it's easy to see
-    which one reads better.
+    This does the same as ``glom(target, lambda target:
+    ExampleClass(**target))``, but it's easy to see which one reads
+    better.
+
+    .. note::
+
+       ``Call`` is mostly for functions. Use a :attr:`~glom.T` object
+       if you need to call a method.
+
     """
     def __init__(self, func, args=None, kwargs=None):
         if not callable(func):
@@ -466,10 +523,67 @@ class Call(object):
 
 
 class _TType(object):
-    """Represents the current target, for deferred operations.
-    Most operations that can be overloaded can be applied to the
-    T instance rather than using a lambda.
-    e.g. (lambda t: t.field[5]) could be written (T.field[5])
+    """``T``, short for "target". A singleton object that enables
+    object-oriented expression of a glom specification.
+
+    .. note::
+
+       ``T`` is a singleton, and does not need to be constructed.
+
+    Basically, think of ``T`` as your data's stunt double. Everything
+    that you do to ``T`` will be recorded and executed during the
+    :func:`glom` call. Take this example:
+
+    >>> spec = T['a']['b']['c']
+    >>> target = {'a': {'b': {'c': 'd'}}}
+    >>> glom(target, spec)
+    'd'
+
+    So far, we've relied on the ``'a.b.c'``-style shorthand for
+    access, or used the :class:`~glom.Path` objects, but if you want
+    to explicitly do attribute and key lookups, look no further than
+    ``T``.
+
+    But T doesn't stop with unambiguous access. You can also call
+    methods and perform almost any action you would with a normal
+    object:
+
+    >>> spec = ('a', (T['b'].items(), list))  # reviewed below
+    >>> glom(target, spec)
+    [('c', 'd')]
+
+    A ``T`` object can go anywhere in the spec. As seen in the example
+    above, we access ``'a'``, use a ``T`` to get ``'b'`` and iterate
+    over its ``items``, turning them into a ``list``.
+
+    You can even use ``T`` with :class:`~glom.Call` to construct objects:
+
+    >>> class ExampleClass(object):
+    ...    def __init__(self, attr):
+    ...        self.attr = attr
+    ...
+    >>> target = {'attr': 3.14}
+    >>> glom(target, Call(ExampleClass, kwargs=T)).attr
+    3.14
+
+    On a further note, while ``lambda`` works great in glom specs, and
+    can be very handy at times, ``T`` and :class:`~glom.Call`
+    eliminate the need for the vast majority of ``lambda`` usage with
+    glom.
+
+    Unlike ``lambda`` and other functions, ``T`` roundtrips
+    beautifully and transparently:
+
+    >>> T['a'].b['c']('success')
+    T['a'].b['c']('success')
+
+    .. note::
+
+       While ``T`` is clearly useful, powerful, and here to stay, its
+       semantics are still being refined. Currently, operations beyond
+       method calls and attribute/item access are considered
+       experimental and should not be relied upon.
+
     """
     __slots__ = ('__weakref__',)
 
@@ -806,13 +920,13 @@ class Glommer(object):
                 raise
         elif isinstance(spec, dict):
             ret = type(spec)() # TODO: works for dict + ordereddict, but sufficient for all?
-            for field, sub_spec in spec.items():
-                val = self._glom(target, sub_spec, path=path, inspector=next_inspector)
+            for field, subspec in spec.items():
+                val = self._glom(target, subspec, path=path, inspector=next_inspector)
                 if val is OMIT:
                     continue
                 ret[field] = val
         elif isinstance(spec, list):
-            sub_spec = spec[0]
+            subspec = spec[0]
             handler = self._get_handler(target)
             if not handler.iterate:
                 raise UnregisteredTarget('iterate', type(target), self._type_map, path=path)
@@ -823,17 +937,17 @@ class Glommer(object):
                                 % (target.__class__.__name__, Path(*path), te))
             ret = []
             for i, t in enumerate(iterator):
-                val = self._glom(t, sub_spec, path=path + [i], inspector=inspector)
+                val = self._glom(t, subspec, path=path + [i], inspector=inspector)
                 if val is OMIT:
                     continue
                 ret.append(val)
         elif isinstance(spec, tuple):
             res = target
-            for sub_spec in spec:
-                res = self._glom(res, sub_spec, path=path, inspector=next_inspector)
-                next_inspector = sub_spec if (isinstance(sub_spec, Inspect) and sub_spec.recursive) else next_inspector
-                if not isinstance(sub_spec, list):
-                    path = path + [getattr(sub_spec, '__name__', sub_spec)]
+            for subspec in spec:
+                res = self._glom(res, subspec, path=path, inspector=next_inspector)
+                next_inspector = subspec if (isinstance(subspec, Inspect) and subspec.recursive) else next_inspector
+                if not isinstance(subspec, list):
+                    path = path + [getattr(subspec, '__name__', subspec)]
             ret = res
         elif isinstance(spec, _TType):  # NOTE: must come before callable b/c T is also callable
             ret = _t_eval(spec, target, path, inspector, self._glom)
@@ -850,9 +964,9 @@ class Glommer(object):
                 raise
         elif isinstance(spec, Coalesce):
             skipped = []
-            for sub_spec in spec.subspecs:
+            for subspec in spec.subspecs:
                 try:
-                    ret = self._glom(target, sub_spec, path=path, inspector=next_inspector)
+                    ret = self._glom(target, subspec, path=path, inspector=next_inspector)
                     if not spec.skip_func(ret):
                         break
                     skipped.append(ret)
@@ -922,6 +1036,8 @@ pass # this line prevents the docstring below from attaching to register
   * lambdas must also take one argument
   * empty coalesces?
   * stray Inspect objects
+* testing todo: properties that raise exception, other operators that
+  raise exceptions.
 
 ## Django models registration:
 glom.register(django.db.models.Manager, iterate=lambda m: m.all())

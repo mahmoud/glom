@@ -52,9 +52,10 @@ Reducing lambda usage with Call
 Object-oriented access and method calls with ``T``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. attribute:: glom.T
+glom's shortest-named feature may be its most powerful.
 
-   glom's shortest-named feature may be its most powerful.
+.. autodata:: glom.T
+
 
 Exceptions
 ----------
@@ -83,7 +84,9 @@ that's where **Inspect** comes in.
 
 .. autoclass:: glom.Inspect
 
-Registration and Setup
+.. _setup-and-registration:
+
+Setup and Registration
 ----------------------
 
 For the vast majority of objects and types out there in Python-land,
