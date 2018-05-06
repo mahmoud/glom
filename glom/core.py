@@ -1,15 +1,23 @@
 """*glom gets results.*
-To be more precise, glom helps pull together objects from other
-objects in a declarative, dynamic, and downright simple way.
 
-Built with services, APIs, and general serialization in mind, glom
-helps filter objects, as well as perform deep fetches which would be
-tedious to perform in a procedural manner.
+If there was ever a Python example of "big things come in small
+packages", ``glom`` might be it.
 
-Where "schema" and other libraries focus on validation and parsing
-less-structured data into Python objects, glom goes the other
-direction, producing more-readily serializable data from valid
-higher-level objects.
+The ``glom`` package has one Python entrypoint,
+:func:`glom.glom`. Almost everything else in the package are
+supporting utilities for usability and maintainability.
+
+A couple of conventional terms you'll see repeated many times below:
+
+* **target** - glom operates on a variety of inputs, so we simply
+  refer to the object being accessed as the *"target"*
+* **spec** - *(aka "glomspec", short for specification)* The
+  accompanying template used to specify the structure of the return
+  value.
+
+Now that you know the terms, let's take a look around glom's powerful
+semantics.
+
 """
 
 from __future__ import print_function
