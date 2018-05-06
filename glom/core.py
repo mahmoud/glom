@@ -845,29 +845,41 @@ class Glommer(object):
         return val
 
     def glom(self, target, spec, **kwargs):
-        """Fetch or construct a new value from a given *target* based on the
+        """Access or construct a value from a given *target* based on the
         specification declared by *spec*.
 
-        ``glom`` also takes a keyword-argument, *default*. When set, a
-        ``glom`` operation fails with a :exc:`GlomError`, the
-        *default* will be returned, like :meth:`dict.get()`. The
-        *skip_exc* keyword argument controls which errors should be
-        ignored.
-
-        Fetch, aka deep-get:
+        Accessing nested data, aka deep-get:
 
         >>> target = {'a': {'b': 'c'}}
         >>> glom(target, 'a.b')
         'c'
 
-        Construct, aka restructure, aka conglomerate:
+        Here the *spec* was just a string denoting a path,
+        ``'a.b.``. As simple as it should be. The next example shows
+        how to use nested data to access many fields at once, and make
+        a new nested structure.
+
+        Constructing, or restructuring more-complicated nested data:
 
         >>> target = {'a': {'b': 'c', 'd': 'e'}, 'f': 'g', 'h': [0, 1, 2]}
-        >>> output = glom(target, {'a': 'a.b', 'd': 'a.d', 'h': ('h', [lambda x: x * 2])})
+        >>> spec = {'a': 'a.b', 'd': 'a.d', 'h': ('h', [lambda x: x * 2])}
+        >>> output = glom(target, spec)
         >>> pprint(output)
         {'a': 'c', 'd': 'e', 'h': [0, 2, 4]}
 
-        Glom's power is only surpassed by its intuitiveness. Give it a whirl!
+        ``glom`` also takes a keyword-argument, *default*. When set,
+        if a ``glom`` operation fails with a :exc:`GlomError`, the
+        *default* will be returned, very much like
+        :meth:`dict.get()`:
+
+        >>> glom(target, 'a.xx', default='nada')
+        'nada'
+
+        The *skip_exc* keyword argument controls which errors should
+        be ignored.
+
+        >>> glom({}, lambda x: 100.0 / len(x), default=0.0, skip_exc=ZeroDivisionError)
+        0.0
 
         Args:
            target (object): the object on which the glom will operate.
@@ -876,11 +888,13 @@ class Glommer(object):
              any composition of these.
            default (object): An optional default to return in the case
              an exception, specified by *skip_exc*, is raised.
-
            skip_exc (Exception): An optional exception or tuple of
              exceptions to ignore and return *default* (None if
              omitted). If *skip_exc* and *default* are both not set,
              glom raises errors through.
+
+        It's a small API with big functionality, and glom's power is
+        only surpassed by its intuitiveness. Give it a whirl!
 
         """
         # TODO: check spec up front

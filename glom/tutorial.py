@@ -2,8 +2,9 @@
 
 .. note::
 
-   glom's tutorial is a runnable module, feel free to run ``from
-   glom.tutorial import *`` in the Python REPL and glom along.
+   glom's tutorial is a runnable module, feel free to run ``pip
+   install glom`` and ``from glom.tutorial import *`` in the Python
+   REPL to glom along.
 
 Dealing with Data
 =================
@@ -32,9 +33,15 @@ even tell us which access failed. If ``data2`` had been passed to us,
 we wouldn't know if ``'a'``, ``'b'``, or ``'c'`` had been set to
 ``None``.
 
-What we need is a more semantically powerful accessor.
+If only there were a more semantically powerful accessor.
 
-Maybe something like::
+.. _access-granted:
+
+Access Granted
+==============
+
+After years of research and countless iterations, the glom team landed
+on this simple construct::
 
   >>> glom(data, 'a.b.c')
   'd'

@@ -6,6 +6,8 @@
 .. contents:: Contents
    :local:
 
+.. _glom-func:
+
 The ``glom`` Function
 ---------------------
 
@@ -39,6 +41,9 @@ reporting, glom has a few more tricks up its sleeve.
 Conditional access and defaults with Coalesce
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Data isn't always where or what you want it to be. Use these
+specifiers to declare away overly branchy procedural code.
+
 .. autoclass:: glom.Coalesce
 
 .. autodata:: glom.OMIT
@@ -46,6 +51,9 @@ Conditional access and defaults with Coalesce
 
 Reducing lambda usage with Call
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+There's nothing quite like inserting a quick lambda into a glom spec
+to get the job done. But once a spec works, how can it be cleaned up?
 
 .. autofunction:: glom.Call
 
@@ -56,6 +64,7 @@ glom's shortest-named feature may be its most powerful.
 
 .. autodata:: glom.T
 
+.. _exceptions:
 
 Exceptions
 ----------
@@ -74,6 +83,8 @@ other standard Python exceptions as appropriate.
 .. autoclass:: glom.UnregisteredTarget
 
 .. autoclass:: glom.GlomError
+
+.. _debugging:
 
 Debugging
 ---------
