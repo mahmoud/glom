@@ -850,6 +850,7 @@ class Glommer(object):
 _DEFAULT = Glommer(register_default_types=True)
 glom = _DEFAULT.glom
 register = _DEFAULT.register
+pass # this line prevents the docstring below from attaching to register
 
 
 """TODO:
