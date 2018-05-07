@@ -10,7 +10,7 @@ What does "glom" mean?
 ----------------------
 
 "glom" is short for "conglomerate", which means "gather into a compact
-form".
+form", coming from the Latin "glom-" meaning *ball*, like *globe*.
 
 glom can be used as a noun or verb. A developer might say, "I glommed
 together this API response." An astronomer might say, "space dust is

@@ -1060,6 +1060,7 @@ pass # this line prevents the docstring below from attaching to register
   * stray Inspect objects
 * testing todo: properties that raise exception, other operators that
   raise exceptions.
+* Inspect stuff should come out on stderr
 
 ## Django models registration:
 glom.register(django.db.models.Manager, iterate=lambda m: m.all())
