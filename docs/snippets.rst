@@ -1,17 +1,20 @@
-How-Tos
-=======
+Snippets
+========
 
-How to achieve discrete tasks with glom.
-Due to glom's recursive nature, these can be
-useful building blocks of a larger solution.
-
+glom can do a lot of things, in the right hands. This doc makes those
+hands yours, through sample code of useful building blocks and common
+glom tasks.
 
 .. contents:: Contents
    :local:
 
+.. note::
 
-Reversing Target
-----------------
+   All samples below assume ``from glom import glom, T, Call`` and any
+   other dependencies.
+
+Reversing a Target
+------------------
 Here are a few ways to reverse the current target.
 
 
@@ -55,7 +58,8 @@ In the most basic case, the default behavior on
 callable will suffice.
 
 
-This converts a list of ints to a list of decimal.Decimals.
+This converts a list of ints to a list of :class:`decimal.Decimal`
+objects.
 
 
 .. code-block:: python
@@ -63,8 +67,8 @@ This converts a list of ints to a list of decimal.Decimals.
     glom([1, 2, 3], [Decimal])
 
 
-If additional arguments are required, Call or
-lambda are good options.
+If additional arguments are required, :class:`~glom.Call` or ``lambda``
+are good options.
 
 This converts a list to a collection.deque,
 while specifying a max size of 10.
@@ -90,4 +94,3 @@ list depending on what it was passed.
 .. code-block:: python
 
     glom((1, 2, 3), T.__class__([lambda v: v+1]))
-
