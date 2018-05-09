@@ -93,12 +93,23 @@ to filter the odd numbers from a list.
 
 .. code-block:: python
 
-    glom([1, 2, 3, 4, 5, 6], lambda t: [i for i in t if i % 2]
+    glom([1, 2, 3, 4, 5, 6], lambda t: [i for i in t if i % 2])
     glom([1, 2, 3, 4, 5, 6], [lambda i: i if i % 2 else OMIT])
 
 
 The second approach demonstrates the use of ``glom.OMIT`` to
 back out of an execution.
+
+This can also be combined with :class:`~glom.Coalesce` to
+filter items which are missing sub-attributes.
+
+Here is an example of extracting the primary email from a group
+of contacts, skipping where the email is empty string, None,
+or the attribute is missing.
+
+.. code-block:: python
+
+    glom(contacts, [Coalesce('primary_email.email', skip=('', None), default=OMIT)])
 
 
 Preserve Type
