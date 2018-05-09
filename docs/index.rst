@@ -5,7 +5,7 @@ glom
 
 |release| |calver|
 
-**glom** is a new approach to working with data in Python featuring:
+**glom** is a new approach to working with data in Python, featuring:
 
 * :ref:`Path-based access <access-granted>` for nested structures
 * :ref:`Declarative data transformation <glom-func>` using lightweight, Pythonic specifications
