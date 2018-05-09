@@ -101,3 +101,53 @@ in glom history`_:
 
 
 .. _early point in glom history: https://github.com/mahmoud/glom/blob/186757b47af3d33901df4bf715874b5f3c781d8f/glom/__init__.py#L74-L91
+
+Does Python need a null-coalescing operator?
+--------------------------------------------
+
+Not technically a glom question, but it is frequently_ asked_!
+
+`Null coalescing operators`_ traverse nested objects and return null
+(or ``None`` for us) on the first null or non-traversable object,
+depending on implementation.
+
+It's basically a compact way of doing a deep :func:`getattr()` with a
+default set to ``None``.
+
+Suffice to say that ``glom(target, T.a.b.c, default=None)`` achieves
+this with ease, but I still want to revisit the question, since it's
+part of what got me thinking about ``glom`` in the first place.
+
+First off, working in PayPal's SOA environment, my team dealt with
+literally tens of thousands of service objects, with object
+definitions (from other teams) nested so deep as to make an
+80-character line length laughable.
+
+But null coalescing wouldn't have helped, because in most of those
+cases ``None`` wasn't what we needed. We needed a good, automatically
+generated error message when a deeply-nested field wasn't accessible. Not
+``NoneType has no attribute 'x'``, but not plain old ``None`` either.
+
+To solve this, I wrote my share of deep-gets before ``glom``,
+including the open-source `boltons.iterutils.get_path()`_. For
+whatever reason, it took me years of usage to realize just how often
+the deep-gets were coupled with the other transformations that
+``glom`` enables. Now, I can never go back to a simple deep-get.
+
+Another years-in-the-making observation, from my time doing JavaScript
+then PHP then Django templates: all were much more lax on typing than
+Python. Not because of a fierce belief in weak types, though. More
+because when you're templating, it's inherently safer to return a
+blank value on lookup failures. You're so close to text formats that
+this default achieves a pretty desirable result. While implicitly
+doing this isn't my cup of tea, and ``glom`` opts for explicit
+:class:`~glom.Coalesce` specifiers, this connection contributed to the
+concept of ``glom`` as an "object templating" system.
+
+
+
+
+.. _frequently: https://mail.python.org/pipermail/python-ideas/2015-September/036289.html
+.. _asked: https://mail.python.org/pipermail/python-ideas/2016-November/043517.html
+.. _Null coalescing operators: https://en.wikipedia.org/wiki/Null_coalescing_operator
+.. _boltons.iterutils.get_path(): http://boltons.readthedocs.io/en/latest/iterutils.html#boltons.iterutils.get_path
