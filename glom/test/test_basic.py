@@ -203,3 +203,49 @@ def test_seq_getitem():
 
     with pytest.raises(glom_core.PathAccessError):
         assert glom({'items': (9, 8, 7, 6)}, 'items.fun')
+
+
+# examples from http://sedimental.org/glom_restructured_data.html
+
+def test_beyond_access():
+    # 1
+    target = {'galaxy': {'system': {'planet': 'jupiter'}}}
+    spec = 'galaxy.system.planet'
+
+    output = glom(target, spec)
+    assert output == 'jupiter'
+
+    # 2
+    target = {'system': {'planets': [{'name': 'earth'}, {'name': 'jupiter'}]}}
+
+    output = glom(target, ('system.planets', ['name']))
+    assert output == ['earth', 'jupiter']
+
+    # 3
+    target = {'system': {'planets': [{'name': 'earth', 'moons': 1},
+                                     {'name': 'jupiter', 'moons': 69}]}}
+    spec = {'names': ('system.planets', ['name']),
+            'moons': ('system.planets', ['moons'])}
+
+    output = glom(target, spec)
+    assert output == {'names': ['earth', 'jupiter'], 'moons': [1, 69]}
+
+
+def test_python_native():
+    # 4
+    target = {'system': {'planets': [{'name': 'earth', 'moons': 1},
+                                     {'name': 'jupiter', 'moons': 69}]}}
+
+
+    output = glom(target, {'moon_count': ('system.planets', ['moons'], sum)})
+    assert output == {'moon_count': 70}
+
+    # 5
+    spec = T['system']['planets'][-1].values()
+
+    output = glom(target, spec)
+    assert set(output) == set(['jupiter', 69])  # for ordering reasons
+
+    # with pytest.raises(glom_core.PathAccessError):  # TODO
+    #     spec = T['system']['comets'][-1].values()
+    #     output = glom(target, spec)

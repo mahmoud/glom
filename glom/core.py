@@ -592,6 +592,9 @@ class _TType(object):
        method calls and attribute/item access are considered
        experimental and should not be relied upon.
 
+       Error types and messages are also being rationalized to match
+       those of :class:`glom.Path`.
+
     """
     __slots__ = ('__weakref__',)
 
