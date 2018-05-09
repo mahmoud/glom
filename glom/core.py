@@ -672,15 +672,15 @@ def _t_eval(_t, target, path, inspector, recurse):
         if op == '.':
             cur = getattr(cur, arg, _MISSING)
             if cur is _MISSING:
-                raise GlomAttributeError(_path_fmt(t_path[:i]))
+                raise GlomAttributeError(_path_fmt(t_path[:i+2]))
         elif op == '[':
             try:
                 cur = cur[arg]
-            except (KeyError, IndexError) as e:
-                path = _path_fmt(t_path[:i])
-                raise GlomKeyError(_path_fmt(t_path[:i]))
+            except KeyError as e:
+                path = _path_fmt(t_path[:i+2])
+                raise GlomKeyError(path)
             except IndexError:
-                raise GlomIndexError(_path_fmt(t_path[:i]))
+                raise GlomIndexError(_path_fmt(t_path[:i+2]))
         elif op == '(':
             args, kwargs = arg
             cur = recurse(  # TODO: mutate path correctly
@@ -694,7 +694,7 @@ def _t_eval(_t, target, path, inspector, recurse):
     return cur
 
 
-T = _TType()  # Mr. T aka "this"
+T = _TType()  # target aka Mr. T aka "this"
 
 _T_PATHS[T] = ()
 UP = make_sentinel('UP')
