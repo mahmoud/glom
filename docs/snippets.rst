@@ -79,13 +79,30 @@ while specifying a max size of 10.
 
 .. code-block:: python
 
-    glom([1, 2, 3], Call(deque, args=[T, 10])
+    glom([1, 2, 3], Call(deque, args=[T, 10]))
     glom([1, 2, 3], lambda t: deque(t, 10))
 
 
-Preserve Target Type
---------------------
+Filtered Iteration
+------------------
+Sometimes in addition to stepping through an iterable,
+you'd like to omit some of the items from the result
+set all together.  Here are two ways
+to filter the odd numbers from a list.
 
+
+.. code-block:: python
+
+    glom([1, 2, 3, 4, 5, 6], lambda t: [i for i in t if i % 2]
+    glom([1, 2, 3, 4, 5, 6], [lambda i: i if i % 2 else OMIT])
+
+
+The second approach demonstrates the use of ``glom.OMIT`` to
+back out of an execution.
+
+
+Preserve Type
+-------------
 The iteration specifier will walk lists and tuples.  In some cases it
 would be convenient to preserve the target type in the result type.
 
@@ -96,7 +113,17 @@ on the target input's type.
 
 .. code-block:: python
 
-    glom((1, 2, 3), T.__class__([lambda v: v + 1]))
+    glom((1, 2, 3), (
+        {
+            "type": type,
+            "result": [lambda v: v + 1]  # arbitrary operation
+        }, T['type'](T['result'])))
+
+
+This demonstrates an advanced technique -- just as a tuple
+can be used to process sub-specs "in series", a dict
+can be used to store intermediate results while processing
+sub-specs "in parallel" so they can then be recombined later on.
 
 
 Automatic Django ORM type handling
