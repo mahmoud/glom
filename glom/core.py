@@ -396,57 +396,6 @@ class Coalesce(object):
             raise TypeError('unexpected keyword args: %r' % (sorted(kwargs.keys()),))
 
 
-class Check(object):
-    """Check objects are used to make assertions about the target data,
-    and either pass through the data or raise exceptions if there is a
-    problem.
-
-    Args:
-
-       instance_of: a type or sequence of types to be checked with isinstance
-       types: a type or sequence of types to be checked for exact match
-       val: a value to be checked for match with ==
-       vals: a sequence of values to be checked for match with ==
-    """
-    def __init__(self, instance_of=_MISSING, types=_MISSING,
-                 val=_MISSING, vals=_MISSING, exists=_MISSING):
-            self.instance_of = instance_of
-            if instance_of is not _MISSING:
-                isinstance(None, instance_of)  # TODO: better error message
-            self.types = types
-            if val is not _MISSING:
-                self.vals = val,
-                # TODO: better error
-                assert vals is _MISSING
-            else:
-                self.vals = vals
-            self.exists = exists
-
-    # following the pattern here from Call; not sure if this is the best
-    # but would like to develop a consistent API
-    def __call__(self, target, path, inspector, recurse):
-        errs = []  # TODO: accumulate errors across more than one
-        if self.instance_of is not _MISSING:
-            if not isinstance(target, self.instance_of):
-                errs.append('expected instance or subclass of {}, found instance of {}'.format(
-                    self.instance_of, type(target)))
-        if self.types is not _MISSING:
-            if type(target) not in self.types:
-                errs.append('expected instance of {}, found instance of {}'.format(
-                    self.types, type(target)))
-        if self.vals is not _MISSING:
-            if target not in self.vals:
-                errs.append('expected one of {}, found {}'.format(self.vals, target))
-        if self.exists is not _MISSING:
-            try:
-                recurse(target, self.exists, path, inspector)
-            except Exception as e:
-                errs.append(e)
-        if errs:
-            raise GlomError(errs)
-
-
-
 class Inspect(object):
     """The :class:`~glom.Inspect` specifier type provides a way to get
     visibility into glom's evaluation of a specification, enabling
@@ -748,6 +697,63 @@ _T_PATHS[T] = ()
 UP = make_sentinel('UP')
 
 
+class Check(object):
+    """Check objects are used to make assertions about the target data,
+    and either pass through the data or raise exceptions if there is a
+    problem.
+
+    Args:
+
+       specifier: a sub-spec to extract the data to which other assertions will
+                  be checked (defaults to applying checks to the target itself)
+       instance_of: a type or sequence of types to be checked with isinstance
+       types: a type or sequence of types to be checked for exact match
+       val: a value to be checked for match with ==
+       vals: a sequence of values to be checked for match with ==
+    """
+    def __init__(self, specifier=T, instance_of=_MISSING, types=_MISSING,
+                 val=_MISSING, vals=_MISSING, exists=_MISSING):
+            # TODO: do we really want types AND instances -- or is instance_of enough
+            #   the main use case seems to be instanceof(True, int) vs type(True) == int
+            # TODO: some kind of pressure-release callable "additional_checks"
+            #   or something to let the user add more
+            self.specifier = specifier
+            self.instance_of = instance_of
+            if instance_of is not _MISSING:
+                isinstance(None, instance_of)  # TODO: better error message
+            self.types = types
+            if val is not _MISSING:
+                self.vals = val,
+                # TODO: better error
+                assert vals is _MISSING
+            else:
+                self.vals = vals
+            self.exists = exists
+
+    # following the pattern here from Call; not sure if this is the best
+    # but would like to develop a consistent API
+    def __call__(self, target, path, inspector, recurse):
+        returns = target
+        errs = []  # TODO: accumulate errors across more than one
+        if self.specifier is not T:
+            target = recurse(target, self.specifier, path, inspector)
+        if self.instance_of is not _MISSING:
+            if not isinstance(target, self.instance_of):
+                errs.append('expected instance or subclass of {}, found instance of {}'.format(
+                    self.instance_of, type(target)))
+        if self.types is not _MISSING:
+            if type(target) not in self.types:
+                errs.append('expected instance of {}, found instance of {}'.format(
+                    self.types, type(target)))
+        if self.vals is not _MISSING:
+            if target not in self.vals:  # TODO: "expected X" instead of "expected one of X," when only one item
+                errs.append('expected one of {}, found {}'.format(self.vals, target))
+        if errs:
+            raise GlomError(errs)
+        # TODO: CheckError sub-class, errors should include path
+        return returns
+
+
 class _AbstractIterable(_AbstractIterableBase):
     __metaclass__ = ABCMeta
     @classmethod
@@ -1024,7 +1030,7 @@ class Glommer(object):
             ret = res
         elif isinstance(spec, _TType):  # NOTE: must come before callable b/c T is also callable
             ret = _t_eval(spec, target, path, inspector, self._glom)
-        elif isinstance(spec, Call):
+        elif isinstance(spec, (Call, Check)):
             ret = spec(target, path, inspector, self._glom)
         elif callable(spec):
             ret = spec(target)
