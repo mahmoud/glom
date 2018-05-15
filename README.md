@@ -2,118 +2,75 @@
 
 *glom gets results, conglomeratively.*
 
+<a href="https://pypi.org/project/glom/"><img src="https://img.shields.io/pypi/v/glom.svg"></a>
+<a href="https://calver.org/"><img src="https://img.shields.io/badge/calver-YY.MINOR.MICRO-22bfda.svg"></a>
+
 Real applications have real data, and real data nests. Objects inside
 of objects inside of lists of objects.
 
-glom is a powerful and declarative way to handle real-world nested
-data. A sort of *object templating*.
+glom is a new and powerful way to handle real-world data, featuring:
 
-## Introduction
+* Path-based access for nested data structures
+* Readable, meaningful error messages
+* Declarative data transformation, using lightweight, Pythonic specifications
+* Built-in data exploration and debugging features
 
-Think back, probably not too far, to a time you saw code like this:
-
-```python
-value = target.a['b']['c']
-```
-
-This code probably gives you back the value you want. But experienced
-developers know how fragile it can be. This tiny line can raise any of
-the following:
+All of that and more, available as a [fully-documented][rtd],
+pure-Python package, tested on Python 2.7-3.7, as well as
+PyPy. Installation is as easy as:
 
 ```
-AttributeError: 'TargetType' object has no attribute 'a'
-KeyError: 'b'
-TypeError: 'NoneType' object has no attribute '__getitem__'
-TypeError: list indices must be integers, not str
+  pip install glom
 ```
 
-And for those last two, where in the line did the failure occur? `a`
-or `a['b']` or `a['b']['c']`?
-
-Experienced developers will often split this code up to be more
-debuggable, but this leads to verbose, tedious code, with its own set
-of maintenance issues.
-
-Enter glom.
-
-glom is a new, Pythonic approach to nested data that makes all these
-problems go away.
-
-```python
-value = glom(target, 'a.b.c')
-```
-
-On success, you get your value, same as ever. On failure, you see:
+And when you install glom, you also get [the `glom` command-line
+interface][cli_rtd], letting you experiment at the console, but never limiting
+you to shell scripts:
 
 ```
-PathAccessError: could not access 'c' from path Path('a', 'b', 'c'), got error: ...
+Usage: glom [FLAGS] [spec [target]]
+
+Command-line interface to the glom library, providing nested data access and data
+restructuring with the power of Python.
+
+Flags:
+
+  --help / -h                     show this help message and exit
+  --target-file TARGET_FILE       path to target data source (optional)
+  --target-format TARGET_FORMAT   format of the source data (json or python) (defaults
+                                  to 'json')
+  --spec-file SPEC_FILE           path to glom spec definition (optional)
+  --spec-format SPEC_FORMAT       format of the glom spec definition (json, python,
+                                  python-full) (defaults to 'python')
+  --indent INDENT                 number of spaces to indent the result, 0 to disable
+                                  pretty-printing (defaults to 2)
+  --debug                         interactively debug any errors that come up
+  --inspect                       interactively explore the data
+
 ```
 
-And that's just the beginning.
+Anything you can do at the command line readily translates to Python
+code, so you've always got a path forward when complexity starts to
+ramp up.
 
-## Object templating
+If all this seems interesting, continue exploring glom below:
 
-glom goes far beyond deep access, implementing a coherent, declarative
-approach for accessing and building objects. glom's envisions the
-ideal data manipulation as code resembling the data itself.
+* [glom Tutorial][tutorial]
+* [Full API documentation at Read the Docs][rtd]
+* [Original announcement blog post (2018-05-09)][glom_announce]
+* [Frequently Asked Questions][faq]
+* PyCon 2018 Lightning Talk (2018-05-11)
 
-For instance, if requirements change, and `target` becomes a list, our
-access code becomes:
+All of the links above are overflowing with examples, but should you
+find anything about the docs, or glom itself, lacking, [please submit
+an issue][gh_issues]!
 
-```python
-value = glom(target, ['a.b.c'])
-```
+[rtd]: https://glom.readthedocs.io
+[cli_rtd]: http://glom.readthedocs.io/en/latest/cli.html
+[tutorial]: https://glom.readthedocs.io/en/latest/tutorial.html
+[faq]: https://glom.readthedocs.io/en/latest/faq.html
+[glom_announce]: https://sedimental.org/glom_restructured_data.html
+[gh_issues]: https://github.com/mahmoud/glom/issues/
 
-If we want a more full-fledged object wrapping for our results:
-
-```python
-value = glom(target, {'result_count': len,
-                      'results': [{'c': 'a.b.c'}]})
-```
-
-glom not only calls callables (`len`), it supports chained calls with
-tuples, fallback calls with `Coalesce`, and interactive debugging with
-`Inspect`. See [the tutorial](https://github.com/mahmoud/glom/blob/master/glom/tutorial.py)
-and API reference for more in-depth docs.
-
-## FAQ
-
-Paradigm shifts always raise a question or two.
-
-### *What does "glom" mean?*
-
-"glom" is short for "conglomerate", and can be used as a noun or
-verb. An astronomer might say, "space dust gloms together to create
-planets and planetoids". Got some data you need to transform? Glom it! ☄️ 
-
-### Any other handy terminology?
-
-A couple of terms that help navigate around glom's powerful semantics:
-
-* **target** - Glom operates on a variety of inputs, so we simply
-  refer to the object being accessed as the "target"
-* **spec** - *(aka "glomspec")* The accompanying template used to
-  specify the structure of the returned value.
-
-### Other tips?
-
-Just a few (for now):
-
-* Specs don't have to live in the glom call. You can put them
-  anywhere. Commonly-used specs work as class attributes and globals.
-* Using glom's declarative approach does wonders for code coverage,
-  much like [attrs](https://github.com/python-attrs/attrs) and
-  [schema](https://github.com/keleshev/schema), both of which go great
-  with glom.
-* Advanced tips
-    * glom is designed to support all of Python's built-ins as targets,
-      and is readily extensible to other types, through glom's
-      `register()` call.
-    * If you're trying to minimize global state, consider
-      instantiating your own `glom.Glommer` object to encapsulate any
-      type registration changes.
-
-## TODO
-
-* Expand tutorial
-* API docs
+In the meantime, just remember: When you've got nested data, glom it!
+☄️

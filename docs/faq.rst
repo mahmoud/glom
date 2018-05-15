@@ -13,10 +13,55 @@ What does "glom" mean?
 form", coming from the Latin "glom-" meaning *ball*, like *globe*.
 
 glom can be used as a noun or verb. A developer might say, "I glommed
-together this API response." An astronomer might say, "space dust is
-forming gloms, creating planets and comets."
+together this API response." An astronomer might say, "these gloms of
+space dust are forming planets and comets."
 
 Got some data you need to transform? **glom it! ☄️**
+
+Any other glom terminology worth knowing?
+-----------------------------------------
+
+A couple of conventional terms that help navigate around glom's
+semantics:
+
+* **target** - ``glom`` operates on a variety of inputs, so we simply
+  refer to the object being accessed (i.e., the first argument to
+  ``glom()``) as the "target"
+* **spec** - *(aka "glomspec")* The accompanying template used to
+  specify the structure and sources of the output.
+* **output** - The value retrieved or created and returned by
+  ``glom()``.
+
+All of these can be seen in the conventional call to :func:`~glom.glom`::
+
+  output = glom(target, spec)
+
+Nothing too wild, but these standard terms really do help clarify the
+complex situations ``glom`` was built to handle.
+
+Other glom tips?
+----------------
+
+Just a few (for now):
+
+* Specs don't have to live in the glom call. You can put them
+  anywhere. Commonly-used specs work as class attributes and globals.
+* Using glom's declarative approach does wonders for code coverage,
+  much like `attrs`_ and `schema`_, both of which go great
+  with ``glom``.
+* Advanced tips
+    * glom is designed to support all of Python's built-ins as targets,
+      and is readily extensible to other types and special handling, through
+      :func:`~glom.register()`.
+    * If you're trying to minimize global state, consider
+      instantiating your own :class:`~glom.Glommer` object to
+      encapsulate any type registration changes.
+
+If you've got more tips or patterns, `send them our way`_!
+
+.. _attrs: https://github.com/python-attrs/attrs
+.. _schema: https://github.com/keleshev/schema
+.. _send them our way: https://github.com/mahmoud/glom/issues
 
 Why not just write more Python?
 -------------------------------
