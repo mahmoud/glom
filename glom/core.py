@@ -634,6 +634,7 @@ def _t_child(parent, operation, arg):
 class GlomAttributeError(GlomError, AttributeError): pass
 class GlomKeyError(GlomError, KeyError): pass
 class GlomIndexError(GlomError, IndexError): pass
+class GlomTypeError(GlomError, TypeError): pass
 
 
 def _path_fmt(path):
@@ -681,6 +682,8 @@ def _t_eval(_t, target, path, inspector, recurse):
                 raise GlomKeyError(path)
             except IndexError:
                 raise GlomIndexError(_path_fmt(t_path[:i+2]))
+            except TypeError:
+                raise GlomTypeError(_path_fmt(t_path[:i+2]))
         elif op == '(':
             args, kwargs = arg
             cur = recurse(  # TODO: mutate path correctly
