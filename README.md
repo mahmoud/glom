@@ -1,9 +1,11 @@
 # glom
 
-*glom gets results, conglomeratively.*
+*Restructuring data, the Python way*
 
 <a href="https://pypi.org/project/glom/"><img src="https://img.shields.io/pypi/v/glom.svg"></a>
 <a href="https://calver.org/"><img src="https://img.shields.io/badge/calver-YY.MINOR.MICRO-22bfda.svg"></a>
+
+<img width="30%" align="right" src="./docs/_static/comet.png">
 
 Real applications have real data, and real data nests. Objects inside
 of objects inside of lists of objects.
@@ -53,6 +55,8 @@ Anything you can do at the command line readily translates to Python
 code, so you've always got a path forward when complexity starts to
 ramp up.
 
+## Learn more
+
 If all this seems interesting, continue exploring glom below:
 
 * [glom Tutorial][tutorial]
@@ -72,5 +76,4 @@ an issue][gh_issues]!
 [glom_announce]: https://sedimental.org/glom_restructured_data.html
 [gh_issues]: https://github.com/mahmoud/glom/issues/
 
-In the meantime, just remember: When you've got nested data, glom it!
-☄️
+In the meantime, just remember: When you've got nested data, glom it! ☄️
