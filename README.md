@@ -57,6 +57,8 @@ ramp up.
 
 ## Learn more
 
+<img width="30%" align="right" src="./docs/_static/comet_multi.png">
+
 If all this seems interesting, continue exploring glom below:
 
 * [glom Tutorial][tutorial]
