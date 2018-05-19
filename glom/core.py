@@ -53,7 +53,7 @@ object.
 {}
 >>> target = {'a': 'a'}
 >>> glom(target, spec)
-{'a': 'b'}
+{'a': 'a'}
 
 Mostly used to drop keys from dicts (as above) or filter objects from
 lists.
