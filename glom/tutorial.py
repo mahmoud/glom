@@ -89,7 +89,7 @@ And let's say we want to capture a parallel list of moon counts with the names a
   ...                                  {'name': 'jupiter', 'moons': 69}]}}
   >>> spec = {'names': ('system.planets', ['name']),
   ...         'moons': ('system.planets', ['moons'])}
-  >>> glom(target, spec)
+  >>> pprint(glom(target, spec))
   {'moons': [1, 69], 'names': ['earth', 'jupiter']}
 
 We can react to changing data requirements as fast as the data itself can change, naturally restructuring our results,
@@ -114,14 +114,14 @@ To handle this, we can define the ``dwarf_planets`` subspec as a Coalesce fallba
   ...                                  {'name': 'jupiter', 'moons': 69}]}}
   >>> spec = {'names': (Coalesce('system.planets', 'system.dwarf_planets'), ['name']),
   ...         'moons': (Coalesce('system.planets', 'system.dwarf_planets'), ['moons'])}
-  >>> glom(target, spec)
+  >>> pprint(glom(target, spec))
   {'moons': [1, 69], 'names': ['earth', 'jupiter']}
 
 You can see here we get the expected results, but say our target changes...
 
   >>> target = {'system': {'dwarf_planets': [{'name': 'pluto', 'moons': 5},
   ...                                        {'name': 'ceres', 'moons': 0}]}}
-  >>> glom(target, spec)
+  >>> pprint(glom(target, spec))
   {'moons': [5, 0], 'names': ['pluto', 'ceres']}
 
 Voila, the target can still be parsed and we can elegantly handle changes in our data formats.
@@ -137,7 +137,7 @@ Going back to our example, let's say we wanted to get an aggregate moon count:
 
   >>> target = {'system': {'planets': [{'name': 'earth', 'moons': 1},
   ...                                  {'name': 'jupiter', 'moons': 69}]}}
-  >>> glom(target, {'moon_count': ('system.planets', ['moons'], sum)})
+  >>> pprint(glom(target, {'moon_count': ('system.planets', ['moons'], sum)}))
   {'moon_count': 70}
 
 With glom, you have full access to Python at any given moment. 
@@ -290,7 +290,7 @@ import json
 import datetime
 from itertools import count
 from collections import OrderedDict
-
+from pprint import pprint
 import attr
 from attr import Factory
 
