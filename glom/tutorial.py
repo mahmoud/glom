@@ -59,6 +59,91 @@ give us an error message we can read, understand, and act upon.
 And would you believe this "deep access" example doesn't even scratch
 the surface of the tip of the iceberg? Welcome to glom.
 
+Going Beyond Access
+===================
+
+To start out, let's introduce some basic terminology:
+
+- *target* is our data, be it a dict, list, or any other object
+- *spec* is what we want *output* to be
+
+With ``output = glom(target, spec)`` committed to memory, we're ready for some new requirements.
+
+Let's follow some astronomers on their journey exploring the solar system.
+
+  >>> target = {'galaxy': {'system': {'planet': 'jupiter'}}}
+  >>> spec = 'galaxy.system.planet'
+  >>> glom(target, spec)
+  'jupiter'
+
+Our astronomers want to focus in on the Solar system, and represent planets as a list. 
+Let's restructure the data to make a list of names:
+
+  >>> target = {'system': {'planets': [{'name': 'earth'}, {'name': 'jupiter'}]}}
+  >>> glom(target, ('system.planets', ['name']))
+  ['earth', 'jupiter']
+
+And let's say we want to capture a parallel list of moon counts with the names as well:
+
+  >>> target = {'system': {'planets': [{'name': 'earth', 'moons': 1},
+  ...                                  {'name': 'jupiter', 'moons': 69}]}}
+  >>> spec = {'names': ('system.planets', ['name']),
+  ...         'moons': ('system.planets', ['moons'])}
+  >>> glom(target, spec)
+  {'moons': [1, 69], 'names': ['earth', 'jupiter']}
+
+We can react to changing data requirements as fast as the data itself can change, naturally restructuring our results,
+despite the input's nested nature. Like a list comprehension, but for nested data, our code mirrors our output.
+
+
+Changing Requirements
+=====================
+
+Unfortunately, data in the real world is messy. You might be expecting a certain format and end up getting something 
+completely different. No worries, glom to the rescue. 
+
+Coalesce is a glom construct that allows you to specify fallback behavior for a list of subspecs. 
+Subspecs are passed as positional arguments, while defaults can be set using keyword arguments.
+
+Let's say our astronomers recently got a new update in their systems, and sometimes ``system`` will contain
+``dwarf_planets`` instead of ``planets``.
+
+To handle this, we can define the ``dwarf_planets`` subspec as a Coalesce fallback.
+
+  >>> target = {'system': {'planets': [{'name': 'earth', 'moons': 1},
+  ...                                  {'name': 'jupiter', 'moons': 69}]}}
+  >>> spec = {'names': (Coalesce('system.planets', 'system.dwarf_planets'), ['name']),
+  ...         'moons': (Coalesce('system.planets', 'system.dwarf_planets'), ['moons'])}
+  >>> glom(target, spec)
+  {'moons': [1, 69], 'names': ['earth', 'jupiter']}
+
+You can see here we get the expected results, but say our target changes...
+
+  >>> target = {'system': {'dwarf_planets': [{'name': 'pluto', 'moons': 5},
+  ...                                        {'name': 'ceres', 'moons': 0}]}}
+  >>> glom(target, spec)
+  {'moons': [5, 0], 'names': ['pluto', 'ceres']}
+
+Voila, the target can still be parsed and we can elegantly handle changes in our data formats.
+
+
+True Python Native
+==================
+
+Most other implementations are limited to a particular data format or pure model, be it jmespath or XPath/XSLT.
+glom makes no such sacrifices of practicality, harnessing the full power of Python itself.
+
+Going back to our example, let's say we wanted to get an aggregate moon count:
+
+  >>> target = {'system': {'planets': [{'name': 'earth', 'moons': 1},
+  ...                                  {'name': 'jupiter', 'moons': 69}]}}
+  >>> glom(target, {'moon_count': ('system.planets', ['moons'], sum)})
+  {'moon_count': 70}
+
+With glom, you have full access to Python at any given moment. 
+Pass values to functions, whether built-in, imported, or defined inline with lambda.
+
+
 Point of Contact
 ================
 
