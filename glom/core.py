@@ -53,7 +53,7 @@ object.
 {}
 >>> target = {'a': 'a'}
 >>> glom(target, spec)
-{'a': 'b'}
+{'a': 'a'}
 
 Mostly used to drop keys from dicts (as above) or filter objects from
 lists.
@@ -592,6 +592,9 @@ class _TType(object):
        method calls and attribute/item access are considered
        experimental and should not be relied upon.
 
+       Error types and messages are also being rationalized to match
+       those of :class:`glom.Path`.
+
     """
     __slots__ = ('__weakref__',)
 
@@ -631,6 +634,7 @@ def _t_child(parent, operation, arg):
 class GlomAttributeError(GlomError, AttributeError): pass
 class GlomKeyError(GlomError, KeyError): pass
 class GlomIndexError(GlomError, IndexError): pass
+class GlomTypeError(GlomError, TypeError): pass
 
 
 def _path_fmt(path):
@@ -669,15 +673,17 @@ def _t_eval(_t, target, path, inspector, recurse):
         if op == '.':
             cur = getattr(cur, arg, _MISSING)
             if cur is _MISSING:
-                raise GlomAttributeError(_path_fmt(t_path[:i]))
+                raise GlomAttributeError(_path_fmt(t_path[:i+2]))
         elif op == '[':
             try:
                 cur = cur[arg]
-            except (KeyError, IndexError) as e:
-                path = _path_fmt(t_path[:i])
-                raise GlomKeyError(_path_fmt(t_path[:i]))
+            except KeyError as e:
+                path = _path_fmt(t_path[:i+2])
+                raise GlomKeyError(path)
             except IndexError:
-                raise GlomIndexError(_path_fmt(t_path[:i]))
+                raise GlomIndexError(_path_fmt(t_path[:i+2]))
+            except TypeError:
+                raise GlomTypeError(_path_fmt(t_path[:i+2]))
         elif op == '(':
             args, kwargs = arg
             cur = recurse(  # TODO: mutate path correctly
@@ -691,7 +697,7 @@ def _t_eval(_t, target, path, inspector, recurse):
     return cur
 
 
-T = _TType()  # Mr. T aka "this"
+T = _TType()  # target aka Mr. T aka "this"
 
 _T_PATHS[T] = ()
 UP = make_sentinel('UP')
