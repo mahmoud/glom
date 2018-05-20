@@ -697,6 +697,12 @@ _T_PATHS[T] = ()
 UP = make_sentinel('UP')
 
 
+class GlomCheckError(GlomError): pass
+
+
+RAISE = make_sentinel('RAISE')  # flag object for "raise on check failure"
+
+
 class Check(object):
     """Check objects are used to make assertions about the target data,
     and either pass through the data or raise exceptions if there is a
@@ -710,9 +716,11 @@ class Check(object):
        types: a type or sequence of types to be checked for exact match
        val: a value to be checked for match with ==
        vals: a sequence of values to be checked for match with ==
+       default: an optional default to replace the value when the check fails
+                (if default is not specified, GlomCheckError will be raised)
     """
     def __init__(self, specifier=T, instance_of=_MISSING, types=_MISSING,
-                 val=_MISSING, vals=_MISSING, exists=_MISSING):
+                 val=_MISSING, vals=_MISSING, exists=_MISSING, default=_MISSING):
             # TODO: do we really want types AND instances -- or is instance_of enough
             #   the main use case seems to be instanceof(True, int) vs type(True) == int
             # TODO: some kind of pressure-release callable "additional_checks"
@@ -721,7 +729,8 @@ class Check(object):
             self.instance_of = instance_of
             if instance_of is not _MISSING:
                 isinstance(None, instance_of)  # TODO: better error message
-            self.types = types
+            
+            self.types = () if types is _MISSING else (types,) if isinstance(types, type) else types
             if val is not _MISSING:
                 self.vals = val,
                 # TODO: better error
@@ -729,6 +738,7 @@ class Check(object):
             else:
                 self.vals = vals
             self.exists = exists
+            self.default = RAISE if default is _MISSING else default
 
     # following the pattern here from Call; not sure if this is the best
     # but would like to develop a consistent API
@@ -739,18 +749,28 @@ class Check(object):
             target = recurse(target, self.specifier, path, inspector)
         if self.instance_of is not _MISSING:
             if not isinstance(target, self.instance_of):
+                # TODO: can these early returns be done without so much copy-paste?
+                # (early return to avoid potentially expensive or even error-causeing
+                # string formats)
+                if self.default is not RAISE:
+                    return self.default
                 errs.append('expected instance or subclass of {}, found instance of {}'.format(
                     self.instance_of, type(target)))
-        if self.types is not _MISSING:
-            if type(target) not in self.types:
-                errs.append('expected instance of {}, found instance of {}'.format(
-                    self.types, type(target)))
+        if self.types and type(target) not in self.types:
+            if self.default is not RAISE:
+                return self.default
+            errs.append('expected instance of {}, found instance of {}'.format(
+                self.types, type(target)))
         if self.vals is not _MISSING:
             if target not in self.vals:  # TODO: "expected X" instead of "expected one of X," when only one item
-                errs.append('expected one of {}, found {}'.format(self.vals, target))
+                if self.default is not RAISE:
+                    return self.default
+                if len(self.vals) == 1:
+                    errs.append("expected {}, found {}".format(self.vals[0], target))
+                else:
+                    errs.append('expected one of {}, found {}'.format(self.vals, target))
         if errs:
-            raise GlomError(errs)
-        # TODO: CheckError sub-class, errors should include path
+            raise GlomCheckError(errs)
         return returns
 
 
@@ -1085,9 +1105,6 @@ pass # this line prevents the docstring below from attaching to register
 
 * More subspecs
   * Inspect - mostly done, but performance checking
-  * Check() - wraps a subspec, performing checking on its
-    return. e.g., Check('a.b.c', type=int, value=1, action='raise') #
-    action='omit' maybe also supported, other actions?
   * Specifier types for all the shorthands (e.g., Assign() for {},
     Iterate() for []), allows adding more options in situations that
     need them.

@@ -201,6 +201,9 @@ def test_check():
     target = [{'id': 0}, {'id': 1}]
     assert glom([0, OMIT], [T]) == [0]
     assert glom(target, ([Coalesce(Check('id', val=0), default=OMIT)], T[0])) == {'id': 0}
+    assert glom(target, ([Check('id', val=0, default=OMIT)], T[0])) == {'id': 0}
+    assert glom([1, 'a'], [Check(types=str, default=OMIT)]) == ['a']
+    assert glom([1, 'a'], [Check(types=(str, int), default=OMIT)]) == [1, 'a']
 
 
 def test_seq_getitem():

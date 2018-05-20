@@ -94,3 +94,15 @@ list depending on what it was passed.
 .. code-block:: python
 
     glom((1, 2, 3), T.__class__([lambda v: v+1]))
+
+
+
+Filter Iterable
+---------------
+An iteration specifier can filter items out by
+using ``OMIT`` as the default.
+
+
+.. code-block:: python
+
+    glom(['cat', 1, 'dog', 2], Check(types=str, default=OMIT))
