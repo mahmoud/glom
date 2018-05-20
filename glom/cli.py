@@ -34,6 +34,7 @@ import os
 import ast
 import sys
 import json
+from json.decoder import JSONDecodeError
 
 from face import Command, Flag, face_middleware, PosArgSpec, PosArgDisplay
 from face.command import CommandLineError
@@ -146,12 +147,21 @@ def mw_get_target(next_, posargs_, target_file, target_format, spec_file, spec_f
 
     if not target_text:
         target = {}
+    elif target_format == 'python':
+        if target_text[0] not in ('"', "'", "[", "{", "("):
+            # intention: handle trivial path access, assume string
+            spec_text = repr(spec_text)
+        target = ast.literal_eval(target_text)
     elif target_format == 'json':
         try:
-            target = json.loads(target_text)
+            try:
+                target = json.loads(target_text)
+            except JSONDecodeError:
+                # intention: handle JSON Lines (.jsonl) format
+                target = [json.loads(line) for line in target_text.splitlines()]
         except Exception as e:
             _error('could not load target data, got: %s' % e)
     else:
-        _error('expected spec-format to be one of python or json')
+        _error('expected target format to be one of python or json')
 
     return next_(spec=spec, target=target)
