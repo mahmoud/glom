@@ -34,12 +34,12 @@ import os
 import ast
 import sys
 import json
-from json.decoder import JSONDecodeError
 
-from face import Command, Flag, face_middleware, PosArgSpec, PosArgDisplay
+from face import Command, face_middleware, PosArgSpec
 from face.command import CommandLineError
 
 from glom import glom, Path, GlomError, Inspect
+
 
 def glom_cli(target, spec, indent, debug, inspect):
     """Command-line interface to the glom library, providing nested data
@@ -156,7 +156,7 @@ def mw_get_target(next_, posargs_, target_file, target_format, spec_file, spec_f
         try:
             try:
                 target = json.loads(target_text)
-            except JSONDecodeError:
+            except Exception:  # JSONDecodeError not available in 2.7
                 # intention: handle JSON Lines (.jsonl) format
                 target = [json.loads(line) for line in target_text.splitlines()]
         except Exception as e:
