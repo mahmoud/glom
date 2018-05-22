@@ -726,7 +726,7 @@ class Check(object):
                 (if default is not specified, GlomCheckError will be raised)
     """
     def __init__(self, specifier=T, instance_of=_MISSING, types=_MISSING,
-                 val=_MISSING, vals=_MISSING, exists=_MISSING, default=_MISSING):
+                 val=_MISSING, vals=_MISSING, default=_MISSING):
             # TODO: do we really want types AND instances -- or is instance_of enough
             #   the main use case seems to be instanceof(True, int) vs type(True) == int
             # TODO: some kind of pressure-release callable "additional_checks"
@@ -735,7 +735,6 @@ class Check(object):
             self.instance_of = instance_of
             if instance_of is not _MISSING:
                 isinstance(None, instance_of)  # TODO: better error message
-            
             self.types = () if types is _MISSING else (types,) if isinstance(types, type) else types
             if val is not _MISSING:
                 self.vals = val,
@@ -743,7 +742,6 @@ class Check(object):
                 assert vals is _MISSING
             else:
                 self.vals = vals
-            self.exists = exists
             self.default = RAISE if default is _MISSING else default
 
     # following the pattern here from Call; not sure if this is the best

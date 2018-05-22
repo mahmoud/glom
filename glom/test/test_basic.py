@@ -1,7 +1,7 @@
 
 import pytest
 
-from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Literal, Call, Check, T
+from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, GlomCheckError, Literal, Call, Check, T
 import glom.core as glom_core
 from glom.core import Spec, UP  # probationary
 
@@ -198,12 +198,22 @@ def test_spec_and_recursion():
 
 
 def test_check():
+    def _err(f):
+        try:
+            f()
+            assert False
+        except GlomCheckError:
+            pass
     target = [{'id': 0}, {'id': 1}]
     assert glom([0, OMIT], [T]) == [0]
     assert glom(target, ([Coalesce(Check('id', val=0), default=OMIT)], T[0])) == {'id': 0}
     assert glom(target, ([Check('id', val=0, default=OMIT)], T[0])) == {'id': 0}
     assert glom([1, 'a'], [Check(types=str, default=OMIT)]) == ['a']
-    assert glom([1, 'a'], [Check(types=(str, int), default=OMIT)]) == [1, 'a']
+    assert glom([1, 'a'], [Check(types=(str, int))]) == [1, 'a']
+    _err(lambda: glom(1, Check(types=str)))
+    _err(lambda: glom(1, Check(types=(str, bool))))
+    _err(lambda: glom(1, Check(val=0)))
+    _err(lambda: glom(1, Check(vals=(0,))))
 
 
 def test_seq_getitem():
