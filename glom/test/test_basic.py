@@ -201,7 +201,7 @@ def test_check():
     def _err(f):
         try:
             f()
-            assert False
+            assert False  # pragma: no cover
         except GlomCheckError:
             pass
     target = [{'id': 0}, {'id': 1}]
@@ -210,10 +210,15 @@ def test_check():
     assert glom(target, ([Check('id', val=0, default=OMIT)], T[0])) == {'id': 0}
     assert glom([1, 'a'], [Check(types=str, default=OMIT)]) == ['a']
     assert glom([1, 'a'], [Check(types=(str, int))]) == [1, 'a']
+    assert glom([1, 'a'], [Check(instance_of=str, default=OMIT)]) == ['a']
+    assert glom([1, 'a'], [Check(instance_of=(str, int))]) == [1, 'a']
     _err(lambda: glom(1, Check(types=str)))
     _err(lambda: glom(1, Check(types=(str, bool))))
+    _err(lambda: glom(1, Check(instance_of=str)))
+    _err(lambda: glom(1, Check(instance_of=(str, bool))))
     _err(lambda: glom(1, Check(val=0)))
     _err(lambda: glom(1, Check(vals=(0,))))
+    _err(lambda: glom(1, Check(vals=(0, 2))))
 
 
 def test_seq_getitem():
