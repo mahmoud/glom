@@ -34,6 +34,7 @@ import os
 import ast
 import sys
 import json
+import yaml
 
 from face import Command, Flag, face_middleware, PosArgSpec, PosArgDisplay
 from face.command import CommandLineError
@@ -151,7 +152,12 @@ def mw_get_target(next_, posargs_, target_file, target_format, spec_file, spec_f
             target = json.loads(target_text)
         except Exception as e:
             _error('could not load target data, got: %s' % e)
+    elif target_format in ('yaml', 'yml'):
+        try:
+            target = yaml.load(target_text)
+        except Exception as e:
+            _error('could not load target data, got: %s' % e)
     else:
-        _error('expected spec-format to be one of python or json')
+        _error('expected spec-format to be one of python, json or yaml')
 
     return next_(spec=spec, target=target)
