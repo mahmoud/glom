@@ -664,8 +664,13 @@ def _path_fmt(path):
 
 def _t_eval(_t, target, path, inspector, recurse):
     t_path = _T_PATHS[_t]
-    i = 0
-    cur = target
+    i = 1
+    if t_path[0] is T:
+        cur = target
+    elif t_path[0] is C:
+        cur = context
+    else:
+        raise ValueError('_TType instance with invalid root object')
     while i < len(t_path):
         op, arg = t_path[i], t_path[i + 1]
         if type(arg) in (Spec, _TType):
@@ -673,17 +678,17 @@ def _t_eval(_t, target, path, inspector, recurse):
         if op == '.':
             cur = getattr(cur, arg, _MISSING)
             if cur is _MISSING:
-                raise GlomAttributeError(_path_fmt(t_path[:i+2]))
+                raise GlomAttributeError(_path_fmt(t_path[1:i+2]))
         elif op == '[':
             try:
                 cur = cur[arg]
             except KeyError as e:
-                path = _path_fmt(t_path[:i+2])
+                path = _path_fmt(t_path[1:i+2])
                 raise GlomKeyError(path)
             except IndexError:
-                raise GlomIndexError(_path_fmt(t_path[:i+2]))
+                raise GlomIndexError(_path_fmt(t_path[1:i+2]))
             except TypeError:
-                raise GlomTypeError(_path_fmt(t_path[:i+2]))
+                raise GlomTypeError(_path_fmt(t_path[1:i+2]))
         elif op == '(':
             args, kwargs = arg
             cur = recurse(  # TODO: mutate path correctly
@@ -698,8 +703,10 @@ def _t_eval(_t, target, path, inspector, recurse):
 
 
 T = _TType()  # target aka Mr. T aka "this"
+C = _TType()  # like T, but means grab stuff from Context, not Target
 
-_T_PATHS[T] = ()
+_T_PATHS[T] = (T,)
+_T_PATHS[C] = (C,)
 UP = make_sentinel('UP')
 
 
