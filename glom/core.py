@@ -915,6 +915,8 @@ class Glommer(object):
              exceptions to ignore and return *default* (None if
              omitted). If *skip_exc* and *default* are both not set,
              glom raises errors through.
+           context (dict): Additional data that can be accessed
+             via C inside the glom-spec.
 
         It's a small API with big functionality, and glom's power is
         only surpassed by its intuitiveness. Give it a whirl!
@@ -925,7 +927,8 @@ class Glommer(object):
         skip_exc = kwargs.pop('skip_exc', () if default is _MISSING else GlomError)
         path = kwargs.pop('path', [])
         inspector = kwargs.pop('inspector', None)
-        context = ChainMap({"path": path, Inspect: inspector})
+        context = kwargs.pop('context', {})
+        context = ChainMap({"path": path, Inspect: inspector}, context)
         if kwargs:
             raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
         try:

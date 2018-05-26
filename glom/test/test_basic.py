@@ -1,7 +1,7 @@
 
 import pytest
 
-from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T
+from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, C
 import glom.core as glom_core
 from glom.core import Spec, UP  # probationary
 
@@ -195,6 +195,10 @@ def test_spec_and_recursion():
     assert glom(
         [['ab', 'cd', 'ef'], ''.join],
         Call(T[1], args=(Spec((T[0], [T[1:]])),))) == 'bdf'
+
+
+def test_c():
+    assert glom(None, C['foo'], context={'foo': 'bar'}) == 'bar'
 
 
 def test_seq_getitem():
