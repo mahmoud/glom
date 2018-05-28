@@ -465,24 +465,24 @@ class Inspect(object):
     def __repr__(self):
         return '<INSPECT>'
 
-    def _handler(self, target, context):
+    def _handler(self, target, scope):
         # stash the real handler under Inspect,
         # and replace the child handler with a trace callback
-        context[Inspect] = context[HANDLE_CHILD]
-        context[HANDLE_CHILD] = self._trace
-        return context[HANDLE_CHILD](target, self.wrapped, context)
+        scope[Inspect] = scope[HANDLE_CHILD]
+        scope[HANDLE_CHILD] = self._trace
+        return scope[HANDLE_CHILD](target, self.wrapped, scope)
 
-    def _trace(self, target, spec, context):
+    def _trace(self, target, spec, scope):
         if not self.recursive:
-            context[HANDLE_CHILD] = context[Inspect]
+            scope[HANDLE_CHILD] = scope[Inspect]
         if self.echo:
             print('---')
-            print('path:  ', context[Path] + [spec])
+            print('path:  ', scope[Path] + [spec])
             print('target:', target)
         if self.breakpoint:
             self.breakpoint()
         try:
-            ret = context[Inspect](target, self.wrapped, context)
+            ret = scope[Inspect](target, self.wrapped, scope)
         except Exception:
             if self.post_mortem:
                 self.post_mortem()
@@ -538,11 +538,11 @@ class Call(object):
             raise TypeError('func must be a callable or child of T')
         self.func, self.args, self.kwargs = func, args, kwargs
 
-    def _handler(self, target, context):
+    def _handler(self, target, scope):
         'run against the current target'
         def eval(t):
             if type(t) in (Spec, _TType):
-                return context[HANDLE_CHILD](target, t, context)
+                return scope[HANDLE_CHILD](target, t, scope)
             return t
         if type(self.args) is _TType:
             args = eval(self.args)
@@ -691,19 +691,19 @@ def _path_fmt(path):
     return "".join(prepr)
 
 
-def _t_eval(_t, target, context):
+def _t_eval(_t, target, scope):
     t_path = _T_PATHS[_t]
     i = 1
     if t_path[0] is T:
         cur = target
-    elif t_path[0] is C:
-        cur = context
+    elif t_path[0] is S:
+        cur = scope
     else:
         raise ValueError('_TType instance with invalid root object')
     while i < len(t_path):
         op, arg = t_path[i], t_path[i + 1]
         if type(arg) in (Spec, _TType):
-            arg = context[Glommer]._glom(target, arg, context)
+            arg = scope[Glommer]._glom(target, arg, scope)
         if op == '.':
             cur = getattr(cur, arg, _MISSING)
             if cur is _MISSING:
@@ -720,9 +720,9 @@ def _t_eval(_t, target, context):
                 raise GlomTypeError(_path_fmt(t_path[1:i+2]))
         elif op == '(':
             args, kwargs = arg
-            context[Path] += t_path[2:i+2:2]
-            cur = context[Glommer]._glom(
-                target, Call(cur, args, kwargs), context)
+            scope[Path] += t_path[2:i+2:2]
+            cur = scope[Glommer]._glom(
+                target, Call(cur, args, kwargs), scope)
             # call with target rather than cur,
             # because it is probably more intuitive
             # if args to the call "reset" their path
@@ -733,10 +733,10 @@ def _t_eval(_t, target, context):
 
 
 T = _TType()  # target aka Mr. T aka "this"
-C = _TType()  # like T, but means grab stuff from Context, not Target
+S = _TType()  # like T, but means grab stuff from Context, not Target
 
 _T_PATHS[T] = (T,)
-_T_PATHS[C] = (C,)
+_T_PATHS[S] = (S,)
 UP = make_sentinel('UP')
 
 
@@ -753,25 +753,25 @@ def _get_sequence_item(target, index):
     return target[int(index)]
 
 
-# handlers are 3-arg callables, with args (spec, target, context)
+# handlers are 3-arg callables, with args (spec, target, scope)
 # spec is the first argument for convenience in the case
 # that the handler is a method of the spec type
-def _handle_dict(spec, target, context):
+def _handle_dict(spec, target, scope):
     ret = type(spec)() # TODO: works for dict + ordereddict, but sufficient for all?
     for field, subspec in spec.items():
-        val = context[HANDLE_CHILD](target, subspec, context)
+        val = scope[HANDLE_CHILD](target, subspec, scope)
         if val is OMIT:
             continue
         ret[field] = val
     return ret
 
 
-def _handle_list(spec, target, context):
+def _handle_list(spec, target, scope):
     subspec = spec[0]
-    self = context[Glommer]
+    self = scope[Glommer]
     handler = self._get_handler(target)
     if not handler.iterate:
-        raise UnregisteredTarget('iterate', type(target), self._type_map, path=context[Path])
+        raise UnregisteredTarget('iterate', type(target), self._type_map, path=scope[Path])
     try:
         iterator = handler.iterate(target)
     except TypeError as te:
@@ -779,19 +779,19 @@ def _handle_list(spec, target, context):
                         % (target.__class__.__name__, Path(*path), te))
     ret = []
     for i, t in enumerate(iterator):
-        val = context[HANDLE_CHILD](t, subspec, context.new_child({Path: context[Path] + [i]}))
+        val = scope[HANDLE_CHILD](t, subspec, scope.new_child({Path: scope[Path] + [i]}))
         if val is OMIT:
             continue
         ret.append(val)
     return ret
 
 
-def _handle_tuple(spec, target, context):
+def _handle_tuple(spec, target, scope):
     res = target
     for subspec in spec:
-        res = context[HANDLE_CHILD](res, subspec, context)
+        res = scope[HANDLE_CHILD](res, subspec, scope)
         if not isinstance(subspec, list):
-            context[Path] += [getattr(subspec, '__name__', subspec)]
+            scope[Path] += [getattr(subspec, '__name__', subspec)]
     return res
 
 
@@ -1001,8 +1001,8 @@ class Glommer(object):
              exceptions to ignore and return *default* (None if
              omitted). If *skip_exc* and *default* are both not set,
              glom raises errors through.
-           context (dict): Additional data that can be accessed
-             via C inside the glom-spec.
+           scope (dict): Additional data that can be accessed
+             via S inside the glom-spec.
 
         It's a small API with big functionality, and glom's power is
         only surpassed by its intuitiveness. Give it a whirl!
@@ -1013,32 +1013,32 @@ class Glommer(object):
         skip_exc = kwargs.pop('skip_exc', () if default is _MISSING else GlomError)
         path = kwargs.pop('path', [])
         inspector = kwargs.pop('inspector', None)
-        context = kwargs.pop('context', {})
-        context = ChainMap(
+        scope = kwargs.pop('scope', {})
+        scope = ChainMap(
             {Path: path, Inspect: inspector, Glommer: self,
              HANDLE_CHILD: self._glom},
-            context)
+            scope)
         if kwargs:
             raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
         try:
-            ret = self._glom(target, spec, context)
+            ret = self._glom(target, spec, scope)
         except skip_exc:
             if default is _MISSING:
                 raise
             ret = default
         return ret
 
-    def _glom(self, target, spec, context):
+    def _glom(self, target, spec, scope):
         # TODO: de-recursivize this
         # TODO: rearrange the branching below by frequency of use
         # recursive self._glom() calls should pass path=path to elide the current
         # step, otherwise add the current spec in some fashion
-        context = context.new_child({})
+        scope = scope.new_child({})
         for type_, handler in self._spec_registry.items():
             if type_ is callable and callable(spec):
-                return handler(spec, target, context)
+                return handler(spec, target, scope)
             if type_ is not callable and isinstance(spec, type_):
-                return handler(spec, target, context)
+                return handler(spec, target, scope)
 
 
         #####
@@ -1046,7 +1046,7 @@ class Glommer(object):
             try:  # TODO: this logic belongs in Path
                 ret = self._get_path(target, spec)
             except PathAccessError as pae:
-                path = context[Path]
+                path = scope[Path]
                 pae.path = Path(*(path + list(pae.path)))
                 pae.path_idx += len(path)
                 raise
@@ -1054,7 +1054,7 @@ class Glommer(object):
             skipped = []
             for subspec in spec.subspecs:
                 try:
-                    ret = self._glom(target, subspec, context)
+                    ret = self._glom(target, subspec, scope)
                     if not spec.skip_func(ret):
                         break
                     skipped.append(ret)
@@ -1065,14 +1065,14 @@ class Glommer(object):
                 if spec.default is not _MISSING:
                     ret = spec.default
                 else:
-                    raise CoalesceError(spec, skipped, context[Path])
+                    raise CoalesceError(spec, skipped, scope[Path])
         elif isinstance(spec, Literal):
             ret = spec.value
         elif isinstance(spec, Spec):
             # TODO: this could be switched to a while loop at the top for
             # performance, but don't want to mess around too much yet
             # while(type(target) is Spec): target = target.value
-            ret = self._glom(target, spec.value, context)
+            ret = self._glom(target, spec.value, scope)
         else:
             raise TypeError('expected spec to be dict, list, tuple,'
                             ' callable, string, or other specifier type,'
