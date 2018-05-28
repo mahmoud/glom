@@ -465,6 +465,33 @@ class Inspect(object):
     def __repr__(self):
         return '<INSPECT>'
 
+    def _handler(self, target, context):
+        # stash the real handler under Inspect,
+        # and replace the child handler with a trace callback
+        context[Inspect] = context[HANDLE_CHILD]
+        context[HANDLE_CHILD] = self._trace
+        return context[HANDLE_CHILD](target, self.wrapped, context)
+
+    def _trace(self, target, spec, context):
+        if not self.recursive:
+            context[HANDLE_CHILD] = context[Inspect]
+        if self.echo:
+            print('---')
+            print('path:  ', context[Path] + [spec])
+            print('target:', target)
+        if self.breakpoint:
+            self.breakpoint()
+        try:
+            ret = context[Inspect](target, self.wrapped, context)
+        except Exception:
+            if self.post_mortem:
+                self.post_mortem()
+            raise
+        if self.echo:
+            print('output:', ret)
+            print('---')
+        return ret
+
 
 class Call(object):
     """:class:`Call` specifies when a target should be passed to a function,
@@ -511,11 +538,11 @@ class Call(object):
             raise TypeError('func must be a callable or child of T')
         self.func, self.args, self.kwargs = func, args, kwargs
 
-    def __call__(self, target, context):
+    def _handler(self, target, context):
         'run against the current target'
         def eval(t):
             if type(t) in (Spec, _TType):
-                return context[Glommer]._glom(target, t, context)
+                return context[HANDLE_CHILD](target, t, context)
             return t
         if type(self.args) is _TType:
             args = eval(self.args)
@@ -726,6 +753,62 @@ def _get_sequence_item(target, index):
     return target[int(index)]
 
 
+# handlers are 3-arg callables, with args (spec, target, context)
+# spec is the first argument for convenience in the case
+# that the handler is a method of the spec type
+def _handle_dict(spec, target, context):
+    ret = type(spec)() # TODO: works for dict + ordereddict, but sufficient for all?
+    for field, subspec in spec.items():
+        val = context[HANDLE_CHILD](target, subspec, context)
+        if val is OMIT:
+            continue
+        ret[field] = val
+    return ret
+
+
+def _handle_list(spec, target, context):
+    subspec = spec[0]
+    self = context[Glommer]
+    handler = self._get_handler(target)
+    if not handler.iterate:
+        raise UnregisteredTarget('iterate', type(target), self._type_map, path=context[Path])
+    try:
+        iterator = handler.iterate(target)
+    except TypeError as te:
+        raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
+                        % (target.__class__.__name__, Path(*path), te))
+    ret = []
+    for i, t in enumerate(iterator):
+        val = context[HANDLE_CHILD](t, subspec, context.new_child({Path: context[Path] + [i]}))
+        if val is OMIT:
+            continue
+        ret.append(val)
+    return ret
+
+
+def _handle_tuple(spec, target, context):
+    res = target
+    for subspec in spec:
+        res = context[HANDLE_CHILD](res, subspec, context)
+        if not isinstance(subspec, list):
+            context[Path] += [getattr(subspec, '__name__', subspec)]
+    return res
+
+
+_DEFAULT_SPEC_REGISTRY = OrderedDict([
+    (Inspect, Inspect._handler),
+    (dict, _handle_dict),
+    (list, _handle_list),
+    (tuple, _handle_tuple),
+    (_TType, _t_eval),  # NOTE: must come before callable b/c T is also callable
+    (Call, Call._handler),
+    (callable, lambda s, t, c: s(t)),
+])
+
+
+HANDLE_CHILD = make_sentinel('HANDLE_CHILD')
+
+
 class Glommer(object):
     """All the wholesome goodness that it takes to make glom work. This
     type mostly serves to encapsulate the type registration context so
@@ -758,6 +841,7 @@ class Glommer(object):
         if register_default_types:
             self._register_default_types()
         self._unreg_handler = TargetHandler(None, get=False, iterate=False)
+        self._spec_registry = _DEFAULT_SPEC_REGISTRY
         return
 
     def _get_handler(self, obj):
@@ -850,6 +934,7 @@ class Glommer(object):
         return
 
     def _get_path(self, target, path):
+        # TODO: this logic should be part of Path
         try:
             parts = path.split('.')
         except (AttributeError, TypeError):
@@ -929,7 +1014,10 @@ class Glommer(object):
         path = kwargs.pop('path', [])
         inspector = kwargs.pop('inspector', None)
         context = kwargs.pop('context', {})
-        context = ChainMap({Path: path, Inspect: inspector, Glommer: self}, context)
+        context = ChainMap(
+            {Path: path, Inspect: inspector, Glommer: self,
+             HANDLE_CHILD: self._glom},
+            context)
         if kwargs:
             raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
         try:
@@ -946,64 +1034,16 @@ class Glommer(object):
         # recursive self._glom() calls should pass path=path to elide the current
         # step, otherwise add the current spec in some fashion
         context = context.new_child({})
-        if context[Inspect]:
-            inspector = context[Inspect]
-            if not inspector.recursive:
-                context[Inspect] = None
-            if inspector.echo:
-                print('---')
-                print('path:  ', context[Path] + [spec])
-                print('target:', target)
-            if inspector.breakpoint:
-                inspector.breakpoint()
-        if isinstance(spec, Inspect):
-            context[Inspect] = spec
-            try:
-                ret = self._glom(target, spec.wrapped, context)
-            except Exception:
-                if spec.post_mortem:
-                    spec.post_mortem()
-                raise
-        elif isinstance(spec, dict):
-            ret = type(spec)() # TODO: works for dict + ordereddict, but sufficient for all?
-            for field, subspec in spec.items():
-                val = self._glom(target, subspec, context)
-                if val is OMIT:
-                    continue
-                ret[field] = val
-        elif isinstance(spec, list):
-            subspec = spec[0]
-            handler = self._get_handler(target)
-            if not handler.iterate:
-                raise UnregisteredTarget('iterate', type(target), self._type_map, path=context[Path])
-            try:
-                iterator = handler.iterate(target)
-            except TypeError as te:
-                raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
-                                % (target.__class__.__name__, Path(*path), te))
-            ret = []
-            for i, t in enumerate(iterator):
-                val = self._glom(t, subspec, context.new_child({Path: context[Path] + [i]}))
-                if val is OMIT:
-                    continue
-                ret.append(val)
-        elif isinstance(spec, tuple):
-            res = target
-            for subspec in spec:
-                res = self._glom(res, subspec, context)
-                if isinstance(subspec, Inspect) and subspec.recursive:
-                    context[Inspect] = subspec
-                if not isinstance(subspec, list):
-                    context[Path] += [getattr(subspec, '__name__', subspec)]
-            ret = res
-        elif isinstance(spec, _TType):  # NOTE: must come before callable b/c T is also callable
-            ret = _t_eval(spec, target, context)
-        elif isinstance(spec, Call):
-            ret = spec(target, context)
-        elif callable(spec):
-            ret = spec(target)
-        elif isinstance(spec, (basestring, Path)):
-            try:
+        for type_, handler in self._spec_registry.items():
+            if type_ is callable and callable(spec):
+                return handler(spec, target, context)
+            if type_ is not callable and isinstance(spec, type_):
+                return handler(spec, target, context)
+
+
+        #####
+        if isinstance(spec, (basestring, Path)):
+            try:  # TODO: this logic belongs in Path
                 ret = self._get_path(target, spec)
             except PathAccessError as pae:
                 path = context[Path]
@@ -1037,9 +1077,6 @@ class Glommer(object):
             raise TypeError('expected spec to be dict, list, tuple,'
                             ' callable, string, or other specifier type,'
                             ' not: %r'% spec)
-        if context[Inspect] and context[Inspect].echo:
-            print('output:', ret)
-            print('---')
         return ret
 
 
