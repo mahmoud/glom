@@ -303,7 +303,7 @@ class Spec(object):
     """Spec objects are the complement to Literals, wrapping a value
     and marking that it should be interpreted as a glom spec, rather
     than a literal value in places where it would be interpreted as
-    a value by defualt. (Such as T[key], Call(func) where key and
+    a value by default. (Such as T[key], Call(func) where key and
     func are assumed to be literal values and not specs.)
 
     Args:
