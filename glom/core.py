@@ -397,6 +397,24 @@ class Coalesce(object):
         if kwargs:
             raise TypeError('unexpected keyword args: %r' % (sorted(kwargs.keys()),))
 
+    def _handler(self, target, scope):
+        skipped = []
+        for subspec in self.subspecs:
+            try:
+                ret = scope[HANDLE_CHILD](target, subspec, scope)
+                if not self.skip_func(ret):
+                    break
+                skipped.append(ret)
+            except self.skip_exc as e:
+                skipped.append(e)
+                continue
+        else:
+            if self.default is not _MISSING:
+                ret = self.default
+            else:
+                raise CoalesceError(self, skipped, scope[Path])
+        return ret
+
 
 class Inspect(object):
     """The :class:`~glom.Inspect` specifier type provides a way to get
@@ -800,9 +818,12 @@ _DEFAULT_SPEC_REGISTRY = OrderedDict([
     (dict, _handle_dict),
     (list, _handle_list),
     (tuple, _handle_tuple),
+    (Coalesce, Coalesce._handler),
     (_TType, _t_eval),  # NOTE: must come before callable b/c T is also callable
     (Call, Call._handler),
-    (callable, lambda s, t, c: s(t)),
+    (callable, lambda spec, target, scope: spec(target)),
+    (Literal, lambda spec, target, scope: spec.value),
+    (Spec, lambda spec, target, scope: scope[HANDLE_CHILD](target, spec.value, scope)),
 ])
 
 
@@ -1053,29 +1074,6 @@ class Glommer(object):
                 pae.path = Path(*(path + list(pae.path)))
                 pae.path_idx += len(path)
                 raise
-        elif isinstance(spec, Coalesce):
-            skipped = []
-            for subspec in spec.subspecs:
-                try:
-                    ret = self._glom(target, subspec, scope)
-                    if not spec.skip_func(ret):
-                        break
-                    skipped.append(ret)
-                except spec.skip_exc as e:
-                    skipped.append(e)
-                    continue
-            else:
-                if spec.default is not _MISSING:
-                    ret = spec.default
-                else:
-                    raise CoalesceError(spec, skipped, scope[Path])
-        elif isinstance(spec, Literal):
-            ret = spec.value
-        elif isinstance(spec, Spec):
-            # TODO: this could be switched to a while loop at the top for
-            # performance, but don't want to mess around too much yet
-            # while(type(target) is Spec): target = target.value
-            ret = self._glom(target, spec.value, scope)
         else:
             raise TypeError('expected spec to be dict, list, tuple,'
                             ' callable, string, or other specifier type,'
