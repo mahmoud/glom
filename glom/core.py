@@ -696,8 +696,8 @@ def _t_eval(_t, target, scope):
     i = 1
     if t_path[0] is T:
         cur = target
-    elif t_path[0] is S:
-        cur = scope
+    elif t_path[0] is C:
+        cur = scope['context']
     else:
         raise ValueError('_TType instance with invalid root object')
     while i < len(t_path):
@@ -733,10 +733,10 @@ def _t_eval(_t, target, scope):
 
 
 T = _TType()  # target aka Mr. T aka "this"
-S = _TType()  # like T, but means grab stuff from Context, not Target
+C = _TType()  # like T, but means grab stuff from Context, not Target
 
 _T_PATHS[T] = (T,)
-_T_PATHS[S] = (S,)
+_T_PATHS[C] = (C,)
 UP = make_sentinel('UP')
 
 
@@ -1001,8 +1001,8 @@ class Glommer(object):
              exceptions to ignore and return *default* (None if
              omitted). If *skip_exc* and *default* are both not set,
              glom raises errors through.
-           scope (dict): Additional data that can be accessed
-             via S inside the glom-spec.
+           context (dict): Additional data that can be accessed
+             via C inside the glom-spec.
 
         It's a small API with big functionality, and glom's power is
         only surpassed by its intuitiveness. Give it a whirl!
@@ -1013,11 +1013,14 @@ class Glommer(object):
         skip_exc = kwargs.pop('skip_exc', () if default is _MISSING else GlomError)
         path = kwargs.pop('path', [])
         inspector = kwargs.pop('inspector', None)
-        scope = kwargs.pop('scope', {})
-        scope = ChainMap(
-            {Path: path, Inspect: inspector, Glommer: self,
-             HANDLE_CHILD: self._glom},
-            scope)
+        context = kwargs.pop('context', {})
+        scope = ChainMap({
+            Path: path,
+            Inspect: inspector,
+            Glommer: self,
+            HANDLE_CHILD: self._glom,
+            "context": context
+        })
         if kwargs:
             raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
         try:
