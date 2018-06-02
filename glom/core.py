@@ -35,9 +35,11 @@ from boltons.typeutils import make_sentinel
 PY2 = (sys.version_info[0] == 2)
 if PY2:
     _AbstractIterableBase = object
+    from .chainmap_backport import ChainMap
 else:
     basestring = str
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
+    from collections import ChainMap
 
 
 _MISSING = make_sentinel('_MISSING')
@@ -509,11 +511,11 @@ class Call(object):
             raise TypeError('func must be a callable or child of T')
         self.func, self.args, self.kwargs = func, args, kwargs
 
-    def __call__(self, target, path, inspector, recurse):
+    def __call__(self, target, context):
         'run against the current target'
         def eval(t):
             if type(t) in (Spec, _TType):
-                return recurse(target, t, path, inspector)
+                return context[Glommer]._glom(target, t, context)
             return t
         if type(self.args) is _TType:
             args = eval(self.args)
@@ -662,32 +664,38 @@ def _path_fmt(path):
     return "".join(prepr)
 
 
-def _t_eval(_t, target, path, inspector, recurse):
+def _t_eval(_t, target, context):
     t_path = _T_PATHS[_t]
-    i = 0
-    cur = target
+    i = 1
+    if t_path[0] is T:
+        cur = target
+    elif t_path[0] is C:
+        cur = context
+    else:
+        raise ValueError('_TType instance with invalid root object')
     while i < len(t_path):
         op, arg = t_path[i], t_path[i + 1]
         if type(arg) in (Spec, _TType):
-            arg = recurse(target, arg, path, inspector)
+            arg = context[Glommer]._glom(target, arg, context)
         if op == '.':
             cur = getattr(cur, arg, _MISSING)
             if cur is _MISSING:
-                raise GlomAttributeError(_path_fmt(t_path[:i+2]))
+                raise GlomAttributeError(_path_fmt(t_path[1:i+2]))
         elif op == '[':
             try:
                 cur = cur[arg]
             except KeyError as e:
-                path = _path_fmt(t_path[:i+2])
+                path = _path_fmt(t_path[1:i+2])
                 raise GlomKeyError(path)
             except IndexError:
-                raise GlomIndexError(_path_fmt(t_path[:i+2]))
+                raise GlomIndexError(_path_fmt(t_path[1:i+2]))
             except TypeError:
-                raise GlomTypeError(_path_fmt(t_path[:i+2]))
+                raise GlomTypeError(_path_fmt(t_path[1:i+2]))
         elif op == '(':
             args, kwargs = arg
-            cur = recurse(  # TODO: mutate path correctly
-                target, Call(cur, args, kwargs), path, inspector)
+            context[Path] += t_path[2:i+2:2]
+            cur = context[Glommer]._glom(
+                target, Call(cur, args, kwargs), context)
             # call with target rather than cur,
             # because it is probably more intuitive
             # if args to the call "reset" their path
@@ -698,8 +706,10 @@ def _t_eval(_t, target, path, inspector, recurse):
 
 
 T = _TType()  # target aka Mr. T aka "this"
+C = _TType()  # like T, but means grab stuff from Context, not Target
 
-_T_PATHS[T] = ()
+_T_PATHS[T] = (T,)
+_T_PATHS[C] = (C,)
 UP = make_sentinel('UP')
 
 
@@ -906,6 +916,8 @@ class Glommer(object):
              exceptions to ignore and return *default* (None if
              omitted). If *skip_exc* and *default* are both not set,
              glom raises errors through.
+           context (dict): Additional data that can be accessed
+             via C inside the glom-spec.
 
         It's a small API with big functionality, and glom's power is
         only surpassed by its intuitiveness. Give it a whirl!
@@ -916,32 +928,38 @@ class Glommer(object):
         skip_exc = kwargs.pop('skip_exc', () if default is _MISSING else GlomError)
         path = kwargs.pop('path', [])
         inspector = kwargs.pop('inspector', None)
+        context = kwargs.pop('context', {})
+        context = ChainMap({Path: path, Inspect: inspector, Glommer: self}, context)
         if kwargs:
             raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
         try:
-            ret = self._glom(target, spec, path=path, inspector=inspector)
+            ret = self._glom(target, spec, context)
         except skip_exc:
             if default is _MISSING:
                 raise
             ret = default
         return ret
 
-    def _glom(self, target, spec, path, inspector):
+    def _glom(self, target, spec, context):
         # TODO: de-recursivize this
         # TODO: rearrange the branching below by frequency of use
         # recursive self._glom() calls should pass path=path to elide the current
         # step, otherwise add the current spec in some fashion
-        next_inspector = inspector if (inspector and inspector.recursive) else None
-        if inspector:
+        context = context.new_child({})
+        if context[Inspect]:
+            inspector = context[Inspect]
+            if not inspector.recursive:
+                context[Inspect] = None
             if inspector.echo:
                 print('---')
-                print('path:  ', path + [spec])
+                print('path:  ', context[Path] + [spec])
                 print('target:', target)
             if inspector.breakpoint:
                 inspector.breakpoint()
         if isinstance(spec, Inspect):
+            context[Inspect] = spec
             try:
-                ret = self._glom(target, spec.wrapped, path=path, inspector=spec)
+                ret = self._glom(target, spec.wrapped, context)
             except Exception:
                 if spec.post_mortem:
                     spec.post_mortem()
@@ -949,7 +967,7 @@ class Glommer(object):
         elif isinstance(spec, dict):
             ret = type(spec)() # TODO: works for dict + ordereddict, but sufficient for all?
             for field, subspec in spec.items():
-                val = self._glom(target, subspec, path=path, inspector=next_inspector)
+                val = self._glom(target, subspec, context)
                 if val is OMIT:
                     continue
                 ret[field] = val
@@ -957,7 +975,7 @@ class Glommer(object):
             subspec = spec[0]
             handler = self._get_handler(target)
             if not handler.iterate:
-                raise UnregisteredTarget('iterate', type(target), self._type_map, path=path)
+                raise UnregisteredTarget('iterate', type(target), self._type_map, path=context[Path])
             try:
                 iterator = handler.iterate(target)
             except TypeError as te:
@@ -965,28 +983,30 @@ class Glommer(object):
                                 % (target.__class__.__name__, Path(*path), te))
             ret = []
             for i, t in enumerate(iterator):
-                val = self._glom(t, subspec, path=path + [i], inspector=inspector)
+                val = self._glom(t, subspec, context.new_child({Path: context[Path] + [i]}))
                 if val is OMIT:
                     continue
                 ret.append(val)
         elif isinstance(spec, tuple):
             res = target
             for subspec in spec:
-                res = self._glom(res, subspec, path=path, inspector=next_inspector)
-                next_inspector = subspec if (isinstance(subspec, Inspect) and subspec.recursive) else next_inspector
+                res = self._glom(res, subspec, context)
+                if isinstance(subspec, Inspect) and subspec.recursive:
+                    context[Inspect] = subspec
                 if not isinstance(subspec, list):
-                    path = path + [getattr(subspec, '__name__', subspec)]
+                    context[Path] += [getattr(subspec, '__name__', subspec)]
             ret = res
         elif isinstance(spec, _TType):  # NOTE: must come before callable b/c T is also callable
-            ret = _t_eval(spec, target, path, inspector, self._glom)
+            ret = _t_eval(spec, target, context)
         elif isinstance(spec, Call):
-            ret = spec(target, path, inspector, self._glom)
+            ret = spec(target, context)
         elif callable(spec):
             ret = spec(target)
         elif isinstance(spec, (basestring, Path)):
             try:
                 ret = self._get_path(target, spec)
             except PathAccessError as pae:
+                path = context[Path]
                 pae.path = Path(*(path + list(pae.path)))
                 pae.path_idx += len(path)
                 raise
@@ -994,7 +1014,7 @@ class Glommer(object):
             skipped = []
             for subspec in spec.subspecs:
                 try:
-                    ret = self._glom(target, subspec, path=path, inspector=next_inspector)
+                    ret = self._glom(target, subspec, context)
                     if not spec.skip_func(ret):
                         break
                     skipped.append(ret)
@@ -1005,19 +1025,19 @@ class Glommer(object):
                 if spec.default is not _MISSING:
                     ret = spec.default
                 else:
-                    raise CoalesceError(spec, skipped, path)
+                    raise CoalesceError(spec, skipped, context[Path])
         elif isinstance(spec, Literal):
             ret = spec.value
         elif isinstance(spec, Spec):
             # TODO: this could be switched to a while loop at the top for
             # performance, but don't want to mess around too much yet
             # while(type(target) is Spec): target = target.value
-            ret = self._glom(target, spec.value, path=path, inspector=inspector)
+            ret = self._glom(target, spec.value, context)
         else:
             raise TypeError('expected spec to be dict, list, tuple,'
                             ' callable, string, or other specifier type,'
                             ' not: %r'% spec)
-        if inspector and inspector.echo:
+        if context[Inspect] and context[Inspect].echo:
             print('output:', ret)
             print('---')
         return ret
