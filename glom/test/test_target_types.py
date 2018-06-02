@@ -37,10 +37,10 @@ def test_types_leave_one_out():
             glommer.register(t, getattr)
 
         obj = cur_t()
-        assert glommer._get_closest_type(obj) == obj.__class__.mro()[1]
+        assert glommer._target_registry._get_closest_type(obj) == obj.__class__.mro()[1]
 
         if cur_t is E:
-            assert glommer._get_closest_type(obj) is C  # sanity check
+            assert glommer._target_registry._get_closest_type(obj) is C  # sanity check
 
     return
 
@@ -48,7 +48,7 @@ def test_types_leave_one_out():
 def test_types_bare():
     glommer = Glommer(register_default_types=False)
 
-    assert glommer._get_closest_type(object()) is None
+    assert glommer._target_registry._get_closest_type(object()) is None
 
     # test that bare glommers can't glom anything
     with pytest.raises(UnregisteredTarget):

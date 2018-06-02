@@ -245,29 +245,49 @@ class TargetHandler(object):
 class Path(object):
     """Path objects specify explicit paths when the default ``'a.b.c'``-style
     general access syntax won't work or isn't desirable.
-
     Use this to wrap ints, datetimes, and other valid keys, as well as
     strings with dots that shouldn't be expanded.
-
     >>> target = {'a': {'b': 'c', 'd.e': 'f', 2: 3}}
     >>> glom(target, Path('a', 2))
     3
     >>> glom(target, Path('a', 'd.e'))
     'f'
-
     """
     def __init__(self, *path_parts):
-        self.path_parts = list(path_parts)
+        path_t = T
+        for part in path_parts:
+            if isinstance(part, Path):
+                part = part.path_t
+            if isinstance(part, _TType):
+                sub_parts = _T_PATHS[part]
+                if sub_parts[0] is not T:
+                    raise ValueError('path segment must be path from T, not {}'.format(
+                        sub_parts[0]))
+                i = 1
+                while i < len(sub_parts):
+                    path_t = _t_child(path_t, sub_parts[i], sub_parts[i + 1])
+                    i += 2
+            else:
+                path_t = _t_child(path_t, 'P', part)
+        self.path_t = path_t
 
     def append(self, part):
-        self.path_parts.append(part)
+        assert not isinstance(part, _TType), "call extend or +?"
+        assert not isinstance(part, Path), "call extend or +?"
+        self.path_t = _t_child(self.path_t, 'P', part)
+
+    def _handler(self, target, scope):
+        return _t_eval(self.path_t, target, scope)
 
     def __getitem__(self, idx):
-        return self.path_parts.__getitem__(idx)
+        # TODO: is this still needed?
+        return _T_PATHS[self.path_t][idx * 2 + 1]
 
     def __repr__(self):
+        # TODO: FIXME to not assume all parts are 'P'
+        path_parts = _T_PATHS[self.path_t][1::2]
         cn = self.__class__.__name__
-        return '%s(%s)' % (cn, ', '.join([repr(p) for p in self.path_parts]))
+        return '%s(%s)' % (cn, ', '.join([repr(p) for p in path_parts]))
 
 
 class Literal(object):
@@ -664,7 +684,7 @@ class _TType(object):
         return _t_child(self, '(', (args, kwargs))
 
     def __repr__(self):
-        return "T" + _path_fmt(_T_PATHS[self])
+        return "T" + _path_fmt(_T_PATHS[self][1:])
 
 
 _T_PATHS = weakref.WeakKeyDictionary()
@@ -736,6 +756,16 @@ def _t_eval(_t, target, scope):
                 raise GlomIndexError(_path_fmt(t_path[1:i+2]))
             except TypeError:
                 raise GlomTypeError(_path_fmt(t_path[1:i+2]))
+        elif op == 'P':
+            # Path type stuff (fuzzy match)
+            handler = scope[_TargetRegistry].get_handler(cur)
+            if not handler.get:
+                raise UnregisteredTarget(
+                    'get', type(target), scope[_TargetRegistry]._type_map, path=t_path[1:i+2:2])
+            try:
+                cur = handler.get(cur, arg)
+            except Exception as e:
+                raise PathAccessError(e, t_path[1:i+2:2], i / 2)
         elif op == '(':
             args, kwargs = arg
             scope[Path] += t_path[2:i+2:2]
@@ -787,9 +817,9 @@ def _handle_dict(spec, target, scope):
 def _handle_list(spec, target, scope):
     subspec = spec[0]
     self = scope[Glommer]
-    handler = self._get_handler(target)
+    handler = scope[_TargetRegistry].get_handler(target)
     if not handler.iterate:
-        raise UnregisteredTarget('iterate', type(target), self._type_map, path=scope[Path])
+        raise UnregisteredTarget('iterate', type(target), scope[_TargetRegistry]._type_map, path=scope[Path])
     try:
         iterator = handler.iterate(target)
     except TypeError as te:
@@ -813,59 +843,75 @@ def _handle_tuple(spec, target, scope):
     return res
 
 
-_DEFAULT_SPEC_REGISTRY = OrderedDict([
+class _SpecRegistry(object):
+    '''
+    responsible for registration of spec types
+    '''
+    def __init__(self, specs):
+        '''
+        specs should be ((type, handler), (type, handler), ...)
+        '''
+        self.specs = specs
+
+    def get_handler(self, spec):
+        'return handler callable that was registered or None'
+        for type_, handler in self.specs:
+            if type_ is callable and callable(spec):
+                return handler
+            if type_ is not callable and isinstance(spec, type_):
+                return handler
+        raise TypeError(
+            'no handler for specs of type {}; expected one of '
+            '{}'.format(type(spec), ','.join(
+                [e[1] for e in self.specs if e[1] is not callable] + ['callable'])))
+        '''  # TODO: don't lose anything from older error message
+            raise TypeError('expected spec to be dict, list, tuple,'
+                            ' callable, string, or other specifier type,'
+                            ' not: %r'% spec)
+        '''
+
+    def register(self, spec_type, spec_handler):
+        '''
+        given a spec_type and a handler callback
+        that accepts (spec, target, scope),
+        add the callback to this registry with
+        highest precedence
+        '''
+        self.specs = ((spec_type, spec_handler),) + self.specs
+
+
+_DEFAULT_SPEC_REGISTRY = _SpecRegistry((
     (Inspect, Inspect._handler),
     (dict, _handle_dict),
     (list, _handle_list),
     (tuple, _handle_tuple),
+    (basestring, lambda spec, target, scope: Path(*spec.split('.'))._handler(target, scope)),
+    (Path, Path._handler),
     (Coalesce, Coalesce._handler),
     (_TType, _t_eval),  # NOTE: must come before callable b/c T is also callable
     (Call, Call._handler),
     (callable, lambda spec, target, scope: spec(target)),
     (Literal, lambda spec, target, scope: spec.value),
     (Spec, lambda spec, target, scope: scope[HANDLE_CHILD](target, spec.value, scope)),
-])
+))
 
 
 HANDLE_CHILD = make_sentinel('HANDLE_CHILD')
 
 
-class Glommer(object):
-    """All the wholesome goodness that it takes to make glom work. This
-    type mostly serves to encapsulate the type registration context so
-    that advanced uses of glom don't need to worry about stepping on
-    each other's toes.
-
-    Glommer objects are lightweight and, once instantiated, provide
-    the :func:`glom()` method we know and love:
-
-    >>> glommer = Glommer()
-    >>> glommer.glom({}, 'a.b.c', default='d')
-    'd'
-    >>> Glommer().glom({'vals': list(range(3))}, ('vals', len))
-    3
-
-    Instances also provide :meth:`~Glommer.register()` method for
-    localized control over type handling.
-
-    Args:
-       register_default_types (bool): Whether or not to enable the
-          handling behaviors of the default :func:`glom()`. These
-          default actions include dict access, list and iterable
-          iteration, and generic object attribute access. Defaults to
-          True.
-
-    """
+class _TargetRegistry(object):
+    '''
+    responsible for registration of target types for iteration
+    and attribute walking
+    '''
     def __init__(self, register_default_types=True):
         self._type_map = OrderedDict()
         self._type_tree = OrderedDict()  # see _register_fuzzy_type for details
         if register_default_types:
             self._register_default_types()
         self._unreg_handler = TargetHandler(None, get=False, iterate=False)
-        self._spec_registry = _DEFAULT_SPEC_REGISTRY
-        return
 
-    def _get_handler(self, obj):
+    def get_handler(self, obj):
         "return the closest-matching type config for an object *instance*, obj"
         try:
             return self._type_map[type(obj)]
@@ -921,6 +967,46 @@ class Glommer(object):
         return type_tree
 
     def register(self, target_type, get=None, iterate=None, exact=False):
+        if not isinstance(target_type, type):
+            raise TypeError('register expected a type, not an instance: %r' % (target_type,))
+        self._type_map[target_type] = TargetHandler(target_type, get=get, iterate=iterate)
+        if not exact:
+            self._register_fuzzy_type(target_type)
+        return
+
+
+class Glommer(object):
+    """All the wholesome goodness that it takes to make glom work. This
+    type mostly serves to encapsulate the type registration context so
+    that advanced uses of glom don't need to worry about stepping on
+    each other's toes.
+
+    Glommer objects are lightweight and, once instantiated, provide
+    the :func:`glom()` method we know and love:
+
+    >>> glommer = Glommer()
+    >>> glommer.glom({}, 'a.b.c', default='d')
+    'd'
+    >>> Glommer().glom({'vals': list(range(3))}, ('vals', len))
+    3
+
+    Instances also provide :meth:`~Glommer.register()` method for
+    localized control over type handling.
+
+    Args:
+       register_default_types (bool): Whether or not to enable the
+          handling behaviors of the default :func:`glom()`. These
+          default actions include dict access, list and iterable
+          iteration, and generic object attribute access. Defaults to
+          True.
+
+    """
+    def __init__(self, register_default_types=True):
+        self._target_registry = _TargetRegistry(register_default_types)
+        self._spec_registry = _DEFAULT_SPEC_REGISTRY
+        return
+
+    def register(self, target_type, get=None, iterate=None, exact=False):
         """Register *target_type* so :meth:`~Glommer.glom()` will
         know how to handle instances of that type as targets.
 
@@ -947,32 +1033,8 @@ class Glommer(object):
            methods instead.
 
         """
-        if not isinstance(target_type, type):
-            raise TypeError('register expected a type, not an instance: %r' % (target_type,))
-        self._type_map[target_type] = TargetHandler(target_type, get=get, iterate=iterate)
-        if not exact:
-            self._register_fuzzy_type(target_type)
+        self._target_registry.register(target_type, get, iterate, exact)
         return
-
-    def _get_path(self, target, path):
-        # TODO: this logic should be part of Path
-        try:
-            parts = path.split('.')
-        except (AttributeError, TypeError):
-            parts = getattr(path, 'path_parts', None)
-            if parts is None:
-                raise TypeError('path expected str or Path object, not: %r' % path)
-        cur, val = target, target
-        for i, part in enumerate(parts):
-            handler = self._get_handler(cur)
-            if not handler.get:
-                raise UnregisteredTarget('get', type(target), self._type_map, path=path[:i])
-            try:
-                val = handler.get(cur, part)
-            except Exception as e:
-                raise PathAccessError(e, parts, i)
-            cur = val
-        return val
 
     def glom(self, target, spec, **kwargs):
         """Access or construct a value from a given *target* based on the
@@ -1040,7 +1102,9 @@ class Glommer(object):
             Inspect: inspector,
             Glommer: self,
             HANDLE_CHILD: self._glom,
-            "context": context
+            "context": context,
+            _TargetRegistry: self._target_registry,
+            _SpecRegistry: self._spec_registry,
         })
         if kwargs:
             raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
@@ -1057,28 +1121,7 @@ class Glommer(object):
         # TODO: rearrange the branching below by frequency of use
         # recursive self._glom() calls should pass path=path to elide the current
         # step, otherwise add the current spec in some fashion
-        scope = scope.new_child({})
-        for type_, handler in self._spec_registry.items():
-            if type_ is callable and callable(spec):
-                return handler(spec, target, scope)
-            if type_ is not callable and isinstance(spec, type_):
-                return handler(spec, target, scope)
-
-
-        #####
-        if isinstance(spec, (basestring, Path)):
-            try:  # TODO: this logic belongs in Path
-                ret = self._get_path(target, spec)
-            except PathAccessError as pae:
-                path = scope[Path]
-                pae.path = Path(*(path + list(pae.path)))
-                pae.path_idx += len(path)
-                raise
-        else:
-            raise TypeError('expected spec to be dict, list, tuple,'
-                            ' callable, string, or other specifier type,'
-                            ' not: %r'% spec)
-        return ret
+        return scope[_SpecRegistry].get_handler(spec)(spec, target, scope.new_child({}))
 
 
 _DEFAULT = Glommer(register_default_types=True)
