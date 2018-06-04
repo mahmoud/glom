@@ -65,7 +65,7 @@ If all this seems interesting, continue exploring glom below:
 * [Full API documentation at Read the Docs][rtd]
 * [Original announcement blog post (2018-05-09)][glom_announce]
 * [Frequently Asked Questions][faq]
-* PyCon 2018 Lightning Talk (2018-05-11)
+* [PyCon 2018 Lightning Talk (2018-05-11)][pycon_talk]
 
 All of the links above are overflowing with examples, but should you
 find anything about the docs, or glom itself, lacking, [please submit
@@ -77,5 +77,6 @@ an issue][gh_issues]!
 [faq]: https://glom.readthedocs.io/en/latest/faq.html
 [glom_announce]: https://sedimental.org/glom_restructured_data.html
 [gh_issues]: https://github.com/mahmoud/glom/issues/
+[pycon_talk]: https://www.youtube.com/watch?v=bTAFl8P2DkE&t=18m07s
 
 In the meantime, just remember: When you've got nested data, glom it! ☄️
