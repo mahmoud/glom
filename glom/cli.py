@@ -34,7 +34,6 @@ import os
 import ast
 import sys
 import json
-import yaml
 
 from face import Command, Flag, face_middleware, PosArgSpec, PosArgDisplay
 from face.command import CommandLineError
@@ -101,6 +100,37 @@ def _error(msg):
     print('error:', msg)
     raise CommandLineError(msg)
 
+def mw_handle_target(target_text, target_format):
+    """ Handles reading in a file specified in cli command.
+
+    Args:
+        target_text (str): String that specifies where 6
+        target_format (str): Valid formats include `.json` and `.yml` or `.yaml`
+    Returns:
+        The content of the file that you specified
+    Raises:
+        CommandLineError: Issue with file format or appropriate file reading package not installed.
+    """
+    if not target_text:
+        return {}
+    target = {}
+    if target_format == 'json':
+        try:
+            target = json.loads(target_text)
+        except Exception as e:
+            _error('could not load target data, got: %s' % e)
+    elif target_format in ('yaml', 'yml'):
+        try:
+            import yaml
+            try:
+                target = yaml.load(target_text)
+            except Exception as e:
+                _error('could not load target data, got: %s' % e)
+        except ImportError:
+            _error('No YAML package found. Install one to process yaml files.')
+    else:
+        _error('expected spec-format to be one of python, json or yaml')
+    return target
 
 @face_middleware(provides=['spec', 'target'])
 def mw_get_target(next_, posargs_, target_file, target_format, spec_file, spec_format):
@@ -145,19 +175,6 @@ def mw_get_target(next_, posargs_, target_file, target_format, spec_file, spec_f
         with sys.stdin as f:
             target_text = f.read()
 
-    if not target_text:
-        target = {}
-    elif target_format == 'json':
-        try:
-            target = json.loads(target_text)
-        except Exception as e:
-            _error('could not load target data, got: %s' % e)
-    elif target_format in ('yaml', 'yml'):
-        try:
-            target = yaml.load(target_text)
-        except Exception as e:
-            _error('could not load target data, got: %s' % e)
-    else:
-        _error('expected spec-format to be one of python, json or yaml')
+    target = mw_handle_target(target_text, target_format)
 
     return next_(spec=spec, target=target)
