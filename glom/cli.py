@@ -35,10 +35,11 @@ import ast
 import sys
 import json
 
-from face import Command, Flag, face_middleware, PosArgSpec, PosArgDisplay
+from face import Command, face_middleware, PosArgSpec
 from face.command import CommandLineError
 
 from glom import glom, Path, GlomError, Inspect
+
 
 def glom_cli(target, spec, indent, debug, inspect):
     """Command-line interface to the glom library, providing nested data
@@ -146,12 +147,21 @@ def mw_get_target(next_, posargs_, target_file, target_format, spec_file, spec_f
 
     if not target_text:
         target = {}
+    elif target_format == 'python':
+        if target_text[0] not in ('"', "'", "[", "{", "("):
+            # intention: handle trivial path access, assume string
+            spec_text = repr(spec_text)
+        target = ast.literal_eval(target_text)
     elif target_format == 'json':
         try:
-            target = json.loads(target_text)
-        except Exception as e:
+            try:
+                target = json.loads(target_text)
+            except ValueError:
+                # intention: handle JSON Lines (.jsonl) format
+                target = [json.loads(line) for line in target_text.splitlines()]
+        except ValueError as e:
             _error('could not load target data, got: %s' % e)
     else:
-        _error('expected spec-format to be one of python or json')
+        _error('expected target format to be one of python or json')
 
     return next_(spec=spec, target=target)
