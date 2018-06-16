@@ -421,7 +421,7 @@ class Coalesce(object):
         skipped = []
         for subspec in self.subspecs:
             try:
-                ret = scope[HANDLE_CHILD](target, subspec, scope)
+                ret = scope[glom](target, subspec, scope)
                 if not self.skip_func(ret):
                     break
                 skipped.append(ret)
@@ -506,13 +506,13 @@ class Inspect(object):
     def _handler(self, target, scope):
         # stash the real handler under Inspect,
         # and replace the child handler with a trace callback
-        scope[Inspect] = scope[HANDLE_CHILD]
-        scope[HANDLE_CHILD] = self._trace
-        return scope[HANDLE_CHILD](target, self.wrapped, scope)
+        scope[Inspect] = scope[glom]
+        scope[glom] = self._trace
+        return scope[glom](target, self.wrapped, scope)
 
     def _trace(self, target, spec, scope):
         if not self.recursive:
-            scope[HANDLE_CHILD] = scope[Inspect]
+            scope[glom] = scope[Inspect]
         if self.echo:
             print('---')
             print('path:  ', scope[Path] + [spec])
@@ -580,7 +580,7 @@ class Call(object):
         'run against the current target'
         def eval(t):
             if type(t) in (Spec, _TType):
-                return scope[HANDLE_CHILD](target, t, scope)
+                return scope[glom](target, t, scope)
             return t
         if type(self.args) is _TType:
             args = eval(self.args)
@@ -741,7 +741,7 @@ def _t_eval(_t, target, scope):
     while i < len(t_path):
         op, arg = t_path[i], t_path[i + 1]
         if type(arg) in (Spec, _TType):
-            arg = scope[HANDLE_CHILD](target, arg, scope)
+            arg = scope[glom](target, arg, scope)
         if op == '.':
             cur = getattr(cur, arg, _MISSING)
             if cur is _MISSING:
@@ -769,7 +769,7 @@ def _t_eval(_t, target, scope):
         elif op == '(':
             args, kwargs = arg
             scope[Path] += t_path[2:i+2:2]
-            cur = scope[HANDLE_CHILD](
+            cur = scope[glom](
                 target, Call(cur, args, kwargs), scope)
             # call with target rather than cur,
             # because it is probably more intuitive
@@ -807,7 +807,7 @@ def _get_sequence_item(target, index):
 def _handle_dict(spec, target, scope):
     ret = type(spec)() # TODO: works for dict + ordereddict, but sufficient for all?
     for field, subspec in spec.items():
-        val = scope[HANDLE_CHILD](target, subspec, scope)
+        val = scope[glom](target, subspec, scope)
         if val is OMIT:
             continue
         ret[field] = val
@@ -826,7 +826,7 @@ def _handle_list(spec, target, scope):
                         % (target.__class__.__name__, Path(*path), te))
     ret = []
     for i, t in enumerate(iterator):
-        val = scope[HANDLE_CHILD](t, subspec, scope.new_child({Path: scope[Path] + [i]}))
+        val = scope[glom](t, subspec, scope.new_child({Path: scope[Path] + [i]}))
         if val is OMIT:
             continue
         ret.append(val)
@@ -836,7 +836,7 @@ def _handle_list(spec, target, scope):
 def _handle_tuple(spec, target, scope):
     res = target
     for subspec in spec:
-        res = scope[HANDLE_CHILD](res, subspec, scope)
+        res = scope[glom](res, subspec, scope)
         if not isinstance(subspec, list):
             scope[Path] += [getattr(subspec, '__name__', subspec)]
     return res
@@ -891,11 +891,8 @@ _DEFAULT_SPEC_REGISTRY = _SpecRegistry((
     (Call, Call._handler),
     (callable, lambda spec, target, scope: spec(target)),
     (Literal, lambda spec, target, scope: spec.value),
-    (Spec, lambda spec, target, scope: scope[HANDLE_CHILD](target, spec.value, scope)),
+    (Spec, lambda spec, target, scope: scope[glom](target, spec.value, scope)),
 ))
-
-
-HANDLE_CHILD = make_sentinel('HANDLE_CHILD')
 
 
 class _TargetRegistry(object):
@@ -974,6 +971,125 @@ class _TargetRegistry(object):
         return
 
 
+_DEFAULT_SCOPE = ChainMap({})
+
+
+def glom(target, spec, scope=_DEFAULT_SCOPE, **kwargs):
+    """Access or construct a value from a given *target* based on the
+    specification declared by *spec*.
+
+    Accessing nested data, aka deep-get:
+
+    >>> target = {'a': {'b': 'c'}}
+    >>> glom(target, 'a.b')
+    'c'
+
+    Here the *spec* was just a string denoting a path,
+    ``'a.b.``. As simple as it should be. The next example shows
+    how to use nested data to access many fields at once, and make
+    a new nested structure.
+
+    Constructing, or restructuring more-complicated nested data:
+
+    >>> target = {'a': {'b': 'c', 'd': 'e'}, 'f': 'g', 'h': [0, 1, 2]}
+    >>> spec = {'a': 'a.b', 'd': 'a.d', 'h': ('h', [lambda x: x * 2])}
+    >>> output = glom(target, spec)
+    >>> pprint(output)
+    {'a': 'c', 'd': 'e', 'h': [0, 2, 4]}
+
+    ``glom`` also takes a keyword-argument, *default*. When set,
+    if a ``glom`` operation fails with a :exc:`GlomError`, the
+    *default* will be returned, very much like
+    :meth:`dict.get()`:
+
+    >>> glom(target, 'a.xx', default='nada')
+    'nada'
+
+    The *skip_exc* keyword argument controls which errors should
+    be ignored.
+
+    >>> glom({}, lambda x: 100.0 / len(x), default=0.0, skip_exc=ZeroDivisionError)
+    0.0
+
+    Args:
+       target (object): the object on which the glom will operate.
+       spec (object): Specification of the output object in the form
+         of a dict, list, tuple, string, other glom construct, or
+         any composition of these.
+       default (object): An optional default to return in the case
+         an exception, specified by *skip_exc*, is raised.
+       skip_exc (Exception): An optional exception or tuple of
+         exceptions to ignore and return *default* (None if
+         omitted). If *skip_exc* and *default* are both not set,
+         glom raises errors through.
+       context (dict): Additional data that can be accessed
+         via C inside the glom-spec.
+
+    It's a small API with big functionality, and glom's power is
+    only surpassed by its intuitiveness. Give it a whirl!
+
+    """
+    # TODO: check spec up front
+    default = kwargs.pop('default', None if 'skip_exc' in kwargs else _MISSING)
+    skip_exc = kwargs.pop('skip_exc', () if default is _MISSING else GlomError)
+    scope = scope.new_child({
+        Path: kwargs.pop('path', []),
+        Inspect: kwargs.pop('inspector', None),
+        "context": kwargs.pop('context', {}),
+    })
+    if kwargs:
+        raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
+    try:
+        ret = _glom(target, spec, scope)
+    except skip_exc:
+        if default is _MISSING:
+            raise
+        ret = default
+    return ret
+
+
+def _glom(target, spec, scope):
+    return scope[_SpecRegistry].get_handler(spec)(spec, target, scope.new_child())
+
+
+_DEFAULT_SCOPE.update({
+    glom: _glom,
+    _TargetRegistry: _TargetRegistry(register_default_types=True),
+    _SpecRegistry: _DEFAULT_SPEC_REGISTRY
+})
+
+
+def register(target_type, get=None, iterate=None, exact=False):
+    """Register *target_type* so :meth:`~Glommer.glom()` will
+    know how to handle instances of that type as targets.
+
+    Args:
+       target_type (type): A type expected to appear in a glom()
+          call target
+       get (callable): A function which takes a target object and
+          a name, acting as a default accessor. Defaults to
+          :func:`getattr`.
+       iterate (callable): A function which takes a target object
+          and returns an iterator. Defaults to :func:`iter` if
+          *target_type* appears to be iterable.
+       exact (bool): Whether or not to match instances of subtypes
+          of *target_type*.
+
+    .. note::
+
+       The module-level :func:`register()` function affects the
+       module-level :func:`glom()` function's behavior. If this
+       global effect is undesirable for your application, or
+       you're implementing a library, consider instantiating a
+       :class:`Glommer` instance, and using the
+       :meth:`~Glommer.register()` and :meth:`Glommer.glom()`
+       methods instead.
+
+    """
+    _DEFAULT_SPEC_REGISTRY[_TargetRegistry].register(target_type, get, iterate, exact)
+    return
+
+
 class Glommer(object):
     """All the wholesome goodness that it takes to make glom work. This
     type mostly serves to encapsulate the type registration context so
@@ -1000,9 +1116,11 @@ class Glommer(object):
           True.
 
     """
-    def __init__(self, register_default_types=True):
-        self._target_registry = _TargetRegistry(register_default_types)
-        self._spec_registry = _DEFAULT_SPEC_REGISTRY
+    def __init__(self, register_default_types=True, scope=_DEFAULT_SCOPE):
+        # this "freezes" the scope in at the time of construction
+        self.scope = ChainMap(dict(scope))
+        self.scope[_TargetRegistry] = _TargetRegistry(register_default_types)
+        self.scope[_SpecRegistry] = _DEFAULT_SPEC_REGISTRY
         return
 
     def register(self, target_type, get=None, iterate=None, exact=False):
@@ -1032,95 +1150,13 @@ class Glommer(object):
            methods instead.
 
         """
-        self._target_registry.register(target_type, get, iterate, exact)
+        self.scope[_TargetRegistry].register(target_type, get, iterate, exact)
         return
 
     def glom(self, target, spec, **kwargs):
-        """Access or construct a value from a given *target* based on the
-        specification declared by *spec*.
-
-        Accessing nested data, aka deep-get:
-
-        >>> target = {'a': {'b': 'c'}}
-        >>> glom(target, 'a.b')
-        'c'
-
-        Here the *spec* was just a string denoting a path,
-        ``'a.b.``. As simple as it should be. The next example shows
-        how to use nested data to access many fields at once, and make
-        a new nested structure.
-
-        Constructing, or restructuring more-complicated nested data:
-
-        >>> target = {'a': {'b': 'c', 'd': 'e'}, 'f': 'g', 'h': [0, 1, 2]}
-        >>> spec = {'a': 'a.b', 'd': 'a.d', 'h': ('h', [lambda x: x * 2])}
-        >>> output = glom(target, spec)
-        >>> pprint(output)
-        {'a': 'c', 'd': 'e', 'h': [0, 2, 4]}
-
-        ``glom`` also takes a keyword-argument, *default*. When set,
-        if a ``glom`` operation fails with a :exc:`GlomError`, the
-        *default* will be returned, very much like
-        :meth:`dict.get()`:
-
-        >>> glom(target, 'a.xx', default='nada')
-        'nada'
-
-        The *skip_exc* keyword argument controls which errors should
-        be ignored.
-
-        >>> glom({}, lambda x: 100.0 / len(x), default=0.0, skip_exc=ZeroDivisionError)
-        0.0
-
-        Args:
-           target (object): the object on which the glom will operate.
-           spec (object): Specification of the output object in the form
-             of a dict, list, tuple, string, other glom construct, or
-             any composition of these.
-           default (object): An optional default to return in the case
-             an exception, specified by *skip_exc*, is raised.
-           skip_exc (Exception): An optional exception or tuple of
-             exceptions to ignore and return *default* (None if
-             omitted). If *skip_exc* and *default* are both not set,
-             glom raises errors through.
-           context (dict): Additional data that can be accessed
-             via C inside the glom-spec.
-
-        It's a small API with big functionality, and glom's power is
-        only surpassed by its intuitiveness. Give it a whirl!
-
-        """
-        # TODO: check spec up front
-        default = kwargs.pop('default', None if 'skip_exc' in kwargs else _MISSING)
-        skip_exc = kwargs.pop('skip_exc', () if default is _MISSING else GlomError)
-        path = kwargs.pop('path', [])
-        inspector = kwargs.pop('inspector', None)
-        context = kwargs.pop('context', {})
-        scope = ChainMap({
-            Path: path,
-            Inspect: inspector,
-            HANDLE_CHILD: self._glom,
-            "context": context,
-            _TargetRegistry: self._target_registry,
-            _SpecRegistry: self._spec_registry,
-        })
-        if kwargs:
-            raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
-        try:
-            ret = self._glom(target, spec, scope)
-        except skip_exc:
-            if default is _MISSING:
-                raise
-            ret = default
-        return ret
-
-    def _glom(self, target, spec, scope):
-        return scope[_SpecRegistry].get_handler(spec)(spec, target, scope.new_child({}))
+        return glom(target, spec, self.scope, **kwargs)
 
 
-_DEFAULT = Glommer(register_default_types=True)
-glom = _DEFAULT.glom
-register = _DEFAULT.register
 pass # this line prevents the docstring below from attaching to register
 
 
