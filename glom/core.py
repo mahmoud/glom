@@ -741,7 +741,7 @@ def _t_eval(_t, target, scope):
     while i < len(t_path):
         op, arg = t_path[i], t_path[i + 1]
         if type(arg) in (Spec, _TType):
-            arg = scope[Glommer]._glom(target, arg, scope)
+            arg = scope[HANDLE_CHILD](target, arg, scope)
         if op == '.':
             cur = getattr(cur, arg, _MISSING)
             if cur is _MISSING:
@@ -769,7 +769,7 @@ def _t_eval(_t, target, scope):
         elif op == '(':
             args, kwargs = arg
             scope[Path] += t_path[2:i+2:2]
-            cur = scope[Glommer]._glom(
+            cur = scope[HANDLE_CHILD](
                 target, Call(cur, args, kwargs), scope)
             # call with target rather than cur,
             # because it is probably more intuitive
@@ -816,7 +816,6 @@ def _handle_dict(spec, target, scope):
 
 def _handle_list(spec, target, scope):
     subspec = spec[0]
-    self = scope[Glommer]
     handler = scope[_TargetRegistry].get_handler(target)
     if not handler.iterate:
         raise UnregisteredTarget('iterate', type(target), scope[_TargetRegistry]._type_map, path=scope[Path])
@@ -1100,7 +1099,6 @@ class Glommer(object):
         scope = ChainMap({
             Path: path,
             Inspect: inspector,
-            Glommer: self,
             HANDLE_CHILD: self._glom,
             "context": context,
             _TargetRegistry: self._target_registry,
@@ -1117,10 +1115,6 @@ class Glommer(object):
         return ret
 
     def _glom(self, target, spec, scope):
-        # TODO: de-recursivize this
-        # TODO: rearrange the branching below by frequency of use
-        # recursive self._glom() calls should pass path=path to elide the current
-        # step, otherwise add the current spec in some fashion
         return scope[_SpecRegistry].get_handler(spec)(spec, target, scope.new_child({}))
 
 
