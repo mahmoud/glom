@@ -127,7 +127,7 @@ def mw_handle_target(target_text, target_format):
             except Exception as e:
                 _error('could not load target data, got: %s' % e)
         except ImportError:
-            _error('No YAML package found. Install one to process yaml files.')
+            _error('No YAML package found. To process yaml files, run: pip install PyYAML')
     else:
         _error('expected spec-format to be one of python, json or yaml')
     return target
