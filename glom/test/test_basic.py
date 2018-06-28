@@ -200,6 +200,14 @@ def test_spec_and_recursion():
 def test_scope():
     assert glom(None, S['foo'], scope={'foo': 'bar'}) == 'bar'
 
+    target = range(3)
+    spec = [(S, lambda S: S['multiplier'] * S[T])]
+    scope = {'multiplier': 2}
+    assert glom(target, spec, scope=scope) == [0, 2, 4]
+    scope = {'multiplier': 2.5}
+    assert glom(target, spec, scope=scope) == [0.0, 2.5, 5.0]
+
+
 
 def test_seq_getitem():
     assert glom({'items': [0, 1, 2, 3]}, 'items.1') == 1
