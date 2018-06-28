@@ -734,8 +734,8 @@ def _t_eval(_t, target, scope):
     i = 1
     if t_path[0] is T:
         cur = target
-    elif t_path[0] is C:
-        cur = scope['context']
+    elif t_path[0] is S:
+        cur = scope
     else:
         raise ValueError('_TType instance with invalid root object')
     while i < len(t_path):
@@ -781,10 +781,10 @@ def _t_eval(_t, target, scope):
 
 
 T = _TType()  # target aka Mr. T aka "this"
-C = _TType()  # like T, but means grab stuff from Context, not Target
+S = _TType()  # like T, but means grab stuff from Scope, not Target
 
 _T_PATHS[T] = (T,)
-_T_PATHS[C] = (C,)
+_T_PATHS[S] = (S,)
 UP = make_sentinel('UP')
 
 
@@ -974,7 +974,7 @@ class _TargetRegistry(object):
 _DEFAULT_SCOPE = ChainMap({})
 
 
-def glom(target, spec, scope=_DEFAULT_SCOPE, **kwargs):
+def glom(target, spec, **kwargs):
     """Access or construct a value from a given *target* based on the
     specification declared by *spec*.
 
@@ -1022,8 +1022,8 @@ def glom(target, spec, scope=_DEFAULT_SCOPE, **kwargs):
          exceptions to ignore and return *default* (None if
          omitted). If *skip_exc* and *default* are both not set,
          glom raises errors through.
-       context (dict): Additional data that can be accessed
-         via C inside the glom-spec.
+       scope (dict): Additional data that can be accessed
+         via S inside the glom-spec.
 
     It's a small API with big functionality, and glom's power is
     only surpassed by its intuitiveness. Give it a whirl!
@@ -1032,11 +1032,11 @@ def glom(target, spec, scope=_DEFAULT_SCOPE, **kwargs):
     # TODO: check spec up front
     default = kwargs.pop('default', None if 'skip_exc' in kwargs else _MISSING)
     skip_exc = kwargs.pop('skip_exc', () if default is _MISSING else GlomError)
-    scope = scope.new_child({
+    scope = _DEFAULT_SCOPE.new_child({
         Path: kwargs.pop('path', []),
-        Inspect: kwargs.pop('inspector', None),
-        "context": kwargs.pop('context', {}),
+        Inspect: kwargs.pop('inspector', None)
     })
+    scope.update(kwargs.pop('scope', {}))
     if kwargs:
         raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
     try:
@@ -1049,7 +1049,9 @@ def glom(target, spec, scope=_DEFAULT_SCOPE, **kwargs):
 
 
 def _glom(target, spec, scope):
-    return scope[_SpecRegistry].get_handler(spec)(spec, target, scope.new_child())
+    scope = scope.new_child()
+    scope[T] = target
+    return scope[_SpecRegistry].get_handler(spec)(spec, target, scope)
 
 
 _DEFAULT_SCOPE.update({
@@ -1154,7 +1156,7 @@ class Glommer(object):
         return
 
     def glom(self, target, spec, **kwargs):
-        return glom(target, spec, self.scope, **kwargs)
+        return glom(target, spec, scope=self.scope, **kwargs)
 
 
 pass # this line prevents the docstring below from attaching to register
