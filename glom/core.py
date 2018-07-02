@@ -241,6 +241,13 @@ class TargetHandler(object):
             raise ValueError('expected callable for get, not: %r' % (get,))
         self.get = get
 
+    def __repr__(self):
+        return ('<%s object type=%s get=%s iterate=%s>'
+                % (self.__class__.__name__,
+                   self.type.__name__,
+                   self.get and self.get.__name__,
+                   self.iterate and self.iterate.__name__))
+
 
 class Path(object):
     """Path objects specify explicit paths when the default ``'a.b.c'``-style
@@ -745,27 +752,27 @@ def _t_eval(_t, target, scope):
         if op == '.':
             cur = getattr(cur, arg, _MISSING)
             if cur is _MISSING:
-                raise GlomAttributeError(_path_fmt(t_path[1:i+2]))
+                raise GlomAttributeError(_path_fmt(t_path[2:i+2]))
         elif op == '[':
             try:
                 cur = cur[arg]
             except KeyError as e:
-                path = _path_fmt(t_path[1:i+2])
+                path = _path_fmt(t_path[2:i+2])
                 raise GlomKeyError(path)
             except IndexError:
-                raise GlomIndexError(_path_fmt(t_path[1:i+2]))
+                raise GlomIndexError(_path_fmt(t_path[2:i+2]))
             except TypeError:
-                raise GlomTypeError(_path_fmt(t_path[1:i+2]))
+                raise GlomTypeError(_path_fmt(t_path[2:i+2]))
         elif op == 'P':
             # Path type stuff (fuzzy match)
             handler = scope[_TargetRegistry].get_handler(cur)
             if not handler.get:
                 raise UnregisteredTarget(
-                    'get', type(target), scope[_TargetRegistry]._type_map, path=t_path[1:i+2:2])
+                    'get', type(target), scope[_TargetRegistry]._type_map, path=t_path[2:i+2:2])
             try:
                 cur = handler.get(cur, arg)
             except Exception as e:
-                raise PathAccessError(e, t_path[1:i+2:2], i / 2)
+                raise PathAccessError(e, t_path[2:i+2:2], i // 2)
         elif op == '(':
             args, kwargs = arg
             scope[Path] += t_path[2:i+2:2]

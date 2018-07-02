@@ -1,8 +1,48 @@
+"""The following code is copied and pasted from Python 3's
+collections.py, viewable here:
+
+https://github.com/python/cpython/blob/c6cd164cffedb306a4c6644d9d03072f24da246d/Lib/collections/__init__.py#L880-L987
+
+No modifications are necessary for glom usage. It is included for
+Python 2 compatibility only.
+"""
+
 from collections import MutableMapping
 
+try:
+    from thread import get_ident
+except ImportError:
+    try:
+        from threading import _get_ident as get_ident
+    except ImportError:
+        from threading import get_ident
 
-# back-port (aka copy-pasta) of ChainMap from Python 3 collections
-# for Python 2 compatibility
+
+def _recursive_repr(fillvalue='...'):
+    'Decorator to make a repr function return fillvalue for a recursive call'
+
+    def decorating_function(user_function):
+        repr_running = set()
+
+        def wrapper(self):
+            key = id(self), get_ident()
+            if key in repr_running:
+                return fillvalue
+            repr_running.add(key)
+            try:
+                result = user_function(self)
+            finally:
+                repr_running.discard(key)
+            return result
+
+        # Can't use functools.wraps() here because of bootstrap issues
+        wrapper.__module__ = getattr(user_function, '__module__')
+        wrapper.__doc__ = getattr(user_function, '__doc__')
+        wrapper.__name__ = getattr(user_function, '__name__')
+        wrapper.__annotations__ = getattr(user_function, '__annotations__', {})
+        return wrapper
+
+    return decorating_function
 
 
 class ChainMap(MutableMapping):
@@ -48,6 +88,7 @@ class ChainMap(MutableMapping):
     def __bool__(self):
         return any(self.maps)
 
+    @_recursive_repr()
     def __repr__(self):
         return '{0.__class__.__name__}({1})'.format(
             self, ', '.join(map(repr, self.maps)))
