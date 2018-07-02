@@ -757,12 +757,11 @@ def _t_eval(_t, target, scope):
             try:
                 cur = cur[arg]
             except KeyError as e:
-                path = _path_fmt(t_path[2:i+2])
-                raise GlomKeyError(path)
+                raise GlomKeyError(_path_fmt(t_path[1:i+2]))
             except IndexError:
-                raise GlomIndexError(_path_fmt(t_path[2:i+2]))
+                raise GlomIndexError(_path_fmt(t_path[1:i+2]))
             except TypeError:
-                raise GlomTypeError(_path_fmt(t_path[2:i+2]))
+                raise GlomTypeError(_path_fmt(t_path[1:i+2]))
         elif op == 'P':
             # Path type stuff (fuzzy match)
             handler = scope[_TargetRegistry].get_handler(cur)

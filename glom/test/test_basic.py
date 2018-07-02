@@ -258,10 +258,12 @@ def test_python_native():
     output = glom(target, spec)
     assert set(output) == set(['jupiter', 69])  # for ordering reasons
 
-    # with pytest.raises(glom_core.PathAccessError):  # TODO
-    #     spec = T['system']['comets'][-1].values()
-    #     output = glom(target, spec)
+    with pytest.raises(glom_core.GlomError):
+        spec = T['system']['comets'][-1].values()
+        output = glom(target, spec)
 
+
+# a few more basic tests, mostly motivated by coverage
 
 def test_glom_extra_kwargs():
     with pytest.raises(TypeError):

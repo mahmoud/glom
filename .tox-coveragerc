@@ -11,4 +11,4 @@ source =
    */Lib/site-packages/glom
    */pypy/site-packages/glom
 omit =
-   flycheck_*
+   */flycheck_*
