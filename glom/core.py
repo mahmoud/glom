@@ -292,7 +292,7 @@ class Path(object):
 
     def __repr__(self):
         # TODO: FIXME to not assume all parts are 'P'
-        path_parts = _T_PATHS[self.path_t][1::2]
+        path_parts = _T_PATHS[self.path_t][2::2]
         cn = self.__class__.__name__
         return '%s(%s)' % (cn, ', '.join([repr(p) for p in path_parts]))
 
@@ -828,9 +828,12 @@ def _handle_list(spec, target, scope):
         raise UnregisteredTarget('iterate', type(target), scope[_TargetRegistry]._type_map, path=scope[Path])
     try:
         iterator = handler.iterate(target)
-    except TypeError as te:
+    except Exception as e:
+        te = TypeError('failed to iterate on instance of type %r at %r (got %r)'
+                        % (target.__class__.__name__, Path(*scope[Path]), e))
+        print(te)
         raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
-                        % (target.__class__.__name__, Path(*path), te))
+                        % (target.__class__.__name__, Path(*scope[Path]), e))
     ret = []
     for i, t in enumerate(iterator):
         val = scope[glom](t, subspec, scope.new_child({Path: scope[Path] + [i]}))
@@ -870,11 +873,11 @@ class _SpecRegistry(object):
             'no handler for specs of type {}; expected one of '
             '{}'.format(type(spec), ','.join(
                 [e[1] for e in self.specs if e[1] is not callable] + ['callable'])))
-        '''  # TODO: don't lose anything from older error message
-            raise TypeError('expected spec to be dict, list, tuple,'
-                            ' callable, string, or other specifier type,'
-                            ' not: %r'% spec)
-        '''
+        # TODO: don't lose anything from older error message
+        # raise TypeError('expected spec to be dict, list, tuple,'
+        #                 ' callable, string, or other specifier type,'
+        #                 ' not: %r'% spec)
+
 
     def register(self, spec_type, spec_handler):
         '''
@@ -1095,7 +1098,7 @@ def register(target_type, get=None, iterate=None, exact=False):
        methods instead.
 
     """
-    _DEFAULT_SPEC_REGISTRY[_TargetRegistry].register(target_type, get, iterate, exact)
+    _DEFAULT_SCOPE[_TargetRegistry].register(target_type, get, iterate, exact)
     return
 
 

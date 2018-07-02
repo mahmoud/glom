@@ -174,3 +174,20 @@ def test_iter_str():
     # and for the really passionate: how about making strings
     # non-iterable and just giving them a .chars() method that returns
     # a list of single-character strings.
+
+
+def test_default_scope_register():
+    # just hit it to make sure it exists, it behaves exactly like Glommer.register
+    glom.register(type, exact=False)
+
+
+def test_faulty_iterate():
+    glommer = Glommer()
+
+    def bad_iter(obj):
+        raise RuntimeError('oops')
+
+    glommer.register(str, iterate=bad_iter)
+
+    with pytest.raises(TypeError):
+        glommer.glom({'a': 'fail'}, ('a', {'chars': [str]}))

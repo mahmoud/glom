@@ -261,3 +261,8 @@ def test_python_native():
     # with pytest.raises(glom_core.PathAccessError):  # TODO
     #     spec = T['system']['comets'][-1].values()
     #     output = glom(target, spec)
+
+
+def test_glom_extra_kwargs():
+    with pytest.raises(TypeError):
+        glom({'a': 'a'}, 'a', invalid_kwarg='yes')
