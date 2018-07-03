@@ -63,15 +63,14 @@ def test_coalesce():
     assert glom(val, 'a.b') == 'c'
     assert glom(val, Coalesce('xxx', 'yyy', 'a.b')) == 'c'
 
-    try:
+    with pytest.raises(CoalesceError) as exc_info:
         glom(val, Coalesce('xxx', 'yyy'))
-    except CoalesceError as ce:
-        msg = str(ce)
-        assert "'xxx'" in msg
-        assert "'yyy'" in msg
-        assert msg.count('PathAccessError') == 2
-    else:
-        assert False, 'expected a CoalesceError'
+
+    msg = exc_info.exconly()
+    assert "'xxx'" in msg
+    assert "'yyy'" in msg
+    assert msg.count('PathAccessError') == 2
+    assert "[PathAccessError(KeyError('xxx',), Path('xxx'), 0), PathAccessError(KeyError('yyy',), Path('yyy'), 0)], [])" in repr(exc_info.value)
 
     # check that defaulting works
     assert glom(val, Coalesce('xxx', 'yyy', default='zzz')) == 'zzz'
