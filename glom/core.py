@@ -953,10 +953,9 @@ class _SpecRegistry(object):
                 return handler
             if type_ is not callable and isinstance(spec, type_):
                 return handler
-        raise TypeError('no handler for specs of type %s; expected one of %s'
-                        % (type(spec), ','.join([e[1] for e in self.specs
-                                                 if e[1] is not callable]
-                                                + ['callable'])))
+        raise TypeError(
+            'no handler for specs of type %s; expected one of %s'
+                % (type(spec), ', '.join([e[0].__name__ for e in self.specs])))
         # TODO: don't lose anything from older error message
         # raise TypeError('expected spec to be dict, list, tuple,'
         #                 ' callable, string, or other specifier type,'
