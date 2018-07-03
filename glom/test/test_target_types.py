@@ -5,6 +5,7 @@ import pytest
 
 import glom
 from glom import Glommer, PathAccessError, UnregisteredTarget
+from glom.core import _TargetRegistry
 
 
 class A(object):
@@ -37,10 +38,10 @@ def test_types_leave_one_out():
             glommer.register(t, getattr)
 
         obj = cur_t()
-        assert glommer._get_closest_type(obj) == obj.__class__.mro()[1]
+        assert glommer.scope[_TargetRegistry]._get_closest_type(obj) == obj.__class__.mro()[1]
 
         if cur_t is E:
-            assert glommer._get_closest_type(obj) is C  # sanity check
+            assert glommer.scope[_TargetRegistry]._get_closest_type(obj) is C  # sanity check
 
     return
 
@@ -48,7 +49,7 @@ def test_types_leave_one_out():
 def test_types_bare():
     glommer = Glommer(register_default_types=False)
 
-    assert glommer._get_closest_type(object()) is None
+    assert glommer.scope[_TargetRegistry]._get_closest_type(object()) is None
 
     # test that bare glommers can't glom anything
     with pytest.raises(UnregisteredTarget):
@@ -173,3 +174,20 @@ def test_iter_str():
     # and for the really passionate: how about making strings
     # non-iterable and just giving them a .chars() method that returns
     # a list of single-character strings.
+
+
+def test_default_scope_register():
+    # just hit it to make sure it exists, it behaves exactly like Glommer.register
+    glom.register(type, exact=False)
+
+
+def test_faulty_iterate():
+    glommer = Glommer()
+
+    def bad_iter(obj):
+        raise RuntimeError('oops')
+
+    glommer.register(str, iterate=bad_iter)
+
+    with pytest.raises(TypeError):
+        glommer.glom({'a': 'fail'}, ('a', {'chars': [str]}))

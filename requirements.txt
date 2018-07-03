@@ -10,3 +10,4 @@ pytest==3.5.1
 six==1.11.0
 tox==2.9.1
 virtualenv==15.1.0
+PyYAML==3.12

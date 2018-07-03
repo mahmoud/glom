@@ -13,6 +13,5 @@ from glom.core import (glom,
                        UnregisteredTarget,
                        GlomCheckError,
                        Call,
-                       T,
                        Check,
-                       )
+                       T, S)
