@@ -851,7 +851,7 @@ class Check(object):
         returns = target
         errs = []  # TODO: accumulate errors across more than one
         if self.specifier is not T:
-            target = scope[glom](self.specifier, target, scope)
+            target = scope[glom](target, self.specifier, scope)
         if self.instance_of is not _MISSING:
             if not isinstance(target, self.instance_of):
                 # TODO: can these early returns be done without so much copy-paste?

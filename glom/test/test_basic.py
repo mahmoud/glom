@@ -1,7 +1,7 @@
 
 import pytest
 
-from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Literal, Call, Check, T, S
+from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Literal, Call, Check, GlomCheckError, T, S
 import glom.core as glom_core
 from glom.core import Spec, UP  # probationary
 
