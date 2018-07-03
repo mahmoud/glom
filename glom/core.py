@@ -291,10 +291,31 @@ class Path(object):
         return _T_PATHS[self.path_t][idx * 2 + 1]
 
     def __repr__(self):
-        # TODO: FIXME to not assume all parts are 'P'
-        path_parts = _T_PATHS[self.path_t][2::2]
-        cn = self.__class__.__name__
-        return '%s(%s)' % (cn, ', '.join([repr(p) for p in path_parts]))
+        return _fmt_path(_T_PATHS[self.path_t][1:])
+
+
+def _fmt_path(t_path):
+    path_parts, cur_t_path = [], []
+    i = 0
+    while i < len(t_path):
+        op, arg = t_path[i], t_path[i + 1]
+        i += 2
+        if op == 'P':
+            if cur_t_path:
+                path_parts.append(cur_t_path)
+                cur_t_path = []
+            path_parts.append(arg)
+        else:
+            cur_t_path.append(op)
+            cur_t_path.append(arg)
+    if path_parts and cur_t_path:
+        path_parts.append(cur_t_path)
+
+    if path_parts or not cur_t_path:
+        return 'Path(%s)' % ', '.join([_fmt_t(part)
+                                       if type(part) is list else repr(part)
+                                       for part in path_parts])
+    return _fmt_t(cur_t_path)
 
 
 class Literal(object):
@@ -691,7 +712,34 @@ class _TType(object):
         return _t_child(self, '(', (args, kwargs))
 
     def __repr__(self):
-        return "T" + _path_fmt(_T_PATHS[self][1:])
+        return _fmt_t(_T_PATHS[self][1:])
+
+
+def _fmt_t(path):
+    def kwarg_fmt(kw):
+        if isinstance(kw, str):
+            return kw
+        return repr(kw)
+    prepr = ['T']
+    i = 0
+    # TODO: % not format()
+    while i < len(path):
+        op, arg = path[i], path[i + 1]
+        if op == '.':
+            prepr.append('.' + arg)
+        elif op == '[':
+            prepr.append("[{0!r}]".format(arg))
+        elif op == '(':
+            args, kwargs = arg
+            prepr.append("({})".format(
+                ", ".join(
+                    [repr(a) for a in args] +
+                    ["{}={}".format(kwarg_fmt(k), repr(v))
+                     for k, v in kwargs.items()])))
+        elif op == 'P':
+            return _fmt_path(path)
+        i += 2
+    return "".join(prepr)
 
 
 _T_PATHS = weakref.WeakKeyDictionary()
@@ -711,31 +759,6 @@ class GlomIndexError(GlomError, IndexError): pass
 class GlomTypeError(GlomError, TypeError): pass
 
 
-def _path_fmt(path):
-    def kwarg_fmt(kw):
-        if isinstance(kw, str):
-            return kw
-        return repr(kw)
-    prepr = []
-    i = 0
-    # TODO: % not format()
-    while i < len(path):
-        op, arg = path[i], path[i + 1]
-        if op == '.':
-            prepr.append('.' + arg)
-        elif op == '[':
-            prepr.append("[{0!r}]".format(arg))
-        elif op == '(':
-            args, kwargs = arg
-            prepr.append("({})".format(
-                ", ".join(
-                    [repr(a) for a in args] +
-                    ["{}={}".format(kwarg_fmt(k), repr(v))
-                     for k, v in kwargs.items()])))
-        i += 2
-    return "".join(prepr)
-
-
 def _t_eval(_t, target, scope):
     t_path = _T_PATHS[_t]
     i = 1
@@ -752,16 +775,16 @@ def _t_eval(_t, target, scope):
         if op == '.':
             cur = getattr(cur, arg, _MISSING)
             if cur is _MISSING:
-                raise GlomAttributeError(_path_fmt(t_path[2:i+2]))
+                raise GlomAttributeError(_fmt_t(t_path[2:i+2]))
         elif op == '[':
             try:
                 cur = cur[arg]
             except KeyError as e:
-                raise GlomKeyError(_path_fmt(t_path[1:i+2]))
+                raise GlomKeyError(_fmt_t(t_path[1:i+2]))
             except IndexError:
-                raise GlomIndexError(_path_fmt(t_path[1:i+2]))
+                raise GlomIndexError(_fmt_t(t_path[1:i+2]))
             except TypeError:
-                raise GlomTypeError(_path_fmt(t_path[1:i+2]))
+                raise GlomTypeError(_fmt_t(t_path[1:i+2]))
         elif op == 'P':
             # Path type stuff (fuzzy match)
             handler = scope[_TargetRegistry].get_handler(cur)
