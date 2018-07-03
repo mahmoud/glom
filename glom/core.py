@@ -268,8 +268,8 @@ class Path(object):
             if isinstance(part, _TType):
                 sub_parts = _T_PATHS[part]
                 if sub_parts[0] is not T:
-                    raise ValueError('path segment must be path from T, not {}'.format(
-                        sub_parts[0]))
+                    raise ValueError('path segment must be path from T, not %r'
+                                     % sub_parts[0])
                 i = 1
                 while i < len(sub_parts):
                     path_t = _t_child(path_t, sub_parts[i], sub_parts[i + 1])
@@ -292,10 +292,10 @@ class Path(object):
         return _T_PATHS[self.path_t][(1 + idx) * 2]
 
     def __repr__(self):
-        return _fmt_path(_T_PATHS[self.path_t][1:])
+        return _format_path(_T_PATHS[self.path_t][1:])
 
 
-def _fmt_path(t_path):
+def _format_path(t_path):
     path_parts, cur_t_path = [], []
     i = 0
     while i < len(t_path):
@@ -313,10 +313,10 @@ def _fmt_path(t_path):
         path_parts.append(cur_t_path)
 
     if path_parts or not cur_t_path:
-        return 'Path(%s)' % ', '.join([_fmt_t(part)
+        return 'Path(%s)' % ', '.join([_format_t(part)
                                        if type(part) is list else repr(part)
                                        for part in path_parts])
-    return _fmt_t(cur_t_path)
+    return _format_t(cur_t_path)
 
 
 class Literal(object):
@@ -713,32 +713,29 @@ class _TType(object):
         return _t_child(self, '(', (args, kwargs))
 
     def __repr__(self):
-        return _fmt_t(_T_PATHS[self][1:])
+        return _format_t(_T_PATHS[self][1:])
 
 
-def _fmt_t(path):
+def _format_t(path):
     def kwarg_fmt(kw):
         if isinstance(kw, str):
             return kw
         return repr(kw)
     prepr = ['T']
     i = 0
-    # TODO: % not format()
     while i < len(path):
         op, arg = path[i], path[i + 1]
         if op == '.':
             prepr.append('.' + arg)
         elif op == '[':
-            prepr.append("[{0!r}]".format(arg))
+            prepr.append("[%r]" % (arg,))
         elif op == '(':
             args, kwargs = arg
-            prepr.append("({})".format(
-                ", ".join(
-                    [repr(a) for a in args] +
-                    ["{}={}".format(kwarg_fmt(k), repr(v))
-                     for k, v in kwargs.items()])))
+            prepr.append("(%s)" % ", ".join([repr(a) for a in args] +
+                                            ["%s=%r" % (kwarg_fmt(k), v)
+                                             for k, v in kwargs.items()]))
         elif op == 'P':
-            return _fmt_path(path)
+            return _format_path(path)
         i += 2
     return "".join(prepr)
 
@@ -881,10 +878,10 @@ class _SpecRegistry(object):
                 return handler
             if type_ is not callable and isinstance(spec, type_):
                 return handler
-        raise TypeError(
-            'no handler for specs of type {}; expected one of '
-            '{}'.format(type(spec), ','.join(
-                [e[1] for e in self.specs if e[1] is not callable] + ['callable'])))
+        raise TypeError('no handler for specs of type %s; expected one of %s'
+                        % (type(spec), ','.join([e[1] for e in self.specs
+                                                 if e[1] is not callable]
+                                                + ['callable'])))
         # TODO: don't lose anything from older error message
         # raise TypeError('expected spec to be dict, list, tuple,'
         #                 ' callable, string, or other specifier type,'
