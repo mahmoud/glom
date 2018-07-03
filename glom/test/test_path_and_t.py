@@ -1,5 +1,7 @@
 
-from glom import glom, Path, T
+from pytest import raises
+
+from glom import glom, Path, T, PathAccessError, GlomError
 
 def test_list_path_access():
     assert glom(list(range(10)), Path(1)) == 1
@@ -42,3 +44,25 @@ def test_path_t_roundtrip():
 
     # check that multiple nested paths reduce
     assert repr(Path(Path(Path('a')))) == "Path('a')"
+
+
+def test_path_access_error_message():
+
+    # test fuzzy access
+    with raises(GlomError) as exc_info:
+        glom({}, 'a.b')
+    assert ("PathAccessError: could not access 'a', part 0 of Path('a', 'b'), got error: KeyError"
+            in exc_info.exconly())
+
+    # test multi-part Path with T, catchable as a KeyError
+    with raises(KeyError) as exc_info:
+        # don't actually use glom to copy your data structures please
+        glom({'a': {'b': 'c'}}, Path('a', T.copy(), 'd'))
+    assert ("PathAccessError: could not access 'd', part 3 of Path('a', T.copy(), 'd'), got error: KeyError"
+            in exc_info.exconly())
+
+    # test AttributeError
+    with raises(GlomError) as exc_info:
+        glom({'a': {'b': 'c'}}, Path('a', T.b))
+    assert ("PathAccessError: could not access 'b', part 1 of Path('a', T.b), got error: AttributeError"
+            in exc_info.exconly())

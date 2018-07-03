@@ -96,28 +96,28 @@ class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
           IndexError, or TypeError, and sometimes others.
        path (Path): The full Path glom was in the middle of accessing
           when the error occurred.
-       path_idx (int): The index of the part of the *path* that caused
+       part_idx (int): The index of the part of the *path* that caused
           the error.
 
     >>> target = {'a': {'b': None}}
     >>> glom(target, 'a.b.c')
     Traceback (most recent call last):
     ...
-    PathAccessError: could not access 'c', index 2 in path Path('a', 'b', 'c'), got error: ...
+    PathAccessError: could not access 'c', part 2 of Path('a', 'b', 'c'), got error: ...
 
     """
-    def __init__(self, exc, path, path_idx):
+    def __init__(self, exc, path, part_idx):
         self.exc = exc
         self.path = path
-        self.path_idx = path_idx
+        self.part_idx = part_idx
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.path_idx)
+        return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.part_idx)
 
     def __str__(self):
-        return ('could not access %r, index %r in path %r, got error: %r'
-                % (self.path[self.path_idx], self.path_idx, self.path, self.exc))
+        return ('could not access %r, part %r of %r, got error: %r'
+                % (self.path[self.part_idx], self.part_idx, self.path, self.exc))
 
 
 class CoalesceError(GlomError):
@@ -287,8 +287,9 @@ class Path(object):
         return _t_eval(self.path_t, target, scope)
 
     def __getitem__(self, idx):
-        # TODO: is this still needed?
-        return _T_PATHS[self.path_t][idx * 2 + 1]
+        # used by PathAccessError
+        # 1 + skips the first T/S and operator
+        return _T_PATHS[self.path_t][(1 + idx) * 2]
 
     def __repr__(self):
         return _fmt_path(_T_PATHS[self.path_t][1:])
@@ -751,14 +752,6 @@ def _t_child(parent, operation, arg):
     return t
 
 
-# TODO: merge _t_eval with Path access somewhat and remove these exceptions.
-# T should be a valid path segment, we just need to keep path/path_idx up to date on the PAE
-class GlomAttributeError(GlomError, AttributeError): pass
-class GlomKeyError(GlomError, KeyError): pass
-class GlomIndexError(GlomError, IndexError): pass
-class GlomTypeError(GlomError, TypeError): pass
-
-
 def _t_eval(_t, target, scope):
     t_path = _T_PATHS[_t]
     i = 1
@@ -773,18 +766,15 @@ def _t_eval(_t, target, scope):
         if type(arg) in (Spec, _TType):
             arg = scope[glom](target, arg, scope)
         if op == '.':
-            cur = getattr(cur, arg, _MISSING)
-            if cur is _MISSING:
-                raise GlomAttributeError(_fmt_t(t_path[2:i+2]))
+            try:
+                cur = getattr(cur, arg)
+            except AttributeError as e:
+                raise PathAccessError(e, Path(_t), i // 2)
         elif op == '[':
             try:
                 cur = cur[arg]
-            except KeyError as e:
-                raise GlomKeyError(_fmt_t(t_path[1:i+2]))
-            except IndexError:
-                raise GlomIndexError(_fmt_t(t_path[1:i+2]))
-            except TypeError:
-                raise GlomTypeError(_fmt_t(t_path[1:i+2]))
+            except (KeyError, IndexError, TypeError) as e:
+                raise PathAccessError(e, Path(_t), i // 2)
         elif op == 'P':
             # Path type stuff (fuzzy match)
             handler = scope[_TargetRegistry].get_handler(cur)
@@ -794,7 +784,7 @@ def _t_eval(_t, target, scope):
             try:
                 cur = handler.get(cur, arg)
             except Exception as e:
-                raise PathAccessError(e, t_path[2:i+2:2], i // 2)
+                raise PathAccessError(e, Path(_t), i // 2)
         elif op == '(':
             args, kwargs = arg
             scope[Path] += t_path[2:i+2:2]
