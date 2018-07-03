@@ -1,7 +1,7 @@
 
 import pytest
 
-from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T
+from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S
 import glom.core as glom_core
 from glom.core import Spec, UP  # probationary
 
@@ -46,27 +46,11 @@ def test_initial_integration():
     assert ret == expected
 
 
-def test_list_path_access():
-    assert glom(list(range(10)), Path(1)) == 1
-
-
 def test_list_item_lift_and_access():
     val = {'d': {'e': ['f']}}
 
     assert glom(val, ('d.e', lambda x: x[0])) == 'f'
     assert glom(val, ('d.e', [(lambda x: {'f': x[0]}, 'f')])) == ['f']
-
-
-def test_empty_path_access():
-    target = {}
-
-    assert glom(target, Path()) is target
-    assert glom(target, (Path(), Path(), Path())) is target
-
-    dup_dict = glom(target, {'target': Path(),
-                             'target2': Path()})
-    dup_dict['target'] is target
-    dup_dict['target2'] is target
 
 
 def test_coalesce():
@@ -101,10 +85,10 @@ def test_coalesce():
 
 def test_omit():
     target = {'a': {'b': 'c'},  # basic dictionary nesting
-           'd': {'e': ['f'],    # list in dictionary
-                 'g': 'h'},
-           'i': [{'j': 'k', 'l': 'm'}],  # list of dictionaries
-           'n': 'o'}
+              'd': {'e': ['f'],    # list in dictionary
+                    'g': 'h'},
+              'i': [{'j': 'k', 'l': 'm'}],  # list of dictionaries
+              'n': 'o'}
 
     res = glom(target, {'a': 'a.b',
                         'z': Coalesce('x', 'y', default=OMIT)})
@@ -151,13 +135,6 @@ def test_literal():
     assert repr(Literal(3.14)) == 'Literal(3.14)'
 
 
-def test_path():
-    _obj = object()
-    target = {'a': {'b.b': [None, {_obj: [None, None, 'd']}]}}
-
-    assert glom(target, Path('a', 'b.b', 1, _obj, -1)) == 'd'
-
-
 def test_abstract_iterable():
     assert isinstance([], glom_core._AbstractIterable)
 
@@ -195,6 +172,18 @@ def test_spec_and_recursion():
     assert glom(
         [['ab', 'cd', 'ef'], ''.join],
         Call(T[1], args=(Spec((T[0], [T[1:]])),))) == 'bdf'
+
+
+def test_scope():
+    assert glom(None, S['foo'], scope={'foo': 'bar'}) == 'bar'
+
+    target = range(3)
+    spec = [(S, lambda S: S['multiplier'] * S[T])]
+    scope = {'multiplier': 2}
+    assert glom(target, spec, scope=scope) == [0, 2, 4]
+    scope = {'multiplier': 2.5}
+    assert glom(target, spec, scope=scope) == [0.0, 2.5, 5.0]
+
 
 
 def test_seq_getitem():
@@ -246,6 +235,13 @@ def test_python_native():
     output = glom(target, spec)
     assert set(output) == set(['jupiter', 69])  # for ordering reasons
 
-    # with pytest.raises(glom_core.PathAccessError):  # TODO
-    #     spec = T['system']['comets'][-1].values()
-    #     output = glom(target, spec)
+    with pytest.raises(glom_core.GlomError):
+        spec = T['system']['comets'][-1].values()
+        output = glom(target, spec)
+
+
+# a few more basic tests, mostly motivated by coverage
+
+def test_glom_extra_kwargs():
+    with pytest.raises(TypeError):
+        glom({'a': 'a'}, 'a', invalid_kwarg='yes')

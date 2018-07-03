@@ -1,15 +1,17 @@
+
 import os
-from glom.cli import main
+from glom.cli import main, console_main
 import pytest
 from face.command import CommandLineError
 
 
 def test_main_basic():
-    argv = ['__', 'a.b.c', '{"a": {"b": "c"}}']
+    argv = ['__', 'a.b.fail', '{"a": {"b": "c"}}']
     assert main(argv) == 1
 
     argv = ['__', 'a.b.c', '{"a": {"b": {"c": "d"}}}']
     assert main(argv) == 0
+
 
 def test_yaml_target():
     cwd = os.path.dirname(os.path.abspath(__file__))
