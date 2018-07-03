@@ -101,10 +101,10 @@ def test_coalesce():
 
 def test_omit():
     target = {'a': {'b': 'c'},  # basic dictionary nesting
-           'd': {'e': ['f'],    # list in dictionary
-                 'g': 'h'},
-           'i': [{'j': 'k', 'l': 'm'}],  # list of dictionaries
-           'n': 'o'}
+              'd': {'e': ['f'],    # list in dictionary
+                    'g': 'h'},
+              'i': [{'j': 'k', 'l': 'm'}],  # list of dictionaries
+              'n': 'o'}
 
     res = glom(target, {'a': 'a.b',
                         'z': Coalesce('x', 'y', default=OMIT)})
