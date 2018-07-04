@@ -202,8 +202,10 @@ class UnregisteredTarget(GlomError):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return ('%s(%r, %r, %r, %r)'
-                % (cn, self.op, self.target_type, self.type_map, self.path))
+        # <type %r> is because Python 3 inexplicably changed the type
+        # repr from <type *> to <class *>
+        return ('%s(%r, <type %r>, %r, %r)'
+                % (cn, self.op, self.target_type.__name__, self.type_map, self.path))
 
     def __str__(self):
         if not self.type_map:

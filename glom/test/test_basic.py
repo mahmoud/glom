@@ -63,15 +63,14 @@ def test_coalesce():
     assert glom(val, 'a.b') == 'c'
     assert glom(val, Coalesce('xxx', 'yyy', 'a.b')) == 'c'
 
-    try:
+    with pytest.raises(CoalesceError) as exc_info:
         glom(val, Coalesce('xxx', 'yyy'))
-    except CoalesceError as ce:
-        msg = str(ce)
-        assert "'xxx'" in msg
-        assert "'yyy'" in msg
-        assert msg.count('PathAccessError') == 2
-    else:
-        assert False, 'expected a CoalesceError'
+
+    msg = exc_info.exconly()
+    assert "'xxx'" in msg
+    assert "'yyy'" in msg
+    assert msg.count('PathAccessError') == 2
+    assert "[PathAccessError(KeyError('xxx',), Path('xxx'), 0), PathAccessError(KeyError('yyy',), Path('yyy'), 0)], [])" in repr(exc_info.value)
 
     # check that defaulting works
     assert glom(val, Coalesce('xxx', 'yyy', default='zzz')) == 'zzz'
@@ -162,6 +161,8 @@ def test_call_and_target():
 
 
 def test_spec_and_recursion():
+    assert repr(Spec('a.b.c')) == "Spec('a.b.c')"
+
     # Call doesn't normally recurse, but Spec can make it do so
     assert glom(
         ['a', 'b', 'c'],
@@ -241,8 +242,38 @@ def test_python_native():
         output = glom(target, spec)
 
 
-# a few more basic tests, mostly motivated by coverage
-
 def test_glom_extra_kwargs():
+    # for coverage
     with pytest.raises(TypeError):
         glom({'a': 'a'}, 'a', invalid_kwarg='yes')
+
+
+def test_inspect():
+    # test repr
+    assert repr(Inspect()) == '<INSPECT>'
+
+    target = {'a': {'b': 'c'}}
+
+    import pdb
+    # test breakpoint
+    assert Inspect(breakpoint=True).breakpoint == pdb.set_trace
+    with pytest.raises(TypeError):
+        Inspect(breakpoint='lol')
+
+    tracker = []
+    spec = {'a': Inspect('a.b', echo=False, breakpoint=lambda: tracker.append(True))}
+
+    glom(target, spec)
+
+    assert len(tracker) == 1
+
+    # test post_mortem
+    assert Inspect(post_mortem=True).post_mortem == pdb.post_mortem
+    with pytest.raises(TypeError):
+        Inspect(post_mortem='lol')
+
+    tracker = []
+    spec = {'a': Inspect('nope.nope', post_mortem=lambda: tracker.append(True))}
+
+    assert glom(target, spec, default='default') == 'default'
+    assert len(tracker) == 1

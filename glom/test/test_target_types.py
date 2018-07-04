@@ -52,8 +52,9 @@ def test_types_bare():
     assert glommer.scope[_TargetRegistry]._get_closest_type(object()) is None
 
     # test that bare glommers can't glom anything
-    with pytest.raises(UnregisteredTarget):
+    with pytest.raises(UnregisteredTarget) as exc_info:
         glommer.glom(object(), {'object_repr': '__class__.__name__'})
+    assert repr(exc_info.value) == "UnregisteredTarget('get', <type 'object'>, OrderedDict(), ('__class__',))"
 
     try:
         glommer.glom([{'hi': 'hi'}], ['hi'])
