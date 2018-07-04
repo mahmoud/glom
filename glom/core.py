@@ -854,7 +854,7 @@ class Check(object):
                 val = (val,)
             elif not val and not can_be_empty:
                 raise ValueError('expected %r argument to contain at least one value,'
-                                 ' not: %r' % val)
+                                 ' not: %r' % (name, val))
             for v in val:
                 if not func(v):
                     raise ValueError('expected %r argument to be %s, not: %r'
@@ -877,9 +877,9 @@ class Check(object):
 
         self.validators = _get_arg_val('validate', 'callable', callable, validate)
         self.instance_of = _get_arg_val('instance_of', 'a type',
-                                        lambda x: isinstance(x, type), instance_of)
+                                        lambda x: isinstance(x, type), instance_of, False)
         self.types = _get_arg_val('type', 'a type',
-                                  lambda x: isinstance(x, type), type_arg)
+                                  lambda x: isinstance(x, type), type_arg, False)
 
         if equal_to is not _MISSING:
             self.vals = (equal_to,)
@@ -890,6 +890,9 @@ class Check(object):
             if not is_iterable(one_of):
                 raise ValueError('expected "one_of" argument to be iterable'
                                  ' , not: %r' % one_of)
+            if not one_of:
+                raise ValueError('expected "one_of" to contain at least'
+                                 ' one value, not: %r' % (one_of,))
             self.vals = one_of
         else:
             self.vals = ()

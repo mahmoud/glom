@@ -34,3 +34,23 @@ def test_check_basic():
     for target, check in failing_checks:
         with raises(GlomCheckError):
             glom(target, check)
+
+
+def test_check_signature():
+    with raises(ValueError):
+        Check(instance_of=())
+    with raises(ValueError):
+        Check(type=())
+
+    with raises(TypeError):
+        Check(fake_kwarg=True)
+
+    with raises(ValueError):
+        Check(one_of=1)
+    with raises(ValueError):
+        Check(one_of=())
+    with raises(TypeError):
+        Check(one_of=(1, 2), equal_to=3)
+
+    with raises(ValueError):
+        Check(validate='bad, not callable, value')
