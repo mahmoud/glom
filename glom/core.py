@@ -808,8 +808,25 @@ _T_PATHS[S] = (S,)
 UP = make_sentinel('UP')
 
 
-class GlomCheckError(GlomError):  # TODO need path
-    pass
+class CheckError(GlomError):
+    def __init__(self, msgs, check, path):
+        self.msgs = msgs
+        self.check_obj = check
+        self.path = path
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r, %r, %r)' % (cn, self.msgs, self.check_obj, self.path)
+
+    def __str__(self):
+        msg = 'target at path %s failed check,' % self.path
+        if self.check_obj.spec is not T:
+            msg += ' subtarget at %r' % (self.check_obj.spec,)
+        if len(self.msgs) == 1:
+            msg += ' got error: %r' % (self.msgs[0],)
+        else:
+            msg += ' got %s errors: %r' % (len(self.msgs), self.msgs)
+        return msg
 
 
 RAISE = make_sentinel('RAISE')  # flag object for "raise on check failure"
@@ -910,8 +927,10 @@ class Check(object):
         if self.types and type(target) not in self.types:
             if self.default is not RAISE:
                 return self.default
-            errs.append('expected type to be {}, found type {}'.format(
-                self.types, type(target)))
+            errs.append('expected type to be %r, found type %r' %
+                        (self.types[0].__name__ if len(self.types) == 1
+                         else tuple([t.__name__ for t in self.types]),
+                         type(target).__name__))
 
         if self.vals and target not in self.vals:
             if self.default is not RAISE:
@@ -940,11 +959,16 @@ class Check(object):
             # string formats)
             if self.default is not RAISE:
                 return self.default
-            errs.append('expected instance of {}, found instance of {}'.format(
-                self.instance_of, type(target)))
+            errs.append('expected instance of %r, found instance of %r' %
+                        (self.instance_of[0].__name__ if len(self.instance_of) == 1
+                         else tuple([t.__name__ for t in self.instance_of]),
+                         type(target).__name__))
+
 
         if errs:
-            raise GlomCheckError(errs)
+            # TODO: due to the usage of basic path (not a Path
+            # object), the output can be a bit inconsistent here
+            raise CheckError(errs, self, scope[Path])
         return ret
 
 

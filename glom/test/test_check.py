@@ -1,7 +1,7 @@
 
 from pytest import raises
 
-from glom import glom, Check, GlomCheckError, Coalesce, OMIT, T
+from glom import glom, Check, CheckError, Coalesce, OMIT, T
 
 
 def test_check_basic():
@@ -21,7 +21,10 @@ def test_check_basic():
     assert glom(target, [Check(validate=(int, float))])
     assert glom(target, [Check()])  # bare check does a truthy check
 
-    failing_checks = [(1, Check(type=str)),
+    failing_checks = [({'a': {'b': 1}}, {'a': ('a', 'b', Check(type=str))},
+                       '''target at path ['a', 'b'] failed check, got error: "expected type to be 'str', found type 'int'"'''),
+                      ({'a': {'b': 1}}, {'a': ('a', Check('b', type=str))},
+                       '''target at path ['a'] failed check, subtarget at 'b' got error: "expected type to be 'str', found type 'int'"'''),
                       (1, Check(type=(str, bool))),
                       (1, Check(instance_of=str)),
                       (1, Check(instance_of=(str, bool))),
@@ -31,9 +34,19 @@ def test_check_basic():
                       ('-3.14', Check(validate=int)),
                       ('', Check(validate=lambda x: False)),]
 
-    for target, check in failing_checks:
-        with raises(GlomCheckError):
+    for fc in failing_checks:
+        if len(fc) == 2:
+            target, check = fc
+            msg = None
+        else:
+            target, check, msg = fc
+
+        with raises(CheckError) as exc_info:
             glom(target, check)
+
+        if msg is not None:
+            assert str(exc_info.value) == msg
+        assert repr(exc_info.value)
 
 
 def test_check_signature():

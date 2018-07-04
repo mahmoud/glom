@@ -11,7 +11,7 @@ from glom.core import (glom,
                        PathAccessError,
                        CoalesceError,
                        UnregisteredTarget,
-                       GlomCheckError,
+                       CheckError,
                        Call,
                        Check,
                        T, S)
