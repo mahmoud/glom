@@ -31,6 +31,7 @@ from pprint import pprint
 from collections import OrderedDict
 
 from boltons.typeutils import make_sentinel
+from boltons.iterutils import is_iterable
 
 PY2 = (sys.version_info[0] == 2)
 if PY2:
@@ -41,6 +42,7 @@ else:
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
     from collections import ChainMap
 
+_type_type = type
 
 _MISSING = make_sentinel('_MISSING')
 OMIT =  make_sentinel('OMIT')
@@ -804,7 +806,8 @@ _T_PATHS[S] = (S,)
 UP = make_sentinel('UP')
 
 
-class GlomCheckError(GlomError): pass
+class GlomCheckError(GlomError):  # TODO need path
+    pass
 
 
 RAISE = make_sentinel('RAISE')  # flag object for "raise on check failure"
@@ -815,68 +818,129 @@ class Check(object):
     and either pass through the data or raise exceptions if there is a
     problem.
 
+    Aside from *spec*, all arguments are keyword arguments. Each
+    argument, except for *default*, represent a check
+    condition. Multiple checks can be passed, and if all check
+    conditions are left unset, Check defaults to performing a basic
+    truthy check on the value.
+
+    If any check condition fails, a :class:`~glom.GlomCheckError` is raised.
+
     Args:
 
-       specifier: a sub-spec to extract the data to which other assertions will
-                  be checked (defaults to applying checks to the target itself)
-       instance_of: a type or sequence of types to be checked with isinstance
-       types: a type or sequence of types to be checked for exact match
-       val: a value to be checked for match with ==
-       vals: a sequence of values to be checked for match with ==
-       default: an optional default to replace the value when the check fails
+       spec: a sub-spec to extract the data to which other assertions will
+          be checked (defaults to applying checks to the target itself)
+       type: a type or sequence of types to be checked for exact match
+       equal_to: a value to be checked for equality match ("==")
+       validate: a callable or list of callables, each representing a
+          check condition. If one or more return False or raise an
+          exception, the Check will fail.
+       instance_of: a type or sequence of types to be checked with isinstance()
+       one_of: an iterable of values, any of which can match the target ("in")
+       default: an optional default value to replace the value when the check fails
                 (if default is not specified, GlomCheckError will be raised)
-    """
-    def __init__(self, specifier=T, instance_of=_MISSING, types=_MISSING,
-                 val=_MISSING, vals=_MISSING, default=_MISSING):
-            # TODO: do we really want types AND instances -- or is instance_of enough
-            #   the main use case seems to be instanceof(True, int) vs type(True) == int
-            # TODO: some kind of pressure-release callable "additional_checks"
-            #   or something to let the user add more
-            self.specifier = specifier
-            self.instance_of = instance_of
-            if instance_of is not _MISSING:
-                isinstance(None, instance_of)  # TODO: better error message
-            self.types = () if types is _MISSING else (types,) if isinstance(types, type) else types
-            if val is not _MISSING:
-                self.vals = val,
-                # TODO: better error
-                assert vals is _MISSING
-            else:
-                self.vals = vals
-            self.default = RAISE if default is _MISSING else default
 
-    # following the pattern here from Call; not sure if this is the best
-    # but would like to develop a consistent API
+    """
+    def __init__(self, spec=T, **kwargs):
+        self.spec = spec
+        self.default = kwargs.pop('default', RAISE)
+
+        def _get_arg_val(name, cond, func, val, can_be_empty=True):
+            if val is _MISSING:
+                return ()
+            if not is_iterable(val):
+                val = (val,)
+            elif not val and not can_be_empty:
+                raise ValueError('expected %r argument to contain at least one value,'
+                                 ' not: %r' % val)
+            for v in val:
+                if not func(v):
+                    raise ValueError('expected %r argument to be %s, not: %r'
+                                     % (name, cond, v))
+            return val
+
+        # if there are other common validation functions, maybe a
+        # small set of special strings would work as valid arguments
+        # to validate, too.
+        def truthy(val):
+            return bool(val)
+
+        validate = kwargs.pop('validate', _MISSING if kwargs else truthy)
+        type_arg = kwargs.pop('type', _MISSING)
+        instance_of = kwargs.pop('instance_of', _MISSING)
+        equal_to = kwargs.pop('equal_to', _MISSING)
+        one_of = kwargs.pop('one_of', _MISSING)
+        if kwargs:
+            raise TypeError('unexpected keyword arguments: %r' % kwargs.keys())
+
+        self.validators = _get_arg_val('validate', 'callable', callable, validate)
+        self.instance_of = _get_arg_val('instance_of', 'a type',
+                                        lambda x: isinstance(x, type), instance_of)
+        self.types = _get_arg_val('type', 'a type',
+                                  lambda x: isinstance(x, type), type_arg)
+
+        if equal_to is not _MISSING:
+            self.vals = (equal_to,)
+            if one_of is not _MISSING:
+                raise TypeError('expected "one_of" argument to be unset when'
+                                ' "equal_to" argument is passed')
+        elif one_of is not _MISSING:
+            if not is_iterable(one_of):
+                raise ValueError('expected "one_of" argument to be iterable'
+                                 ' , not: %r' % one_of)
+            self.vals = one_of
+        else:
+            self.vals = ()
+        return
+
+    class _ValidationError(Exception):
+        "for internal use inside of Check only"
+        pass
+
     def _handler(self, target, scope):
-        returns = target
-        errs = []  # TODO: accumulate errors across more than one
-        if self.specifier is not T:
-            target = scope[glom](target, self.specifier, scope)
-        if self.instance_of is not _MISSING:
-            if not isinstance(target, self.instance_of):
-                # TODO: can these early returns be done without so much copy-paste?
-                # (early return to avoid potentially expensive or even error-causeing
-                # string formats)
-                if self.default is not RAISE:
-                    return self.default
-                errs.append('expected instance or subclass of {}, found instance of {}'.format(
-                    self.instance_of, type(target)))
+        ret = target
+        errs = []
+        if self.spec is not T:
+            target = scope[glom](target, self.spec, scope)
         if self.types and type(target) not in self.types:
             if self.default is not RAISE:
                 return self.default
-            errs.append('expected instance of {}, found instance of {}'.format(
+            errs.append('expected type to be {}, found type {}'.format(
                 self.types, type(target)))
-        if self.vals is not _MISSING:
-            if target not in self.vals:  # TODO: "expected X" instead of "expected one of X," when only one item
-                if self.default is not RAISE:
-                    return self.default
-                if len(self.vals) == 1:
-                    errs.append("expected {}, found {}".format(self.vals[0], target))
-                else:
-                    errs.append('expected one of {}, found {}'.format(self.vals, target))
+
+        if self.vals and target not in self.vals:
+            if self.default is not RAISE:
+                return self.default
+            if len(self.vals) == 1:
+                errs.append("expected {}, found {}".format(self.vals[0], target))
+            else:
+                errs.append('expected one of {}, found {}'.format(self.vals, target))
+
+        if self.validators:
+            for i, validator in enumerate(self.validators):
+                try:
+                    res = validator(target)
+                    if res is False:
+                        raise self._ValidationError
+                except Exception as e:
+                    msg = ('expected %r check to validate target'
+                           % getattr(validator, '__name__', None) or ('#%s' % i))
+                    if type(e) is not self._ValidationError:
+                        msg += ' (got exception: %r)' % e
+                    errs.append(msg)
+
+        if self.instance_of and not isinstance(target, self.instance_of):
+            # TODO: can these early returns be done without so much copy-paste?
+            # (early return to avoid potentially expensive or even error-causeing
+            # string formats)
+            if self.default is not RAISE:
+                return self.default
+            errs.append('expected instance of {}, found instance of {}'.format(
+                self.instance_of, type(target)))
+
         if errs:
             raise GlomCheckError(errs)
-        return returns
+        return ret
 
 
 class _AbstractIterable(_AbstractIterableBase):
