@@ -17,13 +17,19 @@ def test_check_basic():
     assert glom(target, [Check(instance_of=str, default=OMIT)]) == ['a']
     assert glom(target, [Check(instance_of=(str, int))]) == [1, 'a']
 
+    target = ['1']
+    assert glom(target, [Check(validate=(int, float))])
+    assert glom(target, [Check()])  # bare check does a truthy check
+
     failing_checks = [(1, Check(type=str)),
                       (1, Check(type=(str, bool))),
                       (1, Check(instance_of=str)),
                       (1, Check(instance_of=(str, bool))),
                       (1, Check(equal_to=0)),
                       (1, Check(one_of=(0,))),
-                      (1, Check(one_of=(0, 2)))]
+                      (1, Check(one_of=(0, 2))),
+                      ('-3.14', Check(validate=int)),
+                      ('', Check(validate=lambda x: False)),]
 
     for target, check in failing_checks:
         with raises(GlomCheckError):
