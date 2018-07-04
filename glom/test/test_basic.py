@@ -147,7 +147,10 @@ def test_abstract_iterable():
 def test_call_and_target():
     class F(object):
         def __init__(s, a, b, c): s.a, s.b, s.c = a, b, c
-    val = glom(1, Call(F, kwargs=dict(a=T, b=T, c=T)))
+
+    call_f = Call(F, kwargs=dict(a=T, b=T, c=T))
+    assert repr(call_f)
+    val = glom(1, call_f)
     assert (val.a, val.b, val.c) == (1, 1, 1)
     class F(object):
         def __init__(s, a): s.a = a

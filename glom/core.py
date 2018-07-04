@@ -625,9 +625,9 @@ class Call(object):
             kwargs = {name: eval(val) for name, val in self.kwargs.items()}
         return eval(self.func)(*args, **kwargs)
 
-
     def __repr__(self):
-        return 'Call(%r, args=%r, kwargs=%r)' % (self.func, self.args, self.kwargs)
+        cn = self.__class__.__name__
+        return '%s(%r, args=%r, kwargs=%r)' % (cn, self.func, self.args, self.kwargs)
 
 
 class _TType(object):
