@@ -241,8 +241,38 @@ def test_python_native():
         output = glom(target, spec)
 
 
-# a few more basic tests, mostly motivated by coverage
-
 def test_glom_extra_kwargs():
+    # for coverage
     with pytest.raises(TypeError):
         glom({'a': 'a'}, 'a', invalid_kwarg='yes')
+
+
+def test_inspect():
+    # test repr
+    assert repr(Inspect()) == '<INSPECT>'
+
+    target = {'a': {'b': 'c'}}
+
+    import pdb
+    # test breakpoint
+    assert Inspect(breakpoint=True).breakpoint == pdb.set_trace
+    with pytest.raises(TypeError):
+        Inspect(breakpoint='lol')
+
+    tracker = []
+    spec = {'a': Inspect('a.b', echo=False, breakpoint=lambda: tracker.append(True))}
+
+    glom(target, spec)
+
+    assert len(tracker) == 1
+
+    # test post_mortem
+    assert Inspect(post_mortem=True).post_mortem == pdb.post_mortem
+    with pytest.raises(TypeError):
+        Inspect(post_mortem='lol')
+
+    tracker = []
+    spec = {'a': Inspect('nope.nope', post_mortem=lambda: tracker.append(True))}
+
+    assert glom(target, spec, default='default') == 'default'
+    assert len(tracker) == 1
