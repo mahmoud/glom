@@ -161,6 +161,8 @@ def test_call_and_target():
 
 
 def test_spec_and_recursion():
+    assert repr(Spec('a.b.c')) == "Spec('a.b.c')"
+
     # Call doesn't normally recurse, but Spec can make it do so
     assert glom(
         ['a', 'b', 'c'],
