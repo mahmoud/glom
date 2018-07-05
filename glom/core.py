@@ -848,6 +848,32 @@ UP = make_sentinel('UP')
 
 
 class CheckError(GlomError):
+    """This :exc:`GlomError` subtype is raised when target data fails to
+    pass a :class:`Check`'s specified validation.
+
+    An uncaught ``CheckError`` looks like this::
+
+       >>> target = {'a': {'b': 'c'}}
+       >>> glom(target, {'b': ('a.b', Check(type=int))})
+       Traceback (most recent call last):
+       ...
+       CheckError: target at path ['a.b'] failed check, got error: "expected type to be 'int', found type 'str'"
+
+    If the ``Check`` contains more than one condition, there may be
+    more than one error message. The string rendition of the
+    ``CheckError`` will include all messages.
+
+    You can also catch the ``CheckError`` and programmatically access
+    messages through the ``msgs`` attribute on the ``CheckError``
+    instance.
+
+    .. note::
+
+       As of 2018-07-05 (glom v18.2.0), the validation subsystem is
+       still very new. Exact error message formatting may be enhanced
+       in future releases.
+
+    """
     def __init__(self, msgs, check, path):
         self.msgs = msgs
         self.check_obj = check
@@ -876,13 +902,7 @@ class Check(object):
     and either pass through the data or raise exceptions if there is a
     problem.
 
-    Aside from *spec*, all arguments are keyword arguments. Each
-    argument, except for *default*, represent a check
-    condition. Multiple checks can be passed, and if all check
-    conditions are left unset, Check defaults to performing a basic
-    truthy check on the value.
-
-    If any check condition fails, a :class:`~glom.GlomCheckError` is raised.
+    If any check condition fails, a :class:`~glom.CheckError` is raised.
 
     Args:
 
@@ -897,6 +917,12 @@ class Check(object):
        one_of: an iterable of values, any of which can match the target ("in")
        default: an optional default value to replace the value when the check fails
                 (if default is not specified, GlomCheckError will be raised)
+
+    Aside from *spec*, all arguments are keyword arguments. Each
+    argument, except for *default*, represent a check
+    condition. Multiple checks can be passed, and if all check
+    conditions are left unset, Check defaults to performing a basic
+    truthy check on the value.
 
     """
     # TODO: the next level of Check would be to play with the Scope to

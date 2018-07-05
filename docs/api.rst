@@ -67,6 +67,18 @@ glom's shortest-named feature may be its most powerful.
 
 .. _exceptions:
 
+.. _check-specifier:
+
+Validation with Check
+^^^^^^^^^^^^^^^^^^^^^
+
+Sometimes you want to confirm that your target data matches your
+code's assumptions. With glom, you don't need a separate validation
+step, you can do these checks inline with your glom spec, using
+``Check``.
+
+.. autoclass:: glom.Check
+
 Exceptions
 ----------
 
@@ -80,6 +92,8 @@ other standard Python exceptions as appropriate.
 .. autoclass:: glom.PathAccessError
 
 .. autoclass:: glom.CoalesceError
+
+.. autoclass:: glom.CheckError
 
 .. autoclass:: glom.UnregisteredTarget
 
