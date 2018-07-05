@@ -353,21 +353,27 @@ class Literal(object):
 
 
 class Spec(object):
-    """Spec objects serve three purposes:
-      1- as a form of compiled or curried glom call
-      2- a way to update the scope inline to a call
-      3- a way to mark an object as representing a spec rather than a literal value
+    """Spec objects serve three purposes, here they are, roughly ordered
+    by utility:
 
-    Spec objects are the complement to Literals, wrapping a value
-    and marking that it should be interpreted as a glom spec, rather
-    than a literal value in places where it would be interpreted as
-    a value by default. (Such as T[key], Call(func) where key and
-    func are assumed to be literal values and not specs.)
+      1. As a form of compiled or "curried" glom call, similar to
+         Python's built-in :func:`re.compile`.
+      2. A marker as an object as representing a spec rather than a
+         literal value in certain cases where that might be ambiguous.
+      3. A way to update the scope within another Spec.
+
+    In the second usage, Spec objects are the complement to
+    :class:`~glom.Literal`, wrapping a value and marking that it
+    should be interpreted as a glom spec, rather than a literal value.
+    This is useful in places where it would be interpreted as a value
+    by default. (Such as T[key], Call(func) where key and func are
+    assumed to be literal values and not specs.)
 
     Args:
         spec: The glom spec.
-        scope: a dict of values to add to the scope when
-        evaluating this Spec
+        scope (dict): additional values to add to the scope when
+          evaluating this Spec
+
     """
     def __init__(self, spec, scope=None):
         self.spec = spec
@@ -376,7 +382,7 @@ class Spec(object):
     def glom(self, target, **kw):
         scope = dict(self.scope)
         scope.update(kw.get('scope', {}))
-        kw.setdefault('scope', self.scope)
+        kw['scope'] = scope
         return glom(target, self.spec, **kw)
 
     def _handler(self, target, scope):
@@ -385,6 +391,8 @@ class Spec(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
+        if self.scope:
+            return '%s(%r, scope=%r)' % (cn, self.spec, self.scope)
         return '%s(%r)' % (cn, self.spec)
 
 
