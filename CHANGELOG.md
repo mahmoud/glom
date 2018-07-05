@@ -39,7 +39,11 @@ higher. Check out all the well-tested enhancements below!
 * Make `Spec` work for object-oriented glom use. Usage is similar to
   Python's `re.compile`: predefine a `Spec` object, call
   `spec.glom(target)` later. Addresses [#14][i14]
-* Add YAML support to CLI. See [#26][i26] for details. Thanks @dfezzie!
+* Add YAML support to CLI. PyYAML was added as an "extras" dependency
+  and is not installed by default. glom will pick up any existing
+  installed yaml library and use that, or you can `pip install
+  glom[yaml]` to explicitly install support. See [#26][i26] for
+  details. Thanks @dfezzie!
 * Made `T` and `Path` share evaluation, repr, and exception paths, closing [#6][i6]
 * add `default_factory` argument to Coalesce, with semantics identical
   to Python's built-in defaultdict.
