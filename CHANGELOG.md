@@ -13,11 +13,11 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
-18.1.0
+18.2.0
 ------
 *(July 5, 2018)*
 
-A sizable release, incorporating a lot of the post-announcement
+This sizable release incorporates a lot of the post-announcement
 feedback. Several advanced features were added, including an extension
 API and "Scope" support. While this involved a large refactor, all
 external APIs are 100% backwards-compatible.
@@ -54,12 +54,28 @@ higher. Check out all the well-tested enhancements below!
 [i14]: https://github.com/mahmoud/glom/issues/14
 [i26]: https://github.com/mahmoud/glom/issues/26
 
-18.0.0
+18.1.1
 ------
-*(May 9, 2018)*
+*(May 6, 2018)*
 
 Initial release.
 
 See the [announcement
 post](https://sedimental.org/glom_restructured_data.html) for an idea
 of the functionality available.
+
+This release itself added the console interface (CLI).
+
+18.1.0
+------
+*(May 6, 2018)*
+
+Still in semi-public beta. This release added `T` objects and better
+error messages.
+
+
+18.0.0
+------
+*(April 30, 2018)*
+
+Semi-public beta release.
