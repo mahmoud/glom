@@ -446,6 +446,7 @@ class Coalesce(object):
 
        subspecs: One or more glommable subspecs
        default: A value to return if no subspec results in a valid value
+       default_factory: A callable whose result will be returned as a default
        skip: A value, tuple of values, or predicate function
          representing values to ignore
        skip_exc: An exception or tuple of exception types to catch and
@@ -463,6 +464,9 @@ class Coalesce(object):
     def __init__(self, *subspecs, **kwargs):
         self.subspecs = subspecs
         self.default = kwargs.pop('default', _MISSING)
+        self.default_factory = kwargs.pop('default_factory', _MISSING)
+        if self.default and self.default_factory:
+            raise ValueError('expected one of "default" or "default_factory", not both')
         self.skip = kwargs.pop('skip', _MISSING)
         if self.skip is _MISSING:
             self.skip_func = lambda v: False
@@ -490,6 +494,8 @@ class Coalesce(object):
         else:
             if self.default is not _MISSING:
                 ret = self.default
+            elif self.default_factory is not _MISSING:
+                ret = self.default_factory()
             else:
                 raise CoalesceError(self, skipped, scope[Path])
         return ret

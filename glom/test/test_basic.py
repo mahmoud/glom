@@ -75,6 +75,14 @@ def test_coalesce():
     # check that defaulting works
     assert glom(val, Coalesce('xxx', 'yyy', default='zzz')) == 'zzz'
 
+    # check that default_factory works
+    sentinel_list = []
+    factory = lambda: sentinel_list
+    assert glom(val, Coalesce('xxx', 'yyy', default_factory=factory)) is sentinel_list
+
+    with pytest.raises(ValueError):
+        Coalesce('x', 'y', default=1, default_factory=list)
+
     # check that arbitrary values can be skipped
     assert glom(val, Coalesce('xxx', 'yyy', 'a.b', default='zzz', skip='c')) == 'zzz'
 
