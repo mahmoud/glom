@@ -158,3 +158,14 @@ application setup for the best results.
 
 .. _Managers: https://docs.djangoproject.com/en/2.0/topics/db/managers/
 .. _QuerySets: https://docs.djangoproject.com/en/2.0/ref/models/querysets/
+
+
+Filter Iterable
+---------------
+An iteration specifier can filter items out by
+using ``OMIT`` as the default.
+
+
+.. code-block:: python
+
+    glom(['cat', 1, 'dog', 2], Check(types=str, default=OMIT))

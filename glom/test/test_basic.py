@@ -147,7 +147,10 @@ def test_abstract_iterable():
 def test_call_and_target():
     class F(object):
         def __init__(s, a, b, c): s.a, s.b, s.c = a, b, c
-    val = glom(1, Call(F, kwargs=dict(a=T, b=T, c=T)))
+
+    call_f = Call(F, kwargs=dict(a=T, b=T, c=T))
+    assert repr(call_f)
+    val = glom(1, call_f)
     assert (val.a, val.b, val.c) == (1, 1, 1)
     class F(object):
         def __init__(s, a): s.a = a
@@ -175,6 +178,8 @@ def test_spec_and_recursion():
         Call(T[1], args=(Spec((T[0], [T[1:]])),))) == 'bdf'
 
 
+
+
 def test_scope():
     assert glom(None, S['foo'], scope={'foo': 'bar'}) == 'bar'
 
@@ -184,7 +189,6 @@ def test_scope():
     assert glom(target, spec, scope=scope) == [0, 2, 4]
     scope = {'multiplier': 2.5}
     assert glom(target, spec, scope=scope) == [0.0, 2.5, 5.0]
-
 
 
 def test_seq_getitem():
