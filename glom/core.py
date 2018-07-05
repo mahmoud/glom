@@ -353,21 +353,39 @@ class Literal(object):
 
 
 class Spec(object):
-    """Spec objects are the complement to Literals, wrapping a value
+    """Spec objects serve three purposes:
+      1- as a form of compiled or curried glom call
+      2- a way to update the scope inline to a call
+      3- a way to mark an object as representing a spec rather than a literal value
+
+    Spec objects are the complement to Literals, wrapping a value
     and marking that it should be interpreted as a glom spec, rather
     than a literal value in places where it would be interpreted as
     a value by default. (Such as T[key], Call(func) where key and
     func are assumed to be literal values and not specs.)
 
     Args:
-        value: The glom spec.
+        spec: The glom spec.
+        scope: a dict of values to add to the scope when
+        evaluating this Spec
     """
-    def __init__(self, value):
-        self.value = value
+    def __init__(self, spec, scope=None):
+        self.spec = spec
+        self.scope = scope or {}
+
+    def glom(self, target, **kw):
+        scope = dict(self.scope)
+        scope.update(kw.get('scope', {}))
+        kw.setdefault('scope', self.scope)
+        return glom(target, self.spec, **kw)
+
+    def _handler(self, target, scope):
+        scope.update(self.scope)
+        return scope[glom](target, self.spec, scope)
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r)' % (cn, self.value)
+        return '%s(%r)' % (cn, self.spec)
 
 
 class Coalesce(object):
@@ -909,6 +927,7 @@ _DEFAULT_SPEC_REGISTRY = _SpecRegistry((
     (Coalesce, Coalesce._handler),
     (_TType, _t_eval),  # NOTE: must come before callable b/c T is also callable
     (Call, Call._handler),
+    (Spec, Spec._handler),
     (callable, lambda spec, target, scope: spec(target)),
     (Literal, lambda spec, target, scope: spec.value),
     (Spec, lambda spec, target, scope: scope[glom](target, spec.value, scope)),
