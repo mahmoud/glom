@@ -56,7 +56,7 @@ higher. Check out all the well-tested enhancements below!
 
 18.1.1
 ------
-*(May 6, 2018)*
+*(May 9, 2018)*
 
 Initial release.
 
