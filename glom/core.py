@@ -724,15 +724,15 @@ class _TType(object):
     >>> T['a'].b['c']('success')
     T['a'].b['c']('success')
 
+    ``T``-related access errors raise a :exc:`~glom.PathAccessError`
+    during the :func:`~glom.glom` call.
+
     .. note::
 
        While ``T`` is clearly useful, powerful, and here to stay, its
        semantics are still being refined. Currently, operations beyond
        method calls and attribute/item access are considered
        experimental and should not be relied upon.
-
-       Error types and messages are also being rationalized to match
-       those of :class:`glom.Path`.
 
     """
     __slots__ = ('__weakref__',)
