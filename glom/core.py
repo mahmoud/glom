@@ -860,6 +860,10 @@ class Check(object):
                 (if default is not specified, GlomCheckError will be raised)
 
     """
+    # TODO: the next level of Check would be to play with the Scope to
+    # allow checking to continue across the same level of
+    # dictionary. Basically, collect as many errors as possible before
+    # raising the unified CheckError.
     def __init__(self, spec=T, **kwargs):
         self.spec = spec
         self.default = kwargs.pop('default', RAISE)
@@ -967,7 +971,8 @@ class Check(object):
 
         if errs:
             # TODO: due to the usage of basic path (not a Path
-            # object), the output can be a bit inconsistent here
+            # object), the format can be a bit inconsistent here
+            # (e.g., 'a.b' and ['a', 'b'])
             raise CheckError(errs, self, scope[Path])
         return ret
 
