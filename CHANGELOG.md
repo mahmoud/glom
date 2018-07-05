@@ -60,9 +60,8 @@ higher. Check out all the well-tested enhancements below!
 
 Initial release.
 
-See the [announcement
-post](https://sedimental.org/glom_restructured_data.html) for an idea
-of the functionality available.
+See the [announcement post][initial_announce] for an idea of the
+functionality available.
 
 This release itself added the console interface (CLI).
 
@@ -78,4 +77,16 @@ error messages.
 ------
 *(April 30, 2018)*
 
-Semi-public beta release.
+Semi-public beta release. Most of the functionality glom had on
+[announcement][initial_announce].
+
+[initial_announce]: https://sedimental.org/glom_restructured_data.html
+
+0.0.1
+-----
+*(April 18, 2018)*
+
+Barely more than a function definition. For the historically-oriented,
+here's a [blast from the
+past](https://github.com/mahmoud/glom/blob/186757b47af3d33901df4bf715874b5f3c781d8f/glom/__init__.py#L74-L91),
+representing the core of glom functionality.
