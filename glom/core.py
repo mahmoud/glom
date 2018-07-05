@@ -258,11 +258,18 @@ class Path(object):
     general access syntax won't work or isn't desirable.
     Use this to wrap ints, datetimes, and other valid keys, as well as
     strings with dots that shouldn't be expanded.
+
     >>> target = {'a': {'b': 'c', 'd.e': 'f', 2: 3}}
     >>> glom(target, Path('a', 2))
     3
     >>> glom(target, Path('a', 'd.e'))
     'f'
+
+    Paths can also be used to join together :data:`~glom.T` objects:
+
+    >>> Path(T['a'], T['b'])
+    T['a']['b']
+
     """
     def __init__(self, *path_parts):
         path_t = T
