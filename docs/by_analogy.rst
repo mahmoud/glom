@@ -22,8 +22,8 @@ comprehension, one of my favorite Python features.
 
 List comprehensions make your code look like its output, and that goes
 a long way in readability. ``glom`` itself does list processing with
-``[lambda x: x % 2]``, which actually makes it more like a list comp
-and the old ``filter()`` function.
+square brackets like ``[lambda x: x % 2]``, which actually makes it
+more like a list comp and the old ``filter()`` function.
 
 ``glom``'s list processing differs in two ways:
 
@@ -97,3 +97,16 @@ These hallowed technologies of yore, they were way ahead of the game
 in many ways. glom intentionally avoids their purity and verbosity,
 while trying to take as much inspiration as possible from their
 function.
+
+Others
+------
+
+Beyond what's listed above, several other packages and language
+features exist in glom's ballpark, including:
+
+* `Specter (for Clojure) <https://github.com/nathanmarz/specter>`_
+* `Lenses (for Haskell) <https://hackage.haskell.org/package/lens>`_
+* `Dig (for Ruby Hashmaps) <https://ruby-doc.org/core-2.3.0_preview1/Hash.html#dig>`_
+
+If you know of other useful comparisons, `let us know
+<https://github.com/mahmoud/glom/issues/new>`_!
