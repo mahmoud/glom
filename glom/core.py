@@ -1153,7 +1153,7 @@ class _SpecRegistry(object):
 
 _DEFAULT_SPEC_REGISTRY = _SpecRegistry((
     (Inspect, Inspect._handler),
-    (BaseSpec, lambda spec, target, scope: spec.glomit(target, scope))
+    (BaseSpec, lambda spec, target, scope: spec.glomit(target, scope)),
     (dict, _handle_dict),
     (list, _handle_list),
     (tuple, _handle_tuple),
