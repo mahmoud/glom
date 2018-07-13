@@ -1,7 +1,7 @@
 '''
 this module contains Specs that perform mutations
 '''
-from .core import _TType, _T_PATHS, _t_child, _t_eval, Path, T, S, Spec, BaseSpec, glom
+from .core import _TType, _T_PATHS, _t_child, _t_eval, Path, T, S, Spec, BaseSpec, glom, basestring
 
 
 # TODO: how to get this into default spec registry?
