@@ -24,10 +24,10 @@ class Assign(BaseSpec):
         cur = segs[0]
         assert cur in (T, S)
         for i in range(1, len(segs) - 2, 2):
-            cur = _t_child(segs[i], segs[i + 1])
+            cur = _t_child(cur, segs[i], segs[i + 1])
         self.t = cur
         self.op, self.arg = segs[-2:]
-        if self.op not in '[.P':
+        if self.op not in '[.P':  # maybe if we add null-coalescing this should do something?
             raise ValueError('last path of path must be setattr or setitem')
         self.val = val
 
