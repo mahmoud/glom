@@ -1,7 +1,7 @@
 '''
 this module contains Specs that perform mutations
 '''
-from .core import _TType, _T_PATHS, _t_child, Path, T, S, Spec, BaseSpec, glom
+from .core import _TType, _T_PATHS, _t_child, _t_eval, Path, T, S, Spec, BaseSpec, glom
 
 
 # TODO: how to get this into default spec registry?
@@ -18,7 +18,7 @@ class Assign(BaseSpec):
             raise TypeError('path argument must be a . delimeted string, Path, T, or S')
         if type(path) is Path:
             path = path.path_t
-        segs = _T_PATHS[self.t]
+        segs = _T_PATHS[path]
         if len(segs) < 3:
             raise ValueError('path must have at least one element')
         cur = segs[0]
