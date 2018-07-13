@@ -1,7 +1,7 @@
 import pytest
 
 from glom import glom, Path, T
-from glom.mutable import Assign
+from glom.mutable import Assign, assign
 
 
 def test_assign():
@@ -20,6 +20,7 @@ def test_assign():
     assert glom(r(), Assign('r.r.r.r.r.r.r.r.r', 1)) == {'r': 1}
     assert glom(r(), Assign(T['r']['r']['r']['r'], 1)) == {'r': 1}
     assert glom(r(), Assign(Path('r', 'r', T['r']), 1)) == {'r': 1}
+    assert assign(r(), Path('r', 'r', T['r']), 1) == {'r': 1}
     with pytest.raises(TypeError):
         glom({}, Assign(1, 'a'))
     with pytest.raises(ValueError):

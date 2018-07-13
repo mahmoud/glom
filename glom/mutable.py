@@ -1,8 +1,12 @@
 '''
 this module contains Specs that perform mutations
 '''
-from .core import _TType, _T_PATHS, _t_child, _t_eval, Path, T, S, Spec, BaseSpec, glom, basestring
+from .core import _TType, _T_PATHS, _t_child, _t_eval, Path, T, S, Spec, BaseSpec, glom
 
+from . import core
+
+if 'basestring' in core.__dict__:
+    from core import basestring
 
 # TODO: how to get this into default spec registry?
 # options:
@@ -50,3 +54,7 @@ class Assign(BaseSpec):
             else:
                 setattr(dest, self.arg, val)
         return target
+
+
+def assign(obj, path, val):
+    return glom(obj, Assign(path, val))
