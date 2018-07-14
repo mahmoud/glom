@@ -650,19 +650,19 @@ class Call(object):
 
     def _handler(self, target, scope):
         'run against the current target'
-        def eval(t):
+        def _eval(t):
             if type(t) in (Spec, _TType):
                 return scope[glom](target, t, scope)
             return t
         if type(self.args) is _TType:
-            args = eval(self.args)
+            args = _eval(self.args)
         else:
-            args = [eval(a) for a in self.args]
+            args = [_eval(a) for a in self.args]
         if type(self.kwargs) is _TType:
-            kwargs = eval(self.kwargs)
+            kwargs = _eval(self.kwargs)
         else:
-            kwargs = {name: eval(val) for name, val in self.kwargs.items()}
-        return eval(self.func)(*args, **kwargs)
+            kwargs = {name: _eval(val) for name, val in self.kwargs.items()}
+        return _eval(self.func)(*args, **kwargs)
 
     def __repr__(self):
         cn = self.__class__.__name__
