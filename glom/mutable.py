@@ -14,12 +14,13 @@ if 'basestring' in core.__dict__:
 #   2- just eat the circularity
 #   3- move Assign back to core.py (but that is getting large)
 #   4- add some default behavior -- "if it is an instance of BaseSpec, call handle"
+#   5- class decorator that does a bit of checking as well as the registration
 class Assign(BaseSpec):
     def __init__(self, path, val):
         if isinstance(path, basestring):
             path = Path(*path.split('.'))
         if not isinstance(path, (Path, _TType)):
-            raise TypeError('path argument must be a . delimeted string, Path, T, or S')
+            raise TypeError('path argument must be a .-delimited string, Path, T, or S')
         if type(path) is Path:
             path = path.path_t
         segs = _T_PATHS[path]
@@ -32,7 +33,7 @@ class Assign(BaseSpec):
         self.t = cur
         self.op, self.arg = segs[-2:]
         if self.op not in '[.P':  # maybe if we add null-coalescing this should do something?
-            raise ValueError('last path of path must be setattr or setitem')
+            raise ValueError('last part of path must be setattr or setitem')
         self.val = val
 
     def glomit(self, target, scope):
