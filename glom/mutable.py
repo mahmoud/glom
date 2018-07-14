@@ -6,7 +6,7 @@ from .core import _TType, _T_PATHS, _t_child, _t_eval, Path, T, S, Spec, BaseSpe
 from . import core
 
 if 'basestring' in core.__dict__:
-    from core import basestring
+    from .core import basestring
 
 # TODO: how to get this into default spec registry?
 # options:
@@ -18,14 +18,16 @@ if 'basestring' in core.__dict__:
 class Assign(BaseSpec):
     def __init__(self, path, val):
         if isinstance(path, basestring):
-            path = Path(*path.split('.'))
-        if not isinstance(path, (Path, _TType)):
-            raise TypeError('path argument must be a .-delimited string, Path, T, or S')
-        if type(path) is Path:
+            path = Path(*path.split('.')).path_t
+        elif type(path) is Path:
             path = path.path_t
+        elif not isinstance(path, _TType):
+            raise TypeError('path argument must be a .-delimited string, Path, T, or S')
+
         segs = _T_PATHS[path]
         if len(segs) < 3:
             raise ValueError('path must have at least one element')
+
         cur = segs[0]
         assert cur in (T, S)
         for i in range(1, len(segs) - 2, 2):
