@@ -209,8 +209,8 @@ class UnregisteredTarget(GlomError):
 
     def __str__(self):
         if not self.type_map:
-            return ("glom() called without registering any types. see glom.register()"
-                    " or Glommer's constructor for details.")
+            return ("glom() called without registering any types for operation '%s'. see"
+                    " glom.register() or Glommer's constructor for details." % (self.op,))
         reg_types = sorted([t.__name__ for t, h in self.type_map.items()
                             if getattr(h, self.op, None)])
         reg_types_str = '()' if not reg_types else ('(%s)' % ', '.join(reg_types))
@@ -219,31 +219,6 @@ class UnregisteredTarget(GlomError):
         if self.path:
             msg += ' (at %r)' % (self.path,)
         return msg
-
-
-class TargetHandler(object):
-    """The TargetHandler is a construct used internally to register
-    general actions on types of targets. The logic for matching a
-    target to its handler based on type is in
-    :meth:`Glommer._get_handler()`.
-
-    """
-    def __init__(self, type_obj, **ops):
-        self.type = type_obj
-        self.op_map = {}
-        for op_name, handler in ops.items():
-            self.set_op_handler(op_name, handler)
-        return
-
-    def set_op_handler(self, op_name, handler):
-        setattr(self, op_name, handler)  # TODO: fix this
-        self.op_map[op_name] = handler
-
-    def __repr__(self):
-        return ('<%s object type=%s op_map=%r>'
-                % (self.__class__.__name__,
-                   self.type.__name__,
-                   self.op_map))
 
 
 class Path(object):
@@ -810,11 +785,11 @@ def _t_eval(_t, target, scope):
                 raise PathAccessError(e, Path(_t), i // 2)
         elif op == 'P':
             # Path type stuff (fuzzy match)
-            handler = scope[_TargetRegistry].get_handler(cur)
-            get = handler.op_map.get('get')
+            get = scope[_TargetRegistry].get_handler('get', cur)
             if not get:
+                type_map = scope[_TargetRegistry]._op_type_map.get('get', OrderedDict())
                 raise UnregisteredTarget(
-                    'get', type(cur), scope[_TargetRegistry]._type_map, path=t_path[2:i+2:2])
+                    'get', type(cur), type_map, path=t_path[2:i+2:2])
             try:
                 cur = get(cur, arg)
             except Exception as e:
@@ -1064,10 +1039,10 @@ def _handle_dict(spec, target, scope):
 
 def _handle_list(spec, target, scope):
     subspec = spec[0]
-    handler = scope[_TargetRegistry].get_handler(target)
-    iterate = handler.op_map.get('iterate')
+    iterate = scope[_TargetRegistry].get_handler('iterate', target)
     if not iterate:
-        raise UnregisteredTarget('iterate', type(target), scope[_TargetRegistry]._type_map, path=scope[Path])
+        type_map = scope[_TargetRegistry]._op_type_map.get('iterate', OrderedDict())
+        raise UnregisteredTarget('iterate', type(target), type_map, path=scope[Path])
     try:
         iterator = iterate(target)
     except Exception as e:
@@ -1157,10 +1132,9 @@ class _TargetRegistry(object):
     and attribute walking
     '''
     def __init__(self, register_default_types=True, register_default_autodiscovery=True):
-        self._type_map = OrderedDict()
-        self._type_tree = OrderedDict()  # see _register_fuzzy_type for details
+        self._op_type_map = {}   # OrderedDict()
+        self._op_type_tree = {}  # OrderedDict()  # see _register_fuzzy_type for details
 
-        self._unreg_handler = TargetHandler(None, get=False, iterate=False)
         self._auto_map = OrderedDict()  # op name to function that returns handler function
 
         if register_default_autodiscovery:
@@ -1170,23 +1144,28 @@ class _TargetRegistry(object):
             self._register_default_types()
         # TODO: make _type_map into _op_type_map, dict of dicts?
 
-    def get_handler(self, obj):
-        "return the closest-matching type config for an object *instance*, obj"
+    def get_handler(self, op, obj):
+        """for an operation and object **instance**, obj, return the
+        closest-matching handler function (or False)"""
         try:
-            return self._type_map[type(obj)]
+            type_map = self._op_type_map[op]
+        except KeyError:
+            return False
+        try:
+            return type_map[type(obj)]
         except KeyError:
             pass
-        closest = self._get_closest_type(obj)
+        type_tree = self._op_type_tree.get(op, {})
+        closest = self._get_closest_type(obj, type_tree=type_tree)
         if closest is None:
-            return self._unreg_handler
-        return self._type_map[closest]
+            return False
+        return type_map[closest]
 
-    def _get_closest_type(self, obj, _type_tree=None):
-        type_tree = _type_tree if _type_tree is not None else self._type_tree
+    def _get_closest_type(self, obj, type_tree):
         default = None
         for cur_type, sub_tree in type_tree.items():
             if isinstance(obj, cur_type):
-                sub_type = self._get_closest_type(obj, _type_tree=sub_tree)
+                sub_type = self._get_closest_type(obj, type_tree=sub_tree)
                 ret = cur_type if sub_type is None else sub_type
                 return ret
         return default
@@ -1198,7 +1177,7 @@ class _TargetRegistry(object):
         self.register(tuple, get=_get_sequence_item)
         self.register(_AbstractIterable, iterate=iter)
 
-    def _register_fuzzy_type(self, new_type, _type_tree=None):
+    def _register_fuzzy_type(self, op, new_type, _type_tree=None):
         """Build a "type tree", an OrderedDict mapping registered types to
         their subtypes
 
@@ -1208,22 +1187,27 @@ class _TargetRegistry(object):
         Order is preserved such that non-overlapping parts of the
         subtree take precedence by which was most recently added.
         """
-        type_tree = _type_tree if _type_tree is not None else self._type_tree
+        if _type_tree is None:
+            try:
+                _type_tree = self._op_type_tree[op]
+            except KeyError:
+                _type_tree = self._op_type_tree[op] = OrderedDict()
+
         registered = False
-        for cur_type, sub_tree in list(type_tree.items()):
+        for cur_type, sub_tree in list(_type_tree.items()):
             if issubclass(cur_type, new_type):
-                sub_tree = type_tree.pop(cur_type)  # mutation for recursion brevity
+                sub_tree = _type_tree.pop(cur_type)  # mutation for recursion brevity
                 try:
-                    type_tree[new_type][cur_type] = sub_tree
+                    _type_tree[new_type][cur_type] = sub_tree
                 except KeyError:
-                    type_tree[new_type] = OrderedDict({cur_type: sub_tree})
+                    _type_tree[new_type] = OrderedDict({cur_type: sub_tree})
                 registered = True
             elif issubclass(new_type, cur_type):
-                type_tree[cur_type] = self._register_fuzzy_type(new_type, _type_tree=sub_tree)
+                _type_tree[cur_type] = self._register_fuzzy_type(op, new_type, _type_tree=sub_tree)
                 registered = True
         if not registered:
-            type_tree[new_type] = OrderedDict()
-        return type_tree
+            _type_tree[new_type] = OrderedDict()
+        return _type_tree
 
     def register(self, target_type, **kwargs):
         if not isinstance(target_type, type):
@@ -1231,17 +1215,12 @@ class _TargetRegistry(object):
         exact = kwargs.pop('exact', None)
         new_op_map = dict(kwargs)
 
-        preregistered = False
-        try:
-            target_handler = self._type_map[target_type]
-            preregistered = True
-        except KeyError:
-            target_handler = self._type_map[target_type] = TargetHandler(target_type)
-
         for op_name in sorted(set(self._auto_map.keys()) | set(new_op_map.keys())):
+            cur_type_map = self._op_type_map.setdefault(op_name, OrderedDict())
+
             if op_name in new_op_map:
                 handler = new_op_map[op_name]
-            elif op_name not in target_handler.op_map:
+            elif target_type not in cur_type_map:
                 try:
                     handler = self._auto_map[op_name](target_type)
                 except Exception as e:
@@ -1254,15 +1233,11 @@ class _TargetRegistry(object):
             new_op_map[op_name] = handler
 
         for op_name, handler in new_op_map.items():
-            target_handler.set_op_handler(op_name, handler)
+            self._op_type_map[op_name][target_type] = handler
 
-        if exact is False or (exact is None and not preregistered):
-            # TODO may need to make fuzziness per op, as extensions
-            # may want to register exact defaults, while the glom
-            # defaults are exact. this means one type tree per op, as
-            # opposed to one for al. probably also means getting rid
-            # of TargetHandler.
-            self._register_fuzzy_type(target_type)
+        if not exact:
+            for op_name in new_op_map:
+                self._register_fuzzy_type(op_name, target_type)
 
         return
 
