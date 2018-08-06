@@ -35,7 +35,7 @@ def test_types_leave_one_out():
         for t in ALL_TYPES:
             if t is cur_t:
                 continue
-            glommer.register(t, getattr)
+            glommer.register(t, get=getattr)
 
         obj = cur_t()
         assert glommer.scope[_TargetRegistry]._get_closest_type(obj) == obj.__class__.mro()[1]
@@ -64,7 +64,7 @@ def test_types_bare():
     else:
         assert False, 'expected an UnregisteredTarget exception'
 
-    glommer.register(object, getattr)
+    glommer.register(object, get=getattr)
 
     # check again that registering object for 'get' doesn't change the
     # fact that we don't have iterate support yet
