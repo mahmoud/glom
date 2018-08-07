@@ -787,9 +787,9 @@ def _t_eval(_t, target, scope):
             # Path type stuff (fuzzy match)
             get = scope[_TargetRegistry].get_handler('get', cur)
             if not get:
-                type_map = scope[_TargetRegistry]._op_type_map.get('get', OrderedDict())
-                raise UnregisteredTarget(
-                    'get', type(cur), type_map, path=t_path[2:i+2:2])
+                raise UnregisteredTarget('get', type(cur),
+                                         scope[_TargetRegistry].get_type_map('get'),
+                                         path=t_path[2:i+2:2])
             try:
                 cur = get(cur, arg)
             except Exception as e:
@@ -1041,8 +1041,9 @@ def _handle_list(spec, target, scope):
     subspec = spec[0]
     iterate = scope[_TargetRegistry].get_handler('iterate', target)
     if not iterate:
-        type_map = scope[_TargetRegistry]._op_type_map.get('iterate', OrderedDict())
-        raise UnregisteredTarget('iterate', type(target), type_map, path=scope[Path])
+        raise UnregisteredTarget('iterate', type(target),
+                                 type_map=scope[_TargetRegistry].get_type_map('iterate'),
+                                 path=scope[Path])
     try:
         iterator = iterate(target)
     except Exception as e:
@@ -1132,8 +1133,8 @@ class _TargetRegistry(object):
     and attribute walking
     '''
     def __init__(self, register_default_types=True, register_default_autodiscovery=True):
-        self._op_type_map = {}   # OrderedDict()
-        self._op_type_tree = {}  # OrderedDict()  # see _register_fuzzy_type for details
+        self._op_type_map = {}
+        self._op_type_tree = {}  # see _register_fuzzy_type for details
 
         self._auto_map = OrderedDict()  # op name to function that returns handler function
 
@@ -1142,7 +1143,7 @@ class _TargetRegistry(object):
 
         if register_default_types:
             self._register_default_types()
-        # TODO: make _type_map into _op_type_map, dict of dicts?
+        return
 
     def get_handler(self, op, obj):
         """for an operation and object **instance**, obj, return the
@@ -1160,6 +1161,12 @@ class _TargetRegistry(object):
         if closest is None:
             return False
         return type_map[closest]
+
+    def get_type_map(self, op):
+        try:
+            return self._op_type_map[op]
+        except KeyError:
+            return OrderedDict()
 
     def _get_closest_type(self, obj, type_tree):
         default = None
@@ -1345,7 +1352,8 @@ def _glom(target, spec, scope):
 
 _DEFAULT_SCOPE.update({
     glom: _glom,
-    _TargetRegistry: _TargetRegistry(register_default_types=True),
+    _TargetRegistry: _TargetRegistry(register_default_types=True,
+                                     register_default_autodiscovery=True),
     _SpecRegistry: _DEFAULT_SPEC_REGISTRY
 })
 
@@ -1405,14 +1413,17 @@ class Glommer(object):
           default actions include dict access, list and iterable
           iteration, and generic object attribute access. Defaults to
           True.
-
     """
-    def __init__(self, register_default_types=True, scope=_DEFAULT_SCOPE):
+    def __init__(self, **kwargs):
+        register_default_types = kwargs.pop('register_default_types', True)
+        register_default_autodiscovery = kwargs.pop('register_default_autodiscover', True)
+        scope = kwargs.pop('scope', _DEFAULT_SCOPE)
+
         # this "freezes" the scope in at the time of construction
         self.scope = ChainMap(dict(scope))
-        self.scope[_TargetRegistry] = _TargetRegistry(register_default_types)
+        self.scope[_TargetRegistry] = _TargetRegistry(register_default_types=register_default_types,
+                                                      register_default_autodiscovery=register_default_autodiscovery)
         self.scope[_SpecRegistry] = _DEFAULT_SPEC_REGISTRY
-        return
 
     def register(self, target_type, **kwargs):
         """Register *target_type* so :meth:`~Glommer.glom()` will
@@ -1449,7 +1460,6 @@ class Glommer(object):
         return glom(target, spec, scope=self.scope, **kwargs)
 
 
-pass # this line prevents the docstring below from attaching to register
 
 
 """TODO:
