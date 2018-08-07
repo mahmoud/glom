@@ -1,6 +1,8 @@
 '''
 this module contains Specs that perform mutations
 '''
+import operator
+
 from .core import _TType, _T_PATHS, _t_child, _t_eval, Path, T, S, Spec, BaseSpec, glom
 
 from . import core
@@ -61,3 +63,27 @@ class Assign(BaseSpec):
 
 def assign(obj, path, val):
     return glom(obj, Assign(path, val))
+
+
+_ALL_BUILTIN_TYPES = [v for v in __builtins__.__dict__.values() if isinstance(v, type)]
+_BUILTIN_BASE_TYPES = [v for v in _ALL_BUILTIN_TYPES
+                       if not issubclass(v, tuple([t for t in _ALL_BUILTIN_TYPES
+                                                   if t not in (v, type, object)]))]
+_UNASSIGNABLE_BASE_TYPES = tuple(set(_BUILTIN_BASE_TYPES) - set([dict, list, BaseException]))
+
+
+def _set_sequence_item(target, idx, val):
+    target[int(idx)] = val
+
+
+def _assign_autodiscover(type_obj):
+    # TODO: issubclass or "in"?
+    if issubclass(type_obj, _UNASSIGNABLE_BASE_TYPES):
+        return False
+
+    if callable(getattr(type_obj, '__setitem__', None)):
+        if callable(getattr(type_obj, 'index', None)):
+            return _set_sequence_item
+        return operator.setitem
+
+    return setattr
