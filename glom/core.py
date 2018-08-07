@@ -209,8 +209,8 @@ class UnregisteredTarget(GlomError):
 
     def __str__(self):
         if not self.type_map:
-            return ("glom() called without registering any types. see glom.register()"
-                    " or Glommer's constructor for details.")
+            return ("glom() called without registering any types for operation '%s'. see"
+                    " glom.register() or Glommer's constructor for details." % (self.op,))
         reg_types = sorted([t.__name__ for t, h in self.type_map.items()
                             if getattr(h, self.op, None)])
         reg_types_str = '()' if not reg_types else ('(%s)' % ', '.join(reg_types))
@@ -219,38 +219,6 @@ class UnregisteredTarget(GlomError):
         if self.path:
             msg += ' (at %r)' % (self.path,)
         return msg
-
-
-class TargetHandler(object):
-    """The TargetHandler is a construct used internally to register
-    general actions on types of targets. The logic for matching a
-    target to its handler based on type is in
-    :meth:`Glommer._get_handler()`.
-
-    """
-    def __init__(self, type_obj, get=None, iterate=None):
-        self.type = type_obj
-        if iterate is None:
-            if callable(getattr(type_obj, '__iter__', None)):
-                iterate = iter
-            else:
-                iterate = False
-        if iterate is not False and not callable(iterate):
-            raise ValueError('expected iterable type or callable for iterate, not: %r'
-                             % iterate)
-        self.iterate = iterate
-        if get is None:
-            get = getattr
-        if get is not False and not callable(get):
-            raise ValueError('expected callable for get, not: %r' % (get,))
-        self.get = get
-
-    def __repr__(self):
-        return ('<%s object type=%s get=%s iterate=%s>'
-                % (self.__class__.__name__,
-                   self.type.__name__,
-                   self.get and self.get.__name__,
-                   self.iterate and self.iterate.__name__))
 
 
 class Path(object):
@@ -288,11 +256,6 @@ class Path(object):
             else:
                 path_t = _t_child(path_t, 'P', part)
         self.path_t = path_t
-
-    def append(self, part):
-        assert not isinstance(part, _TType), "call extend or +?"
-        assert not isinstance(part, Path), "call extend or +?"
-        self.path_t = _t_child(self.path_t, 'P', part)
 
     def _handler(self, target, scope):
         return _t_eval(self.path_t, target, scope)
@@ -817,12 +780,13 @@ def _t_eval(_t, target, scope):
                 raise PathAccessError(e, Path(_t), i // 2)
         elif op == 'P':
             # Path type stuff (fuzzy match)
-            handler = scope[_TargetRegistry].get_handler(cur)
-            if not handler.get:
-                raise UnregisteredTarget(
-                    'get', type(target), scope[_TargetRegistry]._type_map, path=t_path[2:i+2:2])
+            get = scope[_TargetRegistry].get_handler('get', cur)
+            if not get:
+                raise UnregisteredTarget('get', type(cur),
+                                         scope[_TargetRegistry].get_type_map('get'),
+                                         path=t_path[2:i+2:2])
             try:
-                cur = handler.get(cur, arg)
+                cur = get(cur, arg)
             except Exception as e:
                 raise PathAccessError(e, Path(_t), i // 2)
         elif op == '(':
@@ -1070,11 +1034,13 @@ def _handle_dict(spec, target, scope):
 
 def _handle_list(spec, target, scope):
     subspec = spec[0]
-    handler = scope[_TargetRegistry].get_handler(target)
-    if not handler.iterate:
-        raise UnregisteredTarget('iterate', type(target), scope[_TargetRegistry]._type_map, path=scope[Path])
+    iterate = scope[_TargetRegistry].get_handler('iterate', target)
+    if not iterate:
+        raise UnregisteredTarget('iterate', type(target),
+                                 type_map=scope[_TargetRegistry].get_type_map('iterate'),
+                                 path=scope[Path])
     try:
-        iterator = handler.iterate(target)
+        iterator = iterate(target)
     except Exception as e:
         te = TypeError('failed to iterate on instance of type %r at %r (got %r)'
                         % (target.__class__.__name__, Path(*scope[Path]), e))
@@ -1135,6 +1101,9 @@ class _SpecRegistry(object):
         self.specs = ((spec_type, spec_handler),) + self.specs
 
 
+# TODO: see if get_handler can be optimized once extension API is
+# formalized (spec registry might even go away, as specs don't need to
+# be registered, they can just conform to an api)
 _DEFAULT_SPEC_REGISTRY = _SpecRegistry((
     (Inspect, Inspect._handler),
     (dict, _handle_dict),
@@ -1158,42 +1127,59 @@ class _TargetRegistry(object):
     responsible for registration of target types for iteration
     and attribute walking
     '''
-    def __init__(self, register_default_types=True):
-        self._type_map = OrderedDict()
-        self._type_tree = OrderedDict()  # see _register_fuzzy_type for details
+    def __init__(self, register_default_types=True, register_default_autodiscovery=True):
+        self._op_type_map = {}
+        self._op_type_tree = {}  # see _register_fuzzy_type for details
+
+        self._auto_map = OrderedDict()  # op name to function that returns handler function
+
+        if register_default_autodiscovery:
+            self._register_default_autodiscovery()
+
         if register_default_types:
             self._register_default_types()
-        self._unreg_handler = TargetHandler(None, get=False, iterate=False)
+        return
 
-    def get_handler(self, obj):
-        "return the closest-matching type config for an object *instance*, obj"
+    def get_handler(self, op, obj):
+        """for an operation and object **instance**, obj, return the
+        closest-matching handler function (or False)"""
         try:
-            return self._type_map[type(obj)]
+            type_map = self._op_type_map[op]
+        except KeyError:
+            return False
+        try:
+            return type_map[type(obj)]
         except KeyError:
             pass
-        closest = self._get_closest_type(obj)
+        type_tree = self._op_type_tree.get(op, {})
+        closest = self._get_closest_type(obj, type_tree=type_tree)
         if closest is None:
-            return self._unreg_handler
-        return self._type_map[closest]
+            return False
+        return type_map[closest]
 
-    def _get_closest_type(self, obj, _type_tree=None):
-        type_tree = _type_tree if _type_tree is not None else self._type_tree
+    def get_type_map(self, op):
+        try:
+            return self._op_type_map[op]
+        except KeyError:
+            return OrderedDict()
+
+    def _get_closest_type(self, obj, type_tree):
         default = None
         for cur_type, sub_tree in type_tree.items():
             if isinstance(obj, cur_type):
-                sub_type = self._get_closest_type(obj, _type_tree=sub_tree)
+                sub_type = self._get_closest_type(obj, type_tree=sub_tree)
                 ret = cur_type if sub_type is None else sub_type
                 return ret
         return default
 
     def _register_default_types(self):
         self.register(object)
-        self.register(dict, operator.getitem)
-        self.register(list, _get_sequence_item)
-        self.register(tuple, _get_sequence_item)
+        self.register(dict, get=operator.getitem)
+        self.register(list, get=_get_sequence_item)
+        self.register(tuple, get=_get_sequence_item)
         self.register(_AbstractIterable, iterate=iter)
 
-    def _register_fuzzy_type(self, new_type, _type_tree=None):
+    def _register_fuzzy_type(self, op, new_type, _type_tree=None):
         """Build a "type tree", an OrderedDict mapping registered types to
         their subtypes
 
@@ -1203,30 +1189,79 @@ class _TargetRegistry(object):
         Order is preserved such that non-overlapping parts of the
         subtree take precedence by which was most recently added.
         """
-        type_tree = _type_tree if _type_tree is not None else self._type_tree
+        if _type_tree is None:
+            try:
+                _type_tree = self._op_type_tree[op]
+            except KeyError:
+                _type_tree = self._op_type_tree[op] = OrderedDict()
+
         registered = False
-        for cur_type, sub_tree in list(type_tree.items()):
+        for cur_type, sub_tree in list(_type_tree.items()):
             if issubclass(cur_type, new_type):
-                sub_tree = type_tree.pop(cur_type)  # mutation for recursion brevity
+                sub_tree = _type_tree.pop(cur_type)  # mutation for recursion brevity
                 try:
-                    type_tree[new_type][cur_type] = sub_tree
+                    _type_tree[new_type][cur_type] = sub_tree
                 except KeyError:
-                    type_tree[new_type] = OrderedDict({cur_type: sub_tree})
+                    _type_tree[new_type] = OrderedDict({cur_type: sub_tree})
                 registered = True
             elif issubclass(new_type, cur_type):
-                type_tree[cur_type] = self._register_fuzzy_type(new_type, _type_tree=sub_tree)
+                _type_tree[cur_type] = self._register_fuzzy_type(op, new_type, _type_tree=sub_tree)
                 registered = True
         if not registered:
-            type_tree[new_type] = OrderedDict()
-        return type_tree
+            _type_tree[new_type] = OrderedDict()
+        return _type_tree
 
-    def register(self, target_type, get=None, iterate=None, exact=False):
+    def register(self, target_type, **kwargs):
         if not isinstance(target_type, type):
             raise TypeError('register expected a type, not an instance: %r' % (target_type,))
-        self._type_map[target_type] = TargetHandler(target_type, get=get, iterate=iterate)
+        exact = kwargs.pop('exact', None)
+        new_op_map = dict(kwargs)
+
+        for op_name in sorted(set(self._auto_map.keys()) | set(new_op_map.keys())):
+            cur_type_map = self._op_type_map.setdefault(op_name, OrderedDict())
+
+            if op_name in new_op_map:
+                handler = new_op_map[op_name]
+            elif target_type in cur_type_map:
+                handler = cur_type_map[target_type]
+            else:
+                try:
+                    handler = self._auto_map[op_name](target_type)
+                except Exception as e:
+                    raise TypeError('failed to autodiscover support for operation'
+                                    ' "%s" on target type: %s (got %r)'
+                                    % (op_name, target_type.__class__.__name__, e))
+            if handler is not False and not callable(handler):
+                raise TypeError('expected handler for op "%s" to be'
+                                ' callable or False, not: %r' % (op_name, handler))
+            new_op_map[op_name] = handler
+
+        for op_name, handler in new_op_map.items():
+            self._op_type_map[op_name][target_type] = handler
+
         if not exact:
-            self._register_fuzzy_type(target_type)
+            for op_name in new_op_map:
+                self._register_fuzzy_type(op_name, target_type)
+
         return
+
+    def register_autodiscover(self, op_name, auto_func):
+        """auto_func is a function that when passed a type, returns a handler
+        associated with op_name if it's supported, or False if it's
+        not.
+        """
+        if not isinstance(op_name, basestring):
+            raise TypeError('expected op_name to be a text name, not: %r' % (op_name,))
+        if not callable(auto_func):
+            raise TypeError('expected auto_func to be callable, not: %r' % (auto_func,))
+        self._auto_map[op_name] = auto_func
+
+    def _register_default_autodiscovery(self):
+        def _get_iterable_handler(type_obj):
+            return iter if callable(getattr(type_obj, '__iter__', None)) else False
+
+        self.register_autodiscover('iterate', _get_iterable_handler)
+        self.register_autodiscover('get', lambda _: getattr)
 
 
 _DEFAULT_SCOPE = ChainMap({})
@@ -1314,12 +1349,13 @@ def _glom(target, spec, scope):
 
 _DEFAULT_SCOPE.update({
     glom: _glom,
-    _TargetRegistry: _TargetRegistry(register_default_types=True),
+    _TargetRegistry: _TargetRegistry(register_default_types=True,
+                                     register_default_autodiscovery=True),
     _SpecRegistry: _DEFAULT_SPEC_REGISTRY
 })
 
 
-def register(target_type, get=None, iterate=None, exact=False):
+def register(target_type, **kwargs):
     """Register *target_type* so :meth:`~Glommer.glom()` will
     know how to handle instances of that type as targets.
 
@@ -1346,7 +1382,7 @@ def register(target_type, get=None, iterate=None, exact=False):
        methods instead.
 
     """
-    _DEFAULT_SCOPE[_TargetRegistry].register(target_type, get, iterate, exact)
+    _DEFAULT_SCOPE[_TargetRegistry].register(target_type, **kwargs)
     return
 
 
@@ -1374,16 +1410,19 @@ class Glommer(object):
           default actions include dict access, list and iterable
           iteration, and generic object attribute access. Defaults to
           True.
-
     """
-    def __init__(self, register_default_types=True, scope=_DEFAULT_SCOPE):
+    def __init__(self, **kwargs):
+        register_default_types = kwargs.pop('register_default_types', True)
+        register_default_autodiscovery = kwargs.pop('register_default_autodiscover', True)
+        scope = kwargs.pop('scope', _DEFAULT_SCOPE)
+
         # this "freezes" the scope in at the time of construction
         self.scope = ChainMap(dict(scope))
-        self.scope[_TargetRegistry] = _TargetRegistry(register_default_types)
+        self.scope[_TargetRegistry] = _TargetRegistry(register_default_types=register_default_types,
+                                                      register_default_autodiscovery=register_default_autodiscovery)
         self.scope[_SpecRegistry] = _DEFAULT_SPEC_REGISTRY
-        return
 
-    def register(self, target_type, get=None, iterate=None, exact=False):
+    def register(self, target_type, **kwargs):
         """Register *target_type* so :meth:`~Glommer.glom()` will
         know how to handle instances of that type as targets.
 
@@ -1410,14 +1449,14 @@ class Glommer(object):
            methods instead.
 
         """
-        self.scope[_TargetRegistry].register(target_type, get, iterate, exact)
+        exact = kwargs.pop('exact', False)
+        self.scope[_TargetRegistry].register(target_type, exact=exact, **kwargs)
         return
 
     def glom(self, target, spec, **kwargs):
         return glom(target, spec, scope=self.scope, **kwargs)
 
 
-pass # this line prevents the docstring below from attaching to register
 
 
 """TODO:
