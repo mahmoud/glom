@@ -194,3 +194,56 @@ def test_faulty_iterate():
 
     with pytest.raises(TypeError):
         glommer.glom({'a': 'fail'}, ('a', {'chars': [str]}))
+
+
+def test_faulty_autodiscover():
+    treg = _TargetRegistry()
+
+    with pytest.raises(TypeError, match="text name, not:"):
+        treg.register_autodiscover(None, lambda t: False)
+    with pytest.raises(TypeError, match="callable, not:"):
+        treg.register_autodiscover('fake_op', None)
+
+    class NewType(object):
+        pass
+
+    def _autodiscover_raise(type_obj):
+        raise Exception('noperino')
+
+    treg.register_autodiscover('fake_op', _autodiscover_raise)
+
+    with pytest.raises(TypeError, match="noperino"):
+        treg.register(NewType)
+
+    def _autodiscover_faulty_return(type_obj):
+        return 'hideeho'
+
+    # also tests overriding behavior of fake_op
+    treg.register_autodiscover('fake_op', _autodiscover_faulty_return)
+
+    with pytest.raises(TypeError, match="hideeho"):
+        treg.register(NewType)
+
+
+def test_reregister_type():
+    treg = _TargetRegistry()
+
+    class NewType(object):
+        pass
+
+    treg.register(NewType, op=lambda obj: obj)
+
+    obj = NewType()
+    handler = treg.get_handler('op', obj)
+
+    assert handler(obj) == obj
+
+    # assert no change in reregistering same
+    treg.register(NewType, op=lambda obj: obj)
+    handler = treg.get_handler('op', obj)
+    assert handler(obj) == obj
+
+    # assert change in reregistering new
+    treg.register(NewType, op=lambda obj: obj.__class__.__name__)
+    handler = treg.get_handler('op', obj)
+    assert handler(obj) == 'NewType'

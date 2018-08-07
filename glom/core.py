@@ -257,11 +257,6 @@ class Path(object):
                 path_t = _t_child(path_t, 'P', part)
         self.path_t = path_t
 
-    def append(self, part):
-        assert not isinstance(part, _TType), "call extend or +?"
-        assert not isinstance(part, Path), "call extend or +?"
-        self.path_t = _t_child(self.path_t, 'P', part)
-
     def _handler(self, target, scope):
         return _t_eval(self.path_t, target, scope)
 
@@ -1227,7 +1222,9 @@ class _TargetRegistry(object):
 
             if op_name in new_op_map:
                 handler = new_op_map[op_name]
-            elif target_type not in cur_type_map:
+            elif target_type in cur_type_map:
+                handler = cur_type_map[target_type]
+            else:
                 try:
                     handler = self._auto_map[op_name](target_type)
                 except Exception as e:
@@ -1253,7 +1250,7 @@ class _TargetRegistry(object):
         associated with op_name if it's supported, or False if it's
         not.
         """
-        if not isinstance(op_name, basestring) and op_name:
+        if not isinstance(op_name, basestring):
             raise TypeError('expected op_name to be a text name, not: %r' % (op_name,))
         if not callable(auto_func):
             raise TypeError('expected auto_func to be callable, not: %r' % (auto_func,))
