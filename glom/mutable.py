@@ -75,7 +75,10 @@ _UNASSIGNABLE_BASE_TYPES = tuple(set(_BUILTIN_BASE_TYPES) - set([dict, list, Bas
 def _set_sequence_item(target, idx, val):
     target[int(idx)] = val
 
-
+# how to get this into the target registry? just put it in the root
+# one?  autorun autodiscovery over known types when adding a new
+# autodiscovery probably just let autodiscovery be totally global, and
+# remove the ability to not register autodiscoverers.
 def _assign_autodiscover(type_obj):
     # TODO: issubclass or "in"?
     if issubclass(type_obj, _UNASSIGNABLE_BASE_TYPES):
