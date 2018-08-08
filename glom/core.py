@@ -1139,9 +1139,9 @@ class _TargetRegistry(object):
         self._op_type_map = {}
         self._op_type_tree = {}  # see _register_fuzzy_type for details
 
-        self._auto_map = OrderedDict()  # op name to function that returns handler function
+        self._op_auto_map = OrderedDict()  # op name to function that returns handler function
 
-        self._register_default_autodiscovery()
+        self._register_builtin_ops()
 
         if register_default_types:
             self._register_default_types()
@@ -1224,7 +1224,7 @@ class _TargetRegistry(object):
         exact = kwargs.pop('exact', None)
         new_op_map = dict(kwargs)
 
-        for op_name in sorted(set(self._auto_map.keys()) | set(new_op_map.keys())):
+        for op_name in sorted(set(self._op_auto_map.keys()) | set(new_op_map.keys())):
             cur_type_map = self._op_type_map.setdefault(op_name, OrderedDict())
 
             if op_name in new_op_map:
@@ -1233,9 +1233,9 @@ class _TargetRegistry(object):
                 handler = cur_type_map[target_type]
             else:
                 try:
-                    handler = self._auto_map[op_name](target_type)
+                    handler = self._op_auto_map[op_name](target_type)
                 except Exception as e:
-                    raise TypeError('failed to autodiscover support for operation'
+                    raise TypeError('error while determining support for operation'
                                     ' "%s" on target type: %s (got %r)'
                                     % (op_name, target_type.__name__, e))
             if handler is not False and not callable(handler):
@@ -1252,17 +1252,19 @@ class _TargetRegistry(object):
 
         return
 
-    def register_autodiscover(self, op_name, auto_func):
+    def register_op(self, op_name, auto_func=None):
         """auto_func is a function that when passed a type, returns a handler
         associated with op_name if it's supported, or False if it's
         not.
         """
         if not isinstance(op_name, basestring):
             raise TypeError('expected op_name to be a text name, not: %r' % (op_name,))
-        if not callable(auto_func):
+        if auto_func is None:
+            auto_func = lambda t: False
+        elif not callable(auto_func):
             raise TypeError('expected auto_func to be callable, not: %r' % (auto_func,))
 
-        # autodiscover on any previously known types
+        # determine support for any previously known types
         known_types = set(sum([list(m.keys()) for m
                                in self._op_type_map.values()], []))
         type_map = self._op_type_map.get(op_name, OrderedDict())
@@ -1272,20 +1274,23 @@ class _TargetRegistry(object):
             try:
                 handler = auto_func(t)
             except Exception as e:
-                raise TypeError('failed to autodiscover support for operation'
+                raise TypeError('error while determining support for operation'
                                 ' "%s" on target type: %s (got %r)'
                                 % (op_name, t.__name__, e))
+            if handler is not False and not callable(handler):
+                raise TypeError('expected handler for op "%s" to be'
+                                ' callable or False, not: %r' % (op_name, handler))
             type_map[t] = handler
 
         self._op_type_map[op_name] = type_map
-        self._auto_map[op_name] = auto_func
+        self._op_auto_map[op_name] = auto_func
 
-    def _register_default_autodiscovery(self):
+    def _register_builtin_ops(self):
         def _get_iterable_handler(type_obj):
             return iter if callable(getattr(type_obj, '__iter__', None)) else False
 
-        self.register_autodiscover('iterate', _get_iterable_handler)
-        self.register_autodiscover('get', lambda _: getattr)
+        self.register_op('iterate', _get_iterable_handler)
+        self.register_op('get', lambda _: getattr)
 
 
 _DEFAULT_SCOPE = ChainMap({})

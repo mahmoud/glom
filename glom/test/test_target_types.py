@@ -196,13 +196,13 @@ def test_faulty_iterate():
         glommer.glom({'a': 'fail'}, ('a', {'chars': [str]}))
 
 
-def test_faulty_autodiscover():
+def test_faulty_op_registration():
     treg = _TargetRegistry()
 
     with pytest.raises(TypeError, match="text name, not:"):
-        treg.register_autodiscover(None, lambda t: False)
+        treg.register_op(None, lambda t: False)
     with pytest.raises(TypeError, match="callable, not:"):
-        treg.register_autodiscover('fake_op', None)
+        treg.register_op('fake_op', object())
 
     class NewType(object):
         pass
@@ -211,18 +211,15 @@ def test_faulty_autodiscover():
         raise Exception('noperino')
 
     with pytest.raises(TypeError, match="noperino"):
-        treg.register_autodiscover('fake_op', _autodiscover_raise)
+        treg.register_op('fake_op', _autodiscover_raise)
 
-    assert 'fake_op' not in treg._auto_map
+    assert 'fake_op' not in treg._op_auto_map
 
     def _autodiscover_faulty_return(type_obj):
         return 'hideeho'
 
-    # also tests overriding behavior of fake_op
-    treg.register_autodiscover('fake_op', _autodiscover_faulty_return)
-
     with pytest.raises(TypeError, match="hideeho"):
-        treg.register(NewType)
+        treg.register_op('fake_op', _autodiscover_faulty_return)
 
 
 def test_reregister_type():

@@ -91,4 +91,4 @@ def _assign_autodiscover(type_obj):
     return setattr
 
 
-_DEFAULT_SCOPE[_TargetRegistry].register_autodiscover('assign', _assign_autodiscover)
+_DEFAULT_SCOPE[_TargetRegistry].register_op('assign', _assign_autodiscover)
