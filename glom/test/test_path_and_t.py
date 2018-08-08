@@ -69,3 +69,19 @@ def test_path_access_error_message():
     assert ("PathAccessError: could not access 'b', part 1 of Path('a', T.b), got error: AttributeError"
             in exc_info.exconly())
     assert repr(exc_info.value) == """PathAccessError(AttributeError("\'dict\' object has no attribute \'b\'",), Path(\'a\', T.b), 1)"""
+
+
+def test_t_picklability():
+    import pickle
+
+    class TargetType(object):
+        def __init__(self):
+            self.attribute = lambda: None
+            self.attribute.method = lambda: {'key': lambda x: x * 2}
+
+    spec = T.attribute.method()['key'](x=5)
+
+    rt_spec = pickle.loads(pickle.dumps(spec))
+    assert repr(spec) == repr(rt_spec)
+
+    assert glom(TargetType(), spec) == 10
