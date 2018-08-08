@@ -3,7 +3,7 @@ this module contains Specs that perform mutations
 '''
 import operator
 
-from .core import _TType, _T_PATHS, _t_child, _t_eval, Path, T, S, Spec, glom
+from .core import _TType, _T_PATHS, _t_child, _t_eval, Path, T, S, Spec, glom, _DEFAULT_SCOPE, _TargetRegistry
 
 from . import core
 
@@ -89,3 +89,6 @@ def _assign_autodiscover(type_obj):
         return operator.setitem
 
     return setattr
+
+
+_DEFAULT_SCOPE[_TargetRegistry].register_autodiscover('assign', _assign_autodiscover)

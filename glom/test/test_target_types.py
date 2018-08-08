@@ -210,10 +210,10 @@ def test_faulty_autodiscover():
     def _autodiscover_raise(type_obj):
         raise Exception('noperino')
 
-    treg.register_autodiscover('fake_op', _autodiscover_raise)
-
     with pytest.raises(TypeError, match="noperino"):
-        treg.register(NewType)
+        treg.register_autodiscover('fake_op', _autodiscover_raise)
+
+    assert 'fake_op' not in treg._auto_map
 
     def _autodiscover_faulty_return(type_obj):
         return 'hideeho'
