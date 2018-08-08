@@ -10,6 +10,11 @@ from . import core
 if 'basestring' in core.__dict__:
     from .core import basestring
 
+if getattr(__builtins__, '__dict__', None):
+    # pypy's __builtins__ is a module, as is CPython's REPL, but at
+    # normal execution time it's a dict?
+    __builtins__ = __builtins__.__dict__
+
 # TODO: how to get this into default spec registry?
 # options:
 #   1- have a different registry here
@@ -65,7 +70,7 @@ def assign(obj, path, val):
     return glom(obj, Assign(path, val))
 
 
-_ALL_BUILTIN_TYPES = [v for v in __builtins__.__dict__.values() if isinstance(v, type)]
+_ALL_BUILTIN_TYPES = [v for v in __builtins__.values() if isinstance(v, type)]
 _BUILTIN_BASE_TYPES = [v for v in _ALL_BUILTIN_TYPES
                        if not issubclass(v, tuple([t for t in _ALL_BUILTIN_TYPES
                                                    if t not in (v, type, object)]))]
