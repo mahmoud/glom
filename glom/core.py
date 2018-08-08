@@ -65,22 +65,6 @@ lists.
 """
 
 
-# TODO: is this a good idea?
-class BaseSpec(object):
-    '''
-    Marker for default registry behavior.
-    Extension specs may inherit from BaseSpec in order
-    to have their glomit and glompile methods called
-    for execution and compilation respectively, without
-    requiring users of the extension to modify the registry.
-    '''
-    def glomit(self, target, scope):
-        raise NotImplemented
-
-    def glompile(self):
-        raise NotImplemented
-
-
 class GlomError(Exception):
     """The base exception for all the errors that might be raised from
     :func:`glom` processing logic.
@@ -1104,6 +1088,8 @@ class _SpecRegistry(object):
                 return handler
             if type_ is not callable and isinstance(spec, type_):
                 return handler
+        if callable(getattr(spec, 'glomit', None)):
+            return lambda spec, t, s: spec.glomit(t, s)
         raise TypeError(
             'no handler for specs of type %s; expected one of %s'
                 % (type(spec), ', '.join([e[0].__name__ for e in self.specs])))
@@ -1128,7 +1114,6 @@ class _SpecRegistry(object):
 # be registered, they can just conform to an api)
 _DEFAULT_SPEC_REGISTRY = _SpecRegistry((
     (Inspect, Inspect._handler),
-    (BaseSpec, lambda spec, target, scope: spec.glomit(target, scope)),
     (dict, _handle_dict),
     (list, _handle_list),
     (tuple, _handle_tuple),

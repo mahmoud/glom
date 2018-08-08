@@ -3,7 +3,7 @@ this module contains Specs that perform mutations
 '''
 import operator
 
-from .core import _TType, _T_PATHS, _t_child, _t_eval, Path, T, S, Spec, BaseSpec, glom
+from .core import _TType, _T_PATHS, _t_child, _t_eval, Path, T, S, Spec, glom
 
 from . import core
 
@@ -15,14 +15,8 @@ if getattr(__builtins__, '__dict__', None):
     # normal execution time it's a dict?
     __builtins__ = __builtins__.__dict__
 
-# TODO: how to get this into default spec registry?
-# options:
-#   1- have a different registry here
-#   2- just eat the circularity
-#   3- move Assign back to core.py (but that is getting large)
-#   4- add some default behavior -- "if it is an instance of BaseSpec, call handle"
-#   5- class decorator that does a bit of checking as well as the registration
-class Assign(BaseSpec):
+
+class Assign(object):
     def __init__(self, path, val):
         if isinstance(path, basestring):
             path = Path(*path.split('.')).path_t
