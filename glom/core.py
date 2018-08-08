@@ -211,8 +211,7 @@ class UnregisteredTarget(GlomError):
         if not self.type_map:
             return ("glom() called without registering any types for operation '%s'. see"
                     " glom.register() or Glommer's constructor for details." % (self.op,))
-        reg_types = sorted([t.__name__ for t, h in self.type_map.items()
-                            if getattr(h, self.op, None)])
+        reg_types = sorted([t.__name__ for t, h in self.type_map.items() if h])
         reg_types_str = '()' if not reg_types else ('(%s)' % ', '.join(reg_types))
         msg = ("target type %r not registered for '%s', expected one of"
                " registered types: %s" % (self.target_type.__name__, self.op, reg_types_str))
@@ -1048,9 +1047,6 @@ def _handle_list(spec, target, scope):
     try:
         iterator = iterate(target)
     except Exception as e:
-        te = TypeError('failed to iterate on instance of type %r at %r (got %r)'
-                        % (target.__class__.__name__, Path(*scope[Path]), e))
-        print(te)
         raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
                         % (target.__class__.__name__, Path(*scope[Path]), e))
     ret = []
@@ -1252,7 +1248,7 @@ class _TargetRegistry(object):
 
         return
 
-    def register_op(self, op_name, auto_func=None):
+    def register_op(self, op_name, auto_func=None, exact=False):
         """auto_func is a function that when passed a type, returns a handler
         associated with op_name if it's supported, or False if it's
         not.
@@ -1268,6 +1264,7 @@ class _TargetRegistry(object):
         known_types = set(sum([list(m.keys()) for m
                                in self._op_type_map.values()], []))
         type_map = self._op_type_map.get(op_name, OrderedDict())
+        type_tree = self._op_type_tree.get(op_name, OrderedDict())
         for t in known_types:
             if t in type_map:
                 continue
@@ -1281,8 +1278,11 @@ class _TargetRegistry(object):
                 raise TypeError('expected handler for op "%s" to be'
                                 ' callable or False, not: %r' % (op_name, handler))
             type_map[t] = handler
+            if not exact:
+                self._register_fuzzy_type(op_name, t, _type_tree=type_tree)
 
         self._op_type_map[op_name] = type_map
+        self._op_type_tree[op_name] = type_tree
         self._op_auto_map[op_name] = auto_func
 
     def _register_builtin_ops(self):

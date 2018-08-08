@@ -3,7 +3,7 @@ this module contains Specs that perform mutations
 '''
 import operator
 
-from .core import _TType, _T_PATHS, _t_child, _t_eval, Path, T, S, Spec, glom, _DEFAULT_SCOPE, _TargetRegistry
+from .core import _TType, _T_PATHS, _t_child, _t_eval, Path, T, S, Spec, glom, _DEFAULT_SCOPE, _TargetRegistry, UnregisteredTarget
 
 from . import core
 
@@ -51,12 +51,17 @@ class Assign(object):
         elif self.op == '.':
             setattr(dest, self.arg, val)
         elif self.op == 'P':
-            if type(dest) is dict:
-                dest[self.arg] = val
-            elif type(dest) is list:
-                dest[int(self.arg)] = val
-            else:
-                setattr(dest, self.arg, val)
+            assign = scope[_TargetRegistry].get_handler('assign', dest)
+            if not assign:
+                raise UnregisteredTarget('assign', type(dest),
+                                         scope[_TargetRegistry].get_type_map('assign'),
+                                         path=scope[Path])
+            try:
+                assign(dest, self.arg, val)
+            except Exception as e:
+                raise TypeError('failed to assign on instance of type %r at %r (got %r)'
+                                % (target.__class__.__name__, Path(*scope[Path]), e))
+
         return target
 
 
@@ -68,7 +73,8 @@ _ALL_BUILTIN_TYPES = [v for v in __builtins__.values() if isinstance(v, type)]
 _BUILTIN_BASE_TYPES = [v for v in _ALL_BUILTIN_TYPES
                        if not issubclass(v, tuple([t for t in _ALL_BUILTIN_TYPES
                                                    if t not in (v, type, object)]))]
-_UNASSIGNABLE_BASE_TYPES = tuple(set(_BUILTIN_BASE_TYPES) - set([dict, list, BaseException]))
+_UNASSIGNABLE_BASE_TYPES = tuple(set(_BUILTIN_BASE_TYPES)
+                                 - set([dict, list, BaseException, object, type]))
 
 
 def _set_sequence_item(target, idx, val):
@@ -91,4 +97,4 @@ def _assign_autodiscover(type_obj):
     return setattr
 
 
-_DEFAULT_SCOPE[_TargetRegistry].register_op('assign', _assign_autodiscover)
+_DEFAULT_SCOPE[_TargetRegistry].register_op('assign', _assign_autodiscover, exact=False)
