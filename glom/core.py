@@ -737,6 +737,12 @@ class _TType(object):
     def __repr__(self):
         return _format_t(_T_PATHS[self][1:])
 
+    def __getstate__(self):
+        return tuple(_T_PATHS[self])
+
+    def __setstate__(self, state):
+        _T_PATHS[self] = state
+
 
 def _format_t(path):
     def kwarg_fmt(kw):
