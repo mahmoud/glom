@@ -57,6 +57,7 @@ def test_types_bare():
     with pytest.raises(UnregisteredTarget) as exc_info:
         glommer.glom(object(), {'object_repr': '__class__.__name__'})
     assert repr(exc_info.value) == "UnregisteredTarget('get', <type 'object'>, OrderedDict(), ('__class__',))"
+    assert str(exc_info.value) == "glom() called without registering any types for operation 'get'. see glom.register() or Glommer's constructor for details."
 
     try:
         glommer.glom([{'hi': 'hi'}], ['hi'])
@@ -67,13 +68,14 @@ def test_types_bare():
         assert False, 'expected an UnregisteredTarget exception'
 
     glommer.register(object, get=getattr)
+    glommer.register(dict, exact=True)
 
     # check again that registering object for 'get' doesn't change the
     # fact that we don't have iterate support yet
     try:
         glommer.glom([{'hi': 'hi'}], ['hi'])
     except UnregisteredTarget as ute:
-        assert str(ute) == "target type 'list' not registered for 'iterate', expected one of registered types: ()"
+        assert str(ute) == "target type 'list' not registered for 'iterate', expected one of registered types: (dict)"
     else:
         assert False, 'expected an UnregisteredTarget exception'
     return
@@ -196,13 +198,13 @@ def test_faulty_iterate():
         glommer.glom({'a': 'fail'}, ('a', {'chars': [str]}))
 
 
-def test_faulty_autodiscover():
+def test_faulty_op_registration():
     treg = _TargetRegistry()
 
     with pytest.raises(TypeError, match="text name, not:"):
-        treg.register_autodiscover(None, lambda t: False)
+        treg.register_op(None, lambda t: False)
     with pytest.raises(TypeError, match="callable, not:"):
-        treg.register_autodiscover('fake_op', None)
+        treg.register_op('fake_op', object())
 
     class NewType(object):
         pass
@@ -210,19 +212,16 @@ def test_faulty_autodiscover():
     def _autodiscover_raise(type_obj):
         raise Exception('noperino')
 
-    treg.register_autodiscover('fake_op', _autodiscover_raise)
-
     with pytest.raises(TypeError, match="noperino"):
-        treg.register(NewType)
+        treg.register_op('fake_op', _autodiscover_raise)
+
+    assert 'fake_op' not in treg._op_auto_map
 
     def _autodiscover_faulty_return(type_obj):
         return 'hideeho'
 
-    # also tests overriding behavior of fake_op
-    treg.register_autodiscover('fake_op', _autodiscover_faulty_return)
-
     with pytest.raises(TypeError, match="hideeho"):
-        treg.register(NewType)
+        treg.register_op('fake_op', _autodiscover_faulty_return)
 
 
 def test_reregister_type():

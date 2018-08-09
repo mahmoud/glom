@@ -211,8 +211,7 @@ class UnregisteredTarget(GlomError):
         if not self.type_map:
             return ("glom() called without registering any types for operation '%s'. see"
                     " glom.register() or Glommer's constructor for details." % (self.op,))
-        reg_types = sorted([t.__name__ for t, h in self.type_map.items()
-                            if getattr(h, self.op, None)])
+        reg_types = sorted([t.__name__ for t, h in self.type_map.items() if h])
         reg_types_str = '()' if not reg_types else ('(%s)' % ', '.join(reg_types))
         msg = ("target type %r not registered for '%s', expected one of"
                " registered types: %s" % (self.target_type.__name__, self.op, reg_types_str))
@@ -1048,9 +1047,6 @@ def _handle_list(spec, target, scope):
     try:
         iterator = iterate(target)
     except Exception as e:
-        te = TypeError('failed to iterate on instance of type %r at %r (got %r)'
-                        % (target.__class__.__name__, Path(*scope[Path]), e))
-        print(te)
         raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
                         % (target.__class__.__name__, Path(*scope[Path]), e))
     ret = []
@@ -1088,6 +1084,8 @@ class _SpecRegistry(object):
                 return handler
             if type_ is not callable and isinstance(spec, type_):
                 return handler
+        if callable(getattr(spec, 'glomit', None)):
+            return lambda spec, t, s: spec.glomit(t, s)
         raise TypeError(
             'no handler for specs of type %s; expected one of %s'
                 % (type(spec), ', '.join([e[0].__name__ for e in self.specs])))
@@ -1133,14 +1131,13 @@ class _TargetRegistry(object):
     responsible for registration of target types for iteration
     and attribute walking
     '''
-    def __init__(self, register_default_types=True, register_default_autodiscovery=True):
+    def __init__(self, register_default_types=True):
         self._op_type_map = {}
         self._op_type_tree = {}  # see _register_fuzzy_type for details
 
-        self._auto_map = OrderedDict()  # op name to function that returns handler function
+        self._op_auto_map = OrderedDict()  # op name to function that returns handler function
 
-        if register_default_autodiscovery:
-            self._register_default_autodiscovery()
+        self._register_builtin_ops()
 
         if register_default_types:
             self._register_default_types()
@@ -1223,7 +1220,7 @@ class _TargetRegistry(object):
         exact = kwargs.pop('exact', None)
         new_op_map = dict(kwargs)
 
-        for op_name in sorted(set(self._auto_map.keys()) | set(new_op_map.keys())):
+        for op_name in sorted(set(self._op_auto_map.keys()) | set(new_op_map.keys())):
             cur_type_map = self._op_type_map.setdefault(op_name, OrderedDict())
 
             if op_name in new_op_map:
@@ -1232,11 +1229,11 @@ class _TargetRegistry(object):
                 handler = cur_type_map[target_type]
             else:
                 try:
-                    handler = self._auto_map[op_name](target_type)
+                    handler = self._op_auto_map[op_name](target_type)
                 except Exception as e:
-                    raise TypeError('failed to autodiscover support for operation'
+                    raise TypeError('error while determining support for operation'
                                     ' "%s" on target type: %s (got %r)'
-                                    % (op_name, target_type.__class__.__name__, e))
+                                    % (op_name, target_type.__name__, e))
             if handler is not False and not callable(handler):
                 raise TypeError('expected handler for op "%s" to be'
                                 ' callable or False, not: %r' % (op_name, handler))
@@ -1251,23 +1248,49 @@ class _TargetRegistry(object):
 
         return
 
-    def register_autodiscover(self, op_name, auto_func):
+    def register_op(self, op_name, auto_func=None, exact=False):
         """auto_func is a function that when passed a type, returns a handler
         associated with op_name if it's supported, or False if it's
         not.
         """
         if not isinstance(op_name, basestring):
             raise TypeError('expected op_name to be a text name, not: %r' % (op_name,))
-        if not callable(auto_func):
+        if auto_func is None:
+            auto_func = lambda t: False
+        elif not callable(auto_func):
             raise TypeError('expected auto_func to be callable, not: %r' % (auto_func,))
-        self._auto_map[op_name] = auto_func
 
-    def _register_default_autodiscovery(self):
+        # determine support for any previously known types
+        known_types = set(sum([list(m.keys()) for m
+                               in self._op_type_map.values()], []))
+        type_map = self._op_type_map.get(op_name, OrderedDict())
+        type_tree = self._op_type_tree.get(op_name, OrderedDict())
+        for t in known_types:
+            if t in type_map:
+                continue
+            try:
+                handler = auto_func(t)
+            except Exception as e:
+                raise TypeError('error while determining support for operation'
+                                ' "%s" on target type: %s (got %r)'
+                                % (op_name, t.__name__, e))
+            if handler is not False and not callable(handler):
+                raise TypeError('expected handler for op "%s" to be'
+                                ' callable or False, not: %r' % (op_name, handler))
+            type_map[t] = handler
+            if not exact:
+                self._register_fuzzy_type(op_name, t, _type_tree=type_tree)
+
+        self._op_type_map[op_name] = type_map
+        self._op_type_tree[op_name] = type_tree
+        self._op_auto_map[op_name] = auto_func
+
+    def _register_builtin_ops(self):
         def _get_iterable_handler(type_obj):
             return iter if callable(getattr(type_obj, '__iter__', None)) else False
 
-        self.register_autodiscover('iterate', _get_iterable_handler)
-        self.register_autodiscover('get', lambda _: getattr)
+        self.register_op('iterate', _get_iterable_handler)
+        self.register_op('get', lambda _: getattr)
 
 
 _DEFAULT_SCOPE = ChainMap({})
@@ -1355,8 +1378,7 @@ def _glom(target, spec, scope):
 
 _DEFAULT_SCOPE.update({
     glom: _glom,
-    _TargetRegistry: _TargetRegistry(register_default_types=True,
-                                     register_default_autodiscovery=True),
+    _TargetRegistry: _TargetRegistry(register_default_types=True),
     _SpecRegistry: _DEFAULT_SPEC_REGISTRY
 })
 
@@ -1419,13 +1441,11 @@ class Glommer(object):
     """
     def __init__(self, **kwargs):
         register_default_types = kwargs.pop('register_default_types', True)
-        register_default_autodiscovery = kwargs.pop('register_default_autodiscover', True)
         scope = kwargs.pop('scope', _DEFAULT_SCOPE)
 
         # this "freezes" the scope in at the time of construction
         self.scope = ChainMap(dict(scope))
-        self.scope[_TargetRegistry] = _TargetRegistry(register_default_types=register_default_types,
-                                                      register_default_autodiscovery=register_default_autodiscovery)
+        self.scope[_TargetRegistry] = _TargetRegistry(register_default_types=register_default_types)
         self.scope[_SpecRegistry] = _DEFAULT_SPEC_REGISTRY
 
     def register(self, target_type, **kwargs):

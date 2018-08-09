@@ -16,3 +16,5 @@ from glom.core import (glom,
                        CoalesceError,
                        UnregisteredTarget,
                        T, S)
+
+from glom.mutable import Assign, assign
