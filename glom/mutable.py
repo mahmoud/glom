@@ -35,7 +35,8 @@ class Assign(object):
             cur = _t_child(cur, segs[i], segs[i + 1])
         self.t = cur
         self.op, self.arg = segs[-2:]
-        if self.op not in '[.P':  # maybe if we add null-coalescing this should do something?
+        if self.op not in '[.P':  # pragma: no cover
+            # maybe if we add null-coalescing this should do something?
             raise ValueError('last part of path must be setattr or setitem')
         self.val = val
 
@@ -60,7 +61,7 @@ class Assign(object):
                 assign(dest, self.arg, val)
             except Exception as e:
                 raise TypeError('failed to assign on instance of type %r at %r (got %r)'
-                                % (target.__class__.__name__, Path(*scope[Path]), e))
+                                % (dest.__class__.__name__, Path(*scope[Path]), e))
 
         return target
 
