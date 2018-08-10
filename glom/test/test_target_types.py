@@ -5,7 +5,7 @@ import pytest
 
 import glom
 from glom import Glommer, PathAccessError, UnregisteredTarget
-from glom.core import _TargetRegistry
+from glom.core import TargetRegistry
 
 
 class A(object):
@@ -38,11 +38,11 @@ def test_types_leave_one_out():
             glommer.register(t, get=getattr)
 
         obj = cur_t()
-        treg = glommer.scope[_TargetRegistry]
+        treg = glommer.scope[TargetRegistry]
         assert treg._get_closest_type(obj, treg._op_type_tree['get']) == obj.__class__.mro()[1]
 
         if cur_t is E:
-            assert glommer.scope[_TargetRegistry]._get_closest_type(obj, treg._op_type_tree['get']) is C  # sanity check
+            assert glommer.scope[TargetRegistry]._get_closest_type(obj, treg._op_type_tree['get']) is C  # sanity check
 
     return
 
@@ -50,7 +50,7 @@ def test_types_leave_one_out():
 def test_types_bare():
     glommer = Glommer(register_default_types=False)
 
-    treg = glommer.scope[_TargetRegistry]
+    treg = glommer.scope[TargetRegistry]
     assert treg._get_closest_type(object(), treg._op_type_tree.get('get', {})) is None
 
     # test that bare glommers can't glom anything
@@ -199,7 +199,7 @@ def test_faulty_iterate():
 
 
 def test_faulty_op_registration():
-    treg = _TargetRegistry()
+    treg = TargetRegistry()
 
     with pytest.raises(TypeError, match="text name, not:"):
         treg.register_op(None, lambda t: False)
@@ -225,7 +225,7 @@ def test_faulty_op_registration():
 
 
 def test_reregister_type():
-    treg = _TargetRegistry()
+    treg = TargetRegistry()
 
     class NewType(object):
         pass

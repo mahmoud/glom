@@ -3,12 +3,14 @@ this module contains Specs that perform mutations
 '''
 import operator
 
-from .core import _TType, _T_PATHS, _t_child, _t_eval, Path, T, S, Spec, glom, _DEFAULT_SCOPE, _TargetRegistry, UnregisteredTarget
+from .core import Path, T, S, Spec, glom, UnregisteredTarget
+from .core import _TType, _T_PATHS, _t_child, _t_eval, _DEFAULT_SCOPE, TargetRegistry
 
-from . import core
+try:
+    basestring
+except NameError:
+    basestring = str
 
-if 'basestring' in core.__dict__:
-    from .core import basestring
 
 if getattr(__builtins__, '__dict__', None):
     # pypy's __builtins__ is a module, as is CPython's REPL, but at
@@ -52,10 +54,10 @@ class Assign(object):
         elif self.op == '.':
             setattr(dest, self.arg, val)
         elif self.op == 'P':
-            assign = scope[_TargetRegistry].get_handler('assign', dest)
+            assign = scope[TargetRegistry].get_handler('assign', dest)
             if not assign:
                 raise UnregisteredTarget('assign', type(dest),
-                                         scope[_TargetRegistry].get_type_map('assign'),
+                                         scope[TargetRegistry].get_type_map('assign'),
                                          path=scope[Path])
             try:
                 assign(dest, self.arg, val)
@@ -98,4 +100,4 @@ def _assign_autodiscover(type_obj):
     return setattr
 
 
-_DEFAULT_SCOPE[_TargetRegistry].register_op('assign', _assign_autodiscover, exact=False)
+_DEFAULT_SCOPE[TargetRegistry].register_op('assign', _assign_autodiscover, exact=False)

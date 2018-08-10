@@ -792,10 +792,10 @@ def _t_eval(target, _t, scope):
                 raise PathAccessError(e, Path(_t), i // 2)
         elif op == 'P':
             # Path type stuff (fuzzy match)
-            get = scope[_TargetRegistry].get_handler('get', cur)
+            get = scope[TargetRegistry].get_handler('get', cur)
             if not get:
                 raise UnregisteredTarget('get', type(cur),
-                                         scope[_TargetRegistry].get_type_map('get'),
+                                         scope[TargetRegistry].get_type_map('get'),
                                          path=t_path[2:i+2:2])
             try:
                 cur = get(cur, arg)
@@ -1046,10 +1046,10 @@ def _handle_dict(target, spec, scope):
 
 def _handle_list(target, spec, scope):
     subspec = spec[0]
-    iterate = scope[_TargetRegistry].get_handler('iterate', target)
+    iterate = scope[TargetRegistry].get_handler('iterate', target)
     if not iterate:
         raise UnregisteredTarget('iterate', type(target),
-                                 type_map=scope[_TargetRegistry].get_type_map('iterate'),
+                                 type_map=scope[TargetRegistry].get_type_map('iterate'),
                                  path=scope[Path])
     try:
         iterator = iterate(target)
@@ -1074,7 +1074,7 @@ def _handle_tuple(target, spec, scope):
     return res
 
 
-class _TargetRegistry(object):
+class TargetRegistry(object):
     '''
     responsible for registration of target types for iteration
     and attribute walking
@@ -1343,7 +1343,7 @@ def _glom(target, spec, scope):
 
 _DEFAULT_SCOPE.update({
     glom: _glom,
-    _TargetRegistry: _TargetRegistry(register_default_types=True),
+    TargetRegistry: TargetRegistry(register_default_types=True),
 })
 
 
@@ -1374,7 +1374,7 @@ def register(target_type, **kwargs):
        methods instead.
 
     """
-    _DEFAULT_SCOPE[_TargetRegistry].register(target_type, **kwargs)
+    _DEFAULT_SCOPE[TargetRegistry].register(target_type, **kwargs)
     return
 
 
@@ -1409,7 +1409,7 @@ class Glommer(object):
 
         # this "freezes" the scope in at the time of construction
         self.scope = ChainMap(dict(scope))
-        self.scope[_TargetRegistry] = _TargetRegistry(register_default_types=register_default_types)
+        self.scope[TargetRegistry] = TargetRegistry(register_default_types=register_default_types)
 
     def register(self, target_type, **kwargs):
         """Register *target_type* so :meth:`~Glommer.glom()` will
@@ -1439,7 +1439,7 @@ class Glommer(object):
 
         """
         exact = kwargs.pop('exact', False)
-        self.scope[_TargetRegistry].register(target_type, exact=exact, **kwargs)
+        self.scope[TargetRegistry].register(target_type, exact=exact, **kwargs)
         return
 
     def glom(self, target, spec, **kwargs):
