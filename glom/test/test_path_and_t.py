@@ -125,3 +125,12 @@ def test_path_pop():
     assert len(p) == 2
     assert p == T.a.c
     assert res == ('.', 'b')
+
+
+def test_path_getitem():
+    path = Path(T.a.b.c)
+
+    assert path[0] == 'a'
+    assert path[1] == 'b'
+    assert path[2] == 'c'
+    assert path[-1] == 'c'
