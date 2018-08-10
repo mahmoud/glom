@@ -45,7 +45,7 @@ class Assign(object):
             val = scope[glom](target, self.val, scope)
         else:
             val = self.val
-        dest = _t_eval(self.t, target, scope)
+        dest = _t_eval(target, self.t, scope)
         # TODO: forward-detect immutable dest?
         if self.op == '[':
             dest[self.arg] = val

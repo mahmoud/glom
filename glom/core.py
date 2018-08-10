@@ -261,7 +261,7 @@ class Path(object):
         return cls(*text.split('.'))
 
     def glomit(self, target, scope):
-        return _t_eval(self.path_t, target, scope)
+        return _t_eval(target, self.path_t, scope)
 
     def __getitem__(self, idx):
         # used by PathAccessError
@@ -767,7 +767,7 @@ def _t_child(parent, operation, arg):
     return t
 
 
-def _t_eval(_t, target, scope):
+def _t_eval(target, _t, scope):
     t_path = _T_PATHS[_t]
     i = 1
     if t_path[0] is T:
@@ -1034,7 +1034,7 @@ def _get_sequence_item(target, index):
 # handlers are 3-arg callables, with args (spec, target, scope)
 # spec is the first argument for convenience in the case
 # that the handler is a method of the spec type
-def _handle_dict(spec, target, scope):
+def _handle_dict(target, spec, scope):
     ret = type(spec)()  # TODO: works for dict + ordereddict, but sufficient for all?
     for field, subspec in spec.items():
         val = scope[glom](target, subspec, scope)
@@ -1044,7 +1044,7 @@ def _handle_dict(spec, target, scope):
     return ret
 
 
-def _handle_list(spec, target, scope):
+def _handle_list(target, spec, scope):
     subspec = spec[0]
     iterate = scope[_TargetRegistry].get_handler('iterate', target)
     if not iterate:
@@ -1065,7 +1065,7 @@ def _handle_list(spec, target, scope):
     return ret
 
 
-def _handle_tuple(spec, target, scope):
+def _handle_tuple(target, spec, scope):
     res = target
     for subspec in spec:
         res = scope[glom](res, subspec, scope)
@@ -1323,22 +1323,22 @@ def _glom(target, spec, scope):
     scope[T] = target
 
     if isinstance(spec, _TType):  # must go first, due to callability
-        return _t_eval(spec, target, scope)
+        return _t_eval(target, spec, scope)
     elif callable(getattr(spec, 'glomit', None)):
         return spec.glomit(target, scope)
     elif isinstance(spec, dict):
-        return _handle_dict(spec, target, scope)
+        return _handle_dict(target, spec, scope)
     elif isinstance(spec, list):
-        return _handle_list(spec, target, scope)
+        return _handle_list(target, spec, scope)
     elif isinstance(spec, tuple):
-        return _handle_tuple(spec, target, scope)
+        return _handle_tuple(target, spec, scope)
     elif isinstance(spec, basestring):
         return Path.from_text(spec).glomit(target, scope)
     elif callable(spec):
         return spec(target)
 
     raise TypeError('expected spec to be dict, list, tuple, callable, string,'
-                    ' or other Spec-like type, not: %r' % spec)
+                    ' or other Spec-like type, not: %r' % (spec,))
 
 
 _DEFAULT_SCOPE.update({
