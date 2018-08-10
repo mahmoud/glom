@@ -260,6 +260,9 @@ class Path(object):
     def from_text(cls, text):
         return cls(*text.split('.'))
 
+    def __len__(self):
+        return (len(_T_PATHS[self.path_t]) - 1) // 2
+
     def glomit(self, target, scope):
         return _t_eval(target, self.path_t, scope)
 

@@ -85,3 +85,14 @@ def test_t_picklability():
     assert repr(spec) == repr(rt_spec)
 
     assert glom(TargetType(), spec) == 10
+
+
+def test_path_len():
+
+    assert len(Path()) == 0
+    assert len(Path('a', 'b', 'c')) == 3
+    assert len(Path.from_text('1.2.3.4')) == 4
+
+    assert len(Path(T)) == 0
+    assert len(Path(T.a.b.c)) == 3
+    assert len(Path(T.a()['b'].c.d)) == 5
