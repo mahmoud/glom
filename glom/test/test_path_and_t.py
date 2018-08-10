@@ -96,3 +96,28 @@ def test_path_len():
     assert len(Path(T)) == 0
     assert len(Path(T.a.b.c)) == 3
     assert len(Path(T.a()['b'].c.d)) == 5
+
+
+def test_path_pop():
+    with raises(IndexError, match="empty Path"):
+        Path(T).pop()
+
+    p = Path(T.a.b.c)
+    assert len(p) == 3
+    p.pop()
+    assert len(p) == 2
+    p.pop()
+    assert len(p) == 1
+    p.pop()
+    assert len(p) == 0
+
+    p = Path(T.a.b.c)
+    p.pop(1)
+    assert len(p) == 2
+    assert repr(p) == 'T.a.c'
+
+    p = Path(T.a.b.c)
+    res = p.pop(-2)
+    assert len(p) == 2
+    assert repr(p) == 'T.a.c'
+    assert res == ('.', 'b')

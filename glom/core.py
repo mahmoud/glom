@@ -263,6 +263,18 @@ class Path(object):
     def __len__(self):
         return (len(_T_PATHS[self.path_t]) - 1) // 2
 
+    def pop(self, i=-1):
+        # TODO: return?
+        cur_t_path = _T_PATHS[self.path_t]
+        if len(cur_t_path) <= 1:
+            raise IndexError('pop() from empty Path')
+        i = ((i * 2) + 1) if i >= 0 else ((i * 2) + len(cur_t_path))
+        ret, new_t_path = cur_t_path[i:i + 2], cur_t_path[:i] + cur_t_path[i + 2:]
+        new_t = _TType()
+        _T_PATHS[new_t] = new_t_path
+        self.path_t = new_t
+        return ret
+
     def glomit(self, target, scope):
         return _t_eval(target, self.path_t, scope)
 
