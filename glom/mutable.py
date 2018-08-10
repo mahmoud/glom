@@ -37,7 +37,7 @@ class Assign(object):
             cur = _t_child(cur, segs[i], segs[i + 1])
         self.t = cur
         self.op, self.arg = segs[-2:]
-        if self.op not in '[.P':  # pragma: no cover
+        if self.op not in '[.P':
             # maybe if we add null-coalescing this should do something?
             raise ValueError('last part of path must be setattr or setitem')
         self.val = val

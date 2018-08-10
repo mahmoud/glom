@@ -70,3 +70,12 @@ def test_sequence_assign():
 
     with pytest.raises(TypeError):
         assign(target, 'alist.3', 4)
+    return
+
+
+def test_invalid_assign_op_target():
+    target = {'afunc': lambda x: 'hi %s' % x}
+    spec = T['afunc'](x=1)
+
+    with pytest.raises(ValueError):
+        assign(target, spec, None)
