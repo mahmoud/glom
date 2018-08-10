@@ -256,7 +256,11 @@ class Path(object):
                 path_t = _t_child(path_t, 'P', part)
         self.path_t = path_t
 
-    def _handler(self, target, scope):
+    @classmethod
+    def from_text(cls, text):
+        return cls(*text.split('.'))
+
+    def glomit(self, target, scope):
         return _t_eval(self.path_t, target, scope)
 
     def __getitem__(self, idx):
@@ -318,6 +322,9 @@ class Literal(object):
     def __init__(self, value):
         self.value = value
 
+    def glomit(self, target, scope):
+        return self.value
+
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r)' % (cn, self.value)
@@ -356,7 +363,7 @@ class Spec(object):
         kw['scope'] = scope
         return glom(target, self.spec, **kw)
 
-    def _handler(self, target, scope):
+    def glomit(self, target, scope):
         scope.update(self.scope)
         return scope[glom](target, self.spec, scope)
 
@@ -449,7 +456,7 @@ class Coalesce(object):
         if kwargs:
             raise TypeError('unexpected keyword args: %r' % (sorted(kwargs.keys()),))
 
-    def _handler(self, target, scope):
+    def glomit(self, target, scope):
         skipped = []
         for subspec in self.subspecs:
             try:
@@ -537,7 +544,7 @@ class Inspect(object):
     def __repr__(self):
         return '<INSPECT>'
 
-    def _handler(self, target, scope):
+    def glomit(self, target, scope):
         # stash the real handler under Inspect,
         # and replace the child handler with a trace callback
         scope[Inspect] = scope[glom]
@@ -610,7 +617,7 @@ class Call(object):
             raise TypeError('func must be a callable or child of T')
         self.func, self.args, self.kwargs = func, args, kwargs
 
-    def _handler(self, target, scope):
+    def glomit(self, target, scope):
         'run against the current target'
         def _eval(t):
             if type(t) in (Spec, _TType):
@@ -957,7 +964,7 @@ class Check(object):
         "for internal use inside of Check only"
         pass
 
-    def _handler(self, target, scope):
+    def glomit(self, target, scope):
         ret = target
         errs = []
         if self.spec is not T:
@@ -1028,7 +1035,7 @@ def _get_sequence_item(target, index):
 # spec is the first argument for convenience in the case
 # that the handler is a method of the spec type
 def _handle_dict(spec, target, scope):
-    ret = type(spec)() # TODO: works for dict + ordereddict, but sufficient for all?
+    ret = type(spec)()  # TODO: works for dict + ordereddict, but sufficient for all?
     for field, subspec in spec.items():
         val = scope[glom](target, subspec, scope)
         if val is OMIT:
@@ -1065,65 +1072,6 @@ def _handle_tuple(spec, target, scope):
         if not isinstance(subspec, list):
             scope[Path] += [getattr(subspec, '__name__', subspec)]
     return res
-
-
-class _SpecRegistry(object):
-    '''
-    responsible for registration of spec types
-    '''
-    def __init__(self, specs):
-        '''
-        specs should be ((type, handler), (type, handler), ...)
-        '''
-        self.specs = specs
-
-    def get_handler(self, spec):
-        'return handler callable that was registered or None'
-        for type_, handler in self.specs:
-            if type_ is callable and callable(spec):
-                return handler
-            if type_ is not callable and isinstance(spec, type_):
-                return handler
-        if callable(getattr(spec, 'glomit', None)):
-            return lambda spec, t, s: spec.glomit(t, s)
-        raise TypeError(
-            'no handler for specs of type %s; expected one of %s'
-                % (type(spec), ', '.join([e[0].__name__ for e in self.specs])))
-        # TODO: don't lose anything from older error message
-        # raise TypeError('expected spec to be dict, list, tuple,'
-        #                 ' callable, string, or other specifier type,'
-        #                 ' not: %r'% spec)
-
-
-    def register(self, spec_type, spec_handler):
-        '''
-        given a spec_type and a handler callback
-        that accepts (spec, target, scope),
-        add the callback to this registry with
-        highest precedence
-        '''
-        self.specs = ((spec_type, spec_handler),) + self.specs
-
-
-# TODO: see if get_handler can be optimized once extension API is
-# formalized (spec registry might even go away, as specs don't need to
-# be registered, they can just conform to an api)
-_DEFAULT_SPEC_REGISTRY = _SpecRegistry((
-    (Inspect, Inspect._handler),
-    (dict, _handle_dict),
-    (list, _handle_list),
-    (tuple, _handle_tuple),
-    (basestring, lambda spec, target, scope: Path(*spec.split('.'))._handler(target, scope)),
-    (Path, Path._handler),
-    (Coalesce, Coalesce._handler),
-    (Check, Check._handler),
-    (_TType, _t_eval),  # NOTE: must come before callable b/c T is also callable
-    (Call, Call._handler),
-    (Spec, Spec._handler),
-    (callable, lambda spec, target, scope: spec(target)),
-    (Literal, lambda spec, target, scope: spec.value),
-    (Spec, lambda spec, target, scope: scope[glom](target, spec.value, scope)),
-))
 
 
 class _TargetRegistry(object):
@@ -1373,13 +1321,29 @@ def glom(target, spec, **kwargs):
 def _glom(target, spec, scope):
     scope = scope.new_child()
     scope[T] = target
-    return scope[_SpecRegistry].get_handler(spec)(spec, target, scope)
+
+    if isinstance(spec, _TType):  # must go first, due to callability
+        return _t_eval(spec, target, scope)
+    elif callable(getattr(spec, 'glomit', None)):
+        return spec.glomit(target, scope)
+    elif isinstance(spec, dict):
+        return _handle_dict(spec, target, scope)
+    elif isinstance(spec, list):
+        return _handle_list(spec, target, scope)
+    elif isinstance(spec, tuple):
+        return _handle_tuple(spec, target, scope)
+    elif isinstance(spec, basestring):
+        return Path.from_text(spec).glomit(target, scope)
+    elif callable(spec):
+        return spec(target)
+
+    raise TypeError('expected spec to be dict, list, tuple, callable, string,'
+                    ' or other Spec-like type, not: %r' % spec)
 
 
 _DEFAULT_SCOPE.update({
     glom: _glom,
     _TargetRegistry: _TargetRegistry(register_default_types=True),
-    _SpecRegistry: _DEFAULT_SPEC_REGISTRY
 })
 
 
@@ -1446,7 +1410,6 @@ class Glommer(object):
         # this "freezes" the scope in at the time of construction
         self.scope = ChainMap(dict(scope))
         self.scope[_TargetRegistry] = _TargetRegistry(register_default_types=register_default_types)
-        self.scope[_SpecRegistry] = _DEFAULT_SPEC_REGISTRY
 
     def register(self, target_type, **kwargs):
         """Register *target_type* so :meth:`~Glommer.glom()` will
