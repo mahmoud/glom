@@ -221,10 +221,10 @@ class UnregisteredTarget(GlomError):
 
 
 class Path(object):
-    """Path objects specify explicit paths when the default ``'a.b.c'``-style
-    general access syntax won't work or isn't desirable.
-    Use this to wrap ints, datetimes, and other valid keys, as well as
-    strings with dots that shouldn't be expanded.
+    """Path objects specify explicit paths when the default
+    ``'a.b.c'``-style general access syntax won't work or isn't
+    desirable. Use this to wrap ints, datetimes, and other valid
+    keys, as well as strings with dots that shouldn't be expanded.
 
     >>> target = {'a': {'b': 'c', 'd.e': 'f', 2: 3}}
     >>> glom(target, Path('a', 2))
@@ -232,10 +232,13 @@ class Path(object):
     >>> glom(target, Path('a', 'd.e'))
     'f'
 
-    Paths can also be used to join together :data:`~glom.T` objects:
+    Paths can also be used to join together other Path objects, as
+    well as :data:`~glom.T` objects:
 
     >>> Path(T['a'], T['b'])
     T['a']['b']
+    >>> Path(Path('a', 'b'), Path('c', 'd'))
+    Path('a', 'b', 'c', 'd')
 
     """
     def __init__(self, *path_parts):
@@ -258,6 +261,12 @@ class Path(object):
 
     @classmethod
     def from_text(cls, text):
+        """Make a Path from .-delimited text:
+
+        >>> Path.from_text('a.b.c')
+        Path('a', 'b', 'c')
+
+        """
         return cls(*text.split('.'))
 
     def __len__(self):
@@ -274,6 +283,11 @@ class Path(object):
         return not self == other
 
     def pop(self, i=-1):
+        """Like :meth:`list.pop()`, ``Path.pop()`` removes a segment of the
+        path object, defaulting to the last segment, modifying the
+        Path object.  Attempting to pop from an empty Path will raise
+        an :exc:`IndexError`.
+        """
         cur_t_path = _T_PATHS[self.path_t]
         if len(cur_t_path) <= 1:
             raise IndexError('pop() from empty Path')
@@ -285,6 +299,7 @@ class Path(object):
         return ret
 
     def glomit(self, target, scope):
+        # The entrypoint for the Path extension
         return _t_eval(target, self.path_t, scope)
 
     def __getitem__(self, i):
