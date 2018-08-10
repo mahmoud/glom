@@ -4,7 +4,7 @@ this module contains Specs that perform mutations
 import operator
 
 from .core import Path, T, S, Spec, glom, UnregisteredTarget
-from .core import _TType, _T_PATHS, _t_child, _t_eval, _DEFAULT_SCOPE, TargetRegistry
+from .core import _TType, _DEFAULT_SCOPE, TargetRegistry
 
 try:
     basestring
@@ -21,22 +21,18 @@ if getattr(__builtins__, '__dict__', None):
 class Assign(object):
     def __init__(self, path, val):
         if isinstance(path, basestring):
-            path = Path(*path.split('.')).path_t
-        elif type(path) is Path:
-            path = path.path_t
-        elif not isinstance(path, _TType):
+            path = Path.from_text(path)
+        elif type(path) is _TType:
+            path = Path(path)
+        elif not isinstance(path, Path):
             raise TypeError('path argument must be a .-delimited string, Path, T, or S')
 
-        segs = _T_PATHS[path]
-        if len(segs) < 3:
+        self.path = path
+        try:
+            self.op, self.arg = self.path.pop()
+        except IndexError:
             raise ValueError('path must have at least one element')
 
-        cur = segs[0]
-        assert cur in (T, S)
-        for i in range(1, len(segs) - 2, 2):
-            cur = _t_child(cur, segs[i], segs[i + 1])
-        self.t = cur
-        self.op, self.arg = segs[-2:]
         if self.op not in '[.P':
             # maybe if we add null-coalescing this should do something?
             raise ValueError('last part of path must be setattr or setitem')
@@ -47,7 +43,7 @@ class Assign(object):
             val = scope[glom](target, self.val, scope)
         else:
             val = self.val
-        dest = _t_eval(target, self.t, scope)
+        dest = scope[glom](target, self.path, scope)
         # TODO: forward-detect immutable dest?
         if self.op == '[':
             dest[self.arg] = val
