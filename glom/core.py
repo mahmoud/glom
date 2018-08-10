@@ -263,6 +263,16 @@ class Path(object):
     def __len__(self):
         return (len(_T_PATHS[self.path_t]) - 1) // 2
 
+    def __eq__(self, other):
+        if type(other) is Path:
+            return _T_PATHS[self.path_t] == _T_PATHS[other.path_t]
+        elif type(other) is _TType:
+            return _T_PATHS[self.path_t] == _T_PATHS[other]
+        return False
+
+    def __ne__(self, other):
+        return not self == other
+
     def pop(self, i=-1):
         # TODO: return?
         cur_t_path = _T_PATHS[self.path_t]
