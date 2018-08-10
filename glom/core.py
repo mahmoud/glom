@@ -1035,7 +1035,7 @@ def _get_sequence_item(target, index):
 # spec is the first argument for convenience in the case
 # that the handler is a method of the spec type
 def _handle_dict(spec, target, scope):
-    ret = type(spec)() # TODO: works for dict + ordereddict, but sufficient for all?
+    ret = type(spec)()  # TODO: works for dict + ordereddict, but sufficient for all?
     for field, subspec in spec.items():
         val = scope[glom](target, subspec, scope)
         if val is OMIT:
@@ -1323,24 +1323,22 @@ def _glom(target, spec, scope):
     scope[T] = target
 
     if isinstance(spec, _TType):  # must go first, due to callability
-        handler = _t_eval
+        return _t_eval(spec, target, scope)
     elif callable(getattr(spec, 'glomit', None)):
-        handler = lambda spec, t, s: spec.glomit(t, s)
+        return spec.glomit(target, scope)
     elif isinstance(spec, dict):
-        handler = _handle_dict
+        return _handle_dict(spec, target, scope)
     elif isinstance(spec, list):
-        handler = _handle_list
+        return _handle_list(spec, target, scope)
     elif isinstance(spec, tuple):
-        handler = _handle_tuple
+        return _handle_tuple(spec, target, scope)
     elif isinstance(spec, basestring):
-        handler = lambda spec, target, scope: Path.from_text(spec).glomit(target, scope)
+        return Path.from_text(spec).glomit(target, scope)
     elif callable(spec):
-        handler = lambda spec, target, scope: spec(target)
-    else:
-        raise TypeError('expected spec to be dict, list, tuple, callable, string,'
-                        ' or other Spec-like type, not: %r' % spec)
+        return spec(target)
 
-    return handler(spec, target, scope)
+    raise TypeError('expected spec to be dict, list, tuple, callable, string,'
+                    ' or other Spec-like type, not: %r' % spec)
 
 
 _DEFAULT_SCOPE.update({
