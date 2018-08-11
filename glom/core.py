@@ -119,7 +119,7 @@ class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
 
     def __str__(self):
         return ('could not access %r, part %r of %r, got error: %r'
-                % (self.path[self.part_idx], self.part_idx, self.path, self.exc))
+                % (self.path.values()[self.part_idx], self.part_idx, self.path, self.exc))
 
 
 class CoalesceError(GlomError):
@@ -269,6 +269,10 @@ class Path(object):
         """
         return cls(*text.split('.'))
 
+    def glomit(self, target, scope):
+        # The entrypoint for the Path extension
+        return _t_eval(target, self.path_t, scope)
+
     def __len__(self):
         return (len(_T_PATHS[self.path_t]) - 1) // 2
 
@@ -284,11 +288,11 @@ class Path(object):
 
     def values(self):
         cur_t_path = _T_PATHS[self.path_t]
-        return list(cur_t_path[2::2])
+        return cur_t_path[2::2]
 
     def items(self):
         cur_t_path = _T_PATHS[self.path_t]
-        return list(zip(cur_t_path[1::2], cur_t_path[2::2]))
+        return tuple(zip(cur_t_path[1::2], cur_t_path[2::2]))
 
     def pop(self, i=-1):
         """Like :meth:`list.pop()`, ``Path.pop()`` removes a segment of the
@@ -306,15 +310,12 @@ class Path(object):
         self.path_t = new_t
         return ret
 
-    def glomit(self, target, scope):
-        # The entrypoint for the Path extension
-        return _t_eval(target, self.path_t, scope)
-
     def __getitem__(self, i):
-        # used by PathAccessError
-        # 1 + skips the first T/S and operator
-        i = i if i >= 0 else i + (len(_T_PATHS[self.path_t]) - 1) // 2
-        return _T_PATHS[self.path_t][(1 + i) * 2]
+        cur_t_path = _T_PATHS[self.path_t]
+        i = ((i * 2) + 1) if i >= 0 else ((i * 2) + len(cur_t_path))
+        new_t = _TType()
+        _T_PATHS[new_t] = (cur_t_path[0], cur_t_path[i], cur_t_path[i + 1])
+        return Path(new_t)
 
     def __repr__(self):
         return _format_path(_T_PATHS[self.path_t][1:])

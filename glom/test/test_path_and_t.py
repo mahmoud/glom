@@ -130,13 +130,26 @@ def test_path_pop():
 def test_path_getitem():
     path = Path(T.a.b.c)
 
-    assert path[0] == 'a'
-    assert path[1] == 'b'
-    assert path[2] == 'c'
-    assert path[-1] == 'c'
+    assert path[0] == Path(T.a)
+    assert path[1] == Path(T.b)
+    assert path[2] == Path(T.c)
+    assert path[-1] == Path(T.c)
+    assert path[-2] == Path(T.b)
 
 
 def test_path_values():
     path = Path(T.a.b.c, 1, 2, T(test='yes'))
 
-    assert path.values() == ['a', 'b', 'c', 1, 2, ((), {'test': 'yes'})]
+    assert path.values() == ('a', 'b', 'c', 1, 2, ((), {'test': 'yes'}))
+
+    assert Path().values() == ()
+
+
+def test_path_items():
+    path = Path(T.a, 1, 2, T(test='yes'))
+
+    assert path.items() == (('.', 'a'),
+                            ('P', 1), ('P', 2),
+                            ('(', ((), {'test': 'yes'})))
+
+    assert Path().items() == ()
