@@ -134,3 +134,9 @@ def test_path_getitem():
     assert path[1] == 'b'
     assert path[2] == 'c'
     assert path[-1] == 'c'
+
+
+def test_path_values():
+    path = Path(T.a.b.c, 1, 2, T(test='yes'))
+
+    assert path.values() == ['a', 'b', 'c', 1, 2, ((), {'test': 'yes'})]

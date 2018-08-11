@@ -282,6 +282,14 @@ class Path(object):
     def __ne__(self, other):
         return not self == other
 
+    def values(self):
+        cur_t_path = _T_PATHS[self.path_t]
+        return list(cur_t_path[2::2])
+
+    def items(self):
+        cur_t_path = _T_PATHS[self.path_t]
+        return list(zip(cur_t_path[1::2], cur_t_path[2::2]))
+
     def pop(self, i=-1):
         """Like :meth:`list.pop()`, ``Path.pop()`` removes a segment of the
         path object, defaulting to the last segment, modifying the
