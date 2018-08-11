@@ -312,9 +312,23 @@ class Path(object):
 
     def __getitem__(self, i):
         cur_t_path = _T_PATHS[self.path_t]
-        i = ((i * 2) + 1) if i >= 0 else ((i * 2) + len(cur_t_path))
+        try:
+            step = i.step * 2 - 1 if i.step is not None else 1
+            start = i.start if i.start is not None else 0
+            stop = i.stop
+
+            start = (start * 2) + 1 if start >= 0 else (start * 2) + len(cur_t_path)
+            if stop is not None:
+                stop = (stop * 2) + 1 if stop >= 0 else (stop * 2) + len(cur_t_path)
+        except AttributeError:
+            step = 1
+            start = (i * 2) + 1 if i >= 0 else (i * 2) + len(cur_t_path)
+            if start < 0 or start > len(cur_t_path):
+                raise IndexError('Path index out of range')
+            stop = ((i + 1) * 2) + 1 if i >= 0 else ((i + 1) * 2) + len(cur_t_path)
+
         new_t = _TType()
-        _T_PATHS[new_t] = (cur_t_path[0], cur_t_path[i], cur_t_path[i + 1])
+        _T_PATHS[new_t] = (cur_t_path[0],) + cur_t_path[start:stop:step]
         return Path(new_t)
 
     def __repr__(self):

@@ -136,11 +136,40 @@ def test_path_getitem():
     assert path[-1] == Path(T.c)
     assert path[-2] == Path(T.b)
 
+    with raises(IndexError, match='Path index out of range'):
+        path[4]
+
+    with raises(IndexError, match='Path index out of range'):
+        path[-14]
+    return
+
+
+def test_path_slices():
+    path = Path(T.a.b, 1, 2, T(test='yes'))
+
+    assert path[::] == path
+
+    # positive indices
+    assert path[3:] == Path(2, T(test='yes'))
+    assert path[1:3] == Path(T.b, 1)
+    assert path[:3] == Path(T.a.b, 1)
+
+    # positive indices backwards
+    assert path[2:1] == Path()
+
+    # negative indices forward
+    assert path[-1:] == Path(T(test='yes'))
+    assert path[:-2] == Path(T.a.b, 1)
+    assert path[-3:-1] == Path(1, 2)
+
+    # negative indices backwards
+    assert path[-1:-3] == Path()
+
 
 def test_path_values():
-    path = Path(T.a.b.c, 1, 2, T(test='yes'))
+    path = Path(T.a.b, 1, 2, T(test='yes'))
 
-    assert path.values() == ('a', 'b', 'c', 1, 2, ((), {'test': 'yes'}))
+    assert path.values() == ('a', 'b', 1, 2, ((), {'test': 'yes'}))
 
     assert Path().values() == ()
 
