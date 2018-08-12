@@ -165,6 +165,9 @@ def test_path_slices():
     # negative indices backwards
     assert path[-1:-3] == Path()
 
+    # slicing and stepping
+    assert path[1::2] == Path(T.b, 2)
+
 
 def test_path_values():
     path = Path(T.a.b, 1, 2, T(test='yes'))

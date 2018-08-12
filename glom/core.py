@@ -313,7 +313,7 @@ class Path(object):
     def __getitem__(self, i):
         cur_t_path = _T_PATHS[self.path_t]
         try:
-            step = i.step * 2 - 1 if i.step is not None else 1
+            step = i.step
             start = i.start if i.start is not None else 0
             stop = i.stop
 
@@ -328,7 +328,11 @@ class Path(object):
             stop = ((i + 1) * 2) + 1 if i >= 0 else ((i + 1) * 2) + len(cur_t_path)
 
         new_t = _TType()
-        _T_PATHS[new_t] = (cur_t_path[0],) + cur_t_path[start:stop:step]
+        new_path = cur_t_path[start:stop]
+        if step is not None and step != 1:
+            new_path = tuple(zip(new_path[::2], new_path[1::2]))[::step]
+            new_path = sum(new_path, ())
+        _T_PATHS[new_t] = (cur_t_path[0],) + new_path
         return Path(new_t)
 
     def __repr__(self):
