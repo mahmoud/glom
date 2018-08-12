@@ -294,22 +294,6 @@ class Path(object):
         cur_t_path = _T_PATHS[self.path_t]
         return tuple(zip(cur_t_path[1::2], cur_t_path[2::2]))
 
-    def pop(self, i=-1):
-        """Like :meth:`list.pop()`, ``Path.pop()`` removes a segment of the
-        path object, defaulting to the last segment, modifying the
-        Path object.  Attempting to pop from an empty Path will raise
-        an :exc:`IndexError`.
-        """
-        cur_t_path = _T_PATHS[self.path_t]
-        if len(cur_t_path) <= 1:
-            raise IndexError('pop() from empty Path')
-        i = ((i * 2) + 1) if i >= 0 else ((i * 2) + len(cur_t_path))
-        ret, new_t_path = cur_t_path[i:i + 2], cur_t_path[:i] + cur_t_path[i + 2:]
-        new_t = _TType()
-        _T_PATHS[new_t] = new_t_path
-        self.path_t = new_t
-        return ret
-
     def __getitem__(self, i):
         cur_t_path = _T_PATHS[self.path_t]
         try:
