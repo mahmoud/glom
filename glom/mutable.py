@@ -27,11 +27,11 @@ class Assign(object):
         elif not isinstance(path, Path):
             raise TypeError('path argument must be a .-delimited string, Path, T, or S')
 
-        self.path = path
         try:
-            self.op, self.arg = self.path.pop()
+            self.op, self.arg = path.items()[-1]
         except IndexError:
             raise ValueError('path must have at least one element')
+        self.path = path[:-1]
 
         if self.op not in '[.P':
             # maybe if we add null-coalescing this should do something?
