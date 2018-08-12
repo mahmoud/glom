@@ -232,7 +232,7 @@ class Path(object):
     >>> glom(target, Path('a', 'd.e'))
     'f'
 
-    Paths can also be used to join together other Path objects, as
+    Paths can be used to join together other Path objects, as
     well as :data:`~glom.T` objects:
 
     >>> Path(T['a'], T['b'])
@@ -240,6 +240,14 @@ class Path(object):
     >>> Path(Path('a', 'b'), Path('c', 'd'))
     Path('a', 'b', 'c', 'd')
 
+    Paths also support indexing and slicing, with each access
+    returning a new Path object:
+
+    >>> path = Path('a', 'b', 1, 2)
+    >>> path[0]
+    Path('a')
+    >>> path[-2:]
+    Path(1, 2)
     """
     def __init__(self, *path_parts):
         path_t = T
@@ -287,10 +295,23 @@ class Path(object):
         return not self == other
 
     def values(self):
+        """
+        Returns a tuple of values referenced in this path.
+
+        >>> Path(T.a.b, 'c', T['d']).values()
+        ('a', 'b', 'c', 'd')
+        """
         cur_t_path = _T_PATHS[self.path_t]
         return cur_t_path[2::2]
 
     def items(self):
+        """
+        Returns a tuple of (operation, value) pairs.
+
+        >>> Path(T.a.b, 'c', T['d']).items()
+        (('.', 'a'), ('.', 'b'), ('P', 'c'), ('[', 'd'))
+
+        """
         cur_t_path = _T_PATHS[self.path_t]
         return tuple(zip(cur_t_path[1::2], cur_t_path[2::2]))
 
