@@ -119,7 +119,7 @@ class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
 
     def __str__(self):
         return ('could not access %r, part %r of %r, got error: %r'
-                % (self.path[self.part_idx], self.part_idx, self.path, self.exc))
+                % (self.path.values()[self.part_idx], self.part_idx, self.path, self.exc))
 
 
 class CoalesceError(GlomError):
@@ -221,10 +221,10 @@ class UnregisteredTarget(GlomError):
 
 
 class Path(object):
-    """Path objects specify explicit paths when the default ``'a.b.c'``-style
-    general access syntax won't work or isn't desirable.
-    Use this to wrap ints, datetimes, and other valid keys, as well as
-    strings with dots that shouldn't be expanded.
+    """Path objects specify explicit paths when the default
+    ``'a.b.c'``-style general access syntax won't work or isn't
+    desirable. Use this to wrap ints, datetimes, and other valid
+    keys, as well as strings with dots that shouldn't be expanded.
 
     >>> target = {'a': {'b': 'c', 'd.e': 'f', 2: 3}}
     >>> glom(target, Path('a', 2))
@@ -232,11 +232,22 @@ class Path(object):
     >>> glom(target, Path('a', 'd.e'))
     'f'
 
-    Paths can also be used to join together :data:`~glom.T` objects:
+    Paths can be used to join together other Path objects, as
+    well as :data:`~glom.T` objects:
 
     >>> Path(T['a'], T['b'])
     T['a']['b']
+    >>> Path(Path('a', 'b'), Path('c', 'd'))
+    Path('a', 'b', 'c', 'd')
 
+    Paths also support indexing and slicing, with each access
+    returning a new Path object:
+
+    >>> path = Path('a', 'b', 1, 2)
+    >>> path[0]
+    Path('a')
+    >>> path[-2:]
+    Path(1, 2)
     """
     def __init__(self, *path_parts):
         path_t = T
@@ -258,15 +269,76 @@ class Path(object):
 
     @classmethod
     def from_text(cls, text):
+        """Make a Path from .-delimited text:
+
+        >>> Path.from_text('a.b.c')
+        Path('a', 'b', 'c')
+
+        """
         return cls(*text.split('.'))
 
     def glomit(self, target, scope):
+        # The entrypoint for the Path extension
         return _t_eval(target, self.path_t, scope)
 
-    def __getitem__(self, idx):
-        # used by PathAccessError
-        # 1 + skips the first T/S and operator
-        return _T_PATHS[self.path_t][(1 + idx) * 2]
+    def __len__(self):
+        return (len(_T_PATHS[self.path_t]) - 1) // 2
+
+    def __eq__(self, other):
+        if type(other) is Path:
+            return _T_PATHS[self.path_t] == _T_PATHS[other.path_t]
+        elif type(other) is _TType:
+            return _T_PATHS[self.path_t] == _T_PATHS[other]
+        return False
+
+    def __ne__(self, other):
+        return not self == other
+
+    def values(self):
+        """
+        Returns a tuple of values referenced in this path.
+
+        >>> Path(T.a.b, 'c', T['d']).values()
+        ('a', 'b', 'c', 'd')
+        """
+        cur_t_path = _T_PATHS[self.path_t]
+        return cur_t_path[2::2]
+
+    def items(self):
+        """
+        Returns a tuple of (operation, value) pairs.
+
+        >>> Path(T.a.b, 'c', T['d']).items()
+        (('.', 'a'), ('.', 'b'), ('P', 'c'), ('[', 'd'))
+
+        """
+        cur_t_path = _T_PATHS[self.path_t]
+        return tuple(zip(cur_t_path[1::2], cur_t_path[2::2]))
+
+    def __getitem__(self, i):
+        cur_t_path = _T_PATHS[self.path_t]
+        try:
+            step = i.step
+            start = i.start if i.start is not None else 0
+            stop = i.stop
+
+            start = (start * 2) + 1 if start >= 0 else (start * 2) + len(cur_t_path)
+            if stop is not None:
+                stop = (stop * 2) + 1 if stop >= 0 else (stop * 2) + len(cur_t_path)
+        except AttributeError:
+            step = 1
+            start = (i * 2) + 1 if i >= 0 else (i * 2) + len(cur_t_path)
+            if start < 0 or start > len(cur_t_path):
+                raise IndexError('Path index out of range')
+            stop = ((i + 1) * 2) + 1 if i >= 0 else ((i + 1) * 2) + len(cur_t_path)
+
+        new_t = _TType()
+        new_path = cur_t_path[start:stop]
+        if step is not None and step != 1:
+            new_path = tuple(zip(new_path[::2], new_path[1::2]))[::step]
+            new_path = sum(new_path, ())
+        _T_PATHS[new_t] = (cur_t_path[0],) + new_path
+        return Path(new_t)
 
     def __repr__(self):
         return _format_path(_T_PATHS[self.path_t][1:])
