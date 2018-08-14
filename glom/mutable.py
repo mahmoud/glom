@@ -4,7 +4,7 @@ this module contains Specs that perform mutations
 import operator
 
 from .core import Path, T, S, Spec, glom, UnregisteredTarget
-from .core import TType, _DEFAULT_SCOPE, TargetRegistry
+from .core import TType, register_op, TargetRegistry
 
 try:
     basestring
@@ -79,10 +79,7 @@ _UNASSIGNABLE_BASE_TYPES = tuple(set(_BUILTIN_BASE_TYPES)
 def _set_sequence_item(target, idx, val):
     target[int(idx)] = val
 
-# how to get this into the target registry? just put it in the root
-# one?  autorun autodiscovery over known types when adding a new
-# autodiscovery probably just let autodiscovery be totally global, and
-# remove the ability to not register autodiscoverers.
+
 def _assign_autodiscover(type_obj):
     # TODO: issubclass or "in"?
     if issubclass(type_obj, _UNASSIGNABLE_BASE_TYPES):
@@ -96,4 +93,4 @@ def _assign_autodiscover(type_obj):
     return setattr
 
 
-_DEFAULT_SCOPE[TargetRegistry].register_op('assign', _assign_autodiscover, exact=False)
+register_op('assign', auto_func=_assign_autodiscover, exact=False)

@@ -1269,9 +1269,15 @@ class TargetRegistry(object):
         return
 
     def register_op(self, op_name, auto_func=None, exact=False):
-        """auto_func is a function that when passed a type, returns a handler
-        associated with op_name if it's supported, or False if it's
-        not.
+        """add operations beyond the builtins ('get' and 'iterate' at the time
+        of writing).
+
+        auto_func is a function that when passed a type, returns a
+        handler associated with op_name if it's supported, or False if
+        it's not.
+
+        See glom.core.register_op() for the global version used by
+        extensions.
         """
         if not isinstance(op_name, basestring):
             raise TypeError('expected op_name to be a text name, not: %r' % (op_name,))
@@ -1447,6 +1453,14 @@ def register(target_type, **kwargs):
 
     """
     _DEFAULT_SCOPE[TargetRegistry].register(target_type, **kwargs)
+    return
+
+
+def register_op(op_name, **kwargs):
+    """For extension authors needing to add operations beyond the builtin
+    'get' and 'iterate' to the default scope. See TargetRegistry for more details.
+    """
+    _DEFAULT_SCOPE[TargetRegistry].register_op(op_name, **kwargs)
     return
 
 
