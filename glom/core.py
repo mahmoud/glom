@@ -254,7 +254,7 @@ class Path(object):
         for part in path_parts:
             if isinstance(part, Path):
                 part = part.path_t
-            if isinstance(part, _TType):
+            if isinstance(part, TType):
                 sub_parts = _T_PATHS[part]
                 if sub_parts[0] is not T:
                     raise ValueError('path segment must be path from T, not %r'
@@ -287,7 +287,7 @@ class Path(object):
     def __eq__(self, other):
         if type(other) is Path:
             return _T_PATHS[self.path_t] == _T_PATHS[other.path_t]
-        elif type(other) is _TType:
+        elif type(other) is TType:
             return _T_PATHS[self.path_t] == _T_PATHS[other]
         return False
 
@@ -332,7 +332,7 @@ class Path(object):
                 raise IndexError('Path index out of range')
             stop = ((i + 1) * 2) + 1 if i >= 0 else ((i + 1) * 2) + len(cur_t_path)
 
-        new_t = _TType()
+        new_t = TType()
         new_path = cur_t_path[start:stop]
         if step is not None and step != 1:
             new_path = tuple(zip(new_path[::2], new_path[1::2]))[::step]
@@ -685,21 +685,21 @@ class Call(object):
             args = ()
         if kwargs is None:
             kwargs = {}
-        if not (callable(func) or isinstance(func, _TType)):
+        if not (callable(func) or isinstance(func, TType)):
             raise TypeError('func must be a callable or child of T')
         self.func, self.args, self.kwargs = func, args, kwargs
 
     def glomit(self, target, scope):
         'run against the current target'
         def _eval(t):
-            if type(t) in (Spec, _TType):
+            if type(t) in (Spec, TType):
                 return scope[glom](target, t, scope)
             return t
-        if type(self.args) is _TType:
+        if type(self.args) is TType:
             args = _eval(self.args)
         else:
             args = [_eval(a) for a in self.args]
-        if type(self.kwargs) is _TType:
+        if type(self.kwargs) is TType:
             kwargs = _eval(self.kwargs)
         else:
             kwargs = {name: _eval(val) for name, val in self.kwargs.items()}
@@ -710,7 +710,7 @@ class Call(object):
         return '%s(%r, args=%r, kwargs=%r)' % (cn, self.func, self.args, self.kwargs)
 
 
-class _TType(object):
+class TType(object):
     """``T``, short for "target". A singleton object that enables
     object-oriented expression of a glom specification.
 
@@ -788,7 +788,7 @@ class _TType(object):
             newpath = _T_PATHS[self][:-2]
             if not newpath:
                 return T
-            t = _TType()
+            t = TType()
             _T_PATHS[t] = _T_PATHS[self][:-2]
             return t
         return _t_child(self, '[', item)
@@ -834,7 +834,7 @@ _T_PATHS = weakref.WeakKeyDictionary()
 
 
 def _t_child(parent, operation, arg):
-    t = _TType()
+    t = TType()
     _T_PATHS[t] = _T_PATHS[parent] + (operation, arg)
     return t
 
@@ -847,10 +847,10 @@ def _t_eval(target, _t, scope):
     elif t_path[0] is S:
         cur = scope
     else:
-        raise ValueError('_TType instance with invalid root object')
+        raise ValueError('TType instance with invalid root object')
     while i < len(t_path):
         op, arg = t_path[i], t_path[i + 1]
-        if type(arg) in (Spec, _TType):
+        if type(arg) in (Spec, TType):
             arg = scope[glom](target, arg, scope)
         if op == '.':
             try:
@@ -887,8 +887,8 @@ def _t_eval(target, _t, scope):
     return cur
 
 
-T = _TType()  # target aka Mr. T aka "this"
-S = _TType()  # like T, but means grab stuff from Scope, not Target
+T = TType()  # target aka Mr. T aka "this"
+S = TType()  # like T, but means grab stuff from Scope, not Target
 
 _T_PATHS[T] = (T,)
 _T_PATHS[S] = (S,)
@@ -1394,7 +1394,7 @@ def _glom(target, spec, scope):
     scope = scope.new_child()
     scope[T] = target
 
-    if isinstance(spec, _TType):  # must go first, due to callability
+    if isinstance(spec, TType):  # must go first, due to callability
         return _t_eval(target, spec, scope)
     elif callable(getattr(spec, 'glomit', None)):
         return spec.glomit(target, scope)

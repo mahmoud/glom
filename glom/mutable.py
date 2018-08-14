@@ -4,7 +4,7 @@ this module contains Specs that perform mutations
 import operator
 
 from .core import Path, T, S, Spec, glom, UnregisteredTarget
-from .core import _TType, _DEFAULT_SCOPE, TargetRegistry
+from .core import TType, _DEFAULT_SCOPE, TargetRegistry
 
 try:
     basestring
@@ -22,7 +22,7 @@ class Assign(object):
     def __init__(self, path, val):
         if isinstance(path, basestring):
             path = Path.from_text(path)
-        elif type(path) is _TType:
+        elif type(path) is TType:
             path = Path(path)
         elif not isinstance(path, Path):
             raise TypeError('path argument must be a .-delimited string, Path, T, or S')
