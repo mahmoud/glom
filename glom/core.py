@@ -678,15 +678,13 @@ class Call(object):
 
     """
     def __init__(self, func, args=None, kwargs=None):
-        if not callable(func):
-            raise TypeError('Call constructor expected func to be a callable,'
-                            ' not: %r' % func)
+        if not (callable(func) or isinstance(func, TType)):
+            raise TypeError('expected func to be a callable or T'
+                            ' expression, not: %r' % (func,))
         if args is None:
             args = ()
         if kwargs is None:
             kwargs = {}
-        if not (callable(func) or isinstance(func, TType)):
-            raise TypeError('func must be a callable or child of T')
         self.func, self.args, self.kwargs = func, args, kwargs
 
     def glomit(self, target, scope):

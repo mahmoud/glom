@@ -170,6 +170,12 @@ def test_call_and_target():
     assert glom([F, 1], T[0](T[1]).a) == 1
     assert glom([[1]], T[0][0][0][UP]) == 1
 
+    assert list(glom({'a': 'b'}, Call(T.values))) == ['b']
+
+    with pytest.raises(TypeError, match='expected func to be a callable or T'):
+        Call(func=object())
+    return
+
 
 def test_spec_and_recursion():
     assert repr(Spec('a.b.c')) == "Spec('a.b.c')"
