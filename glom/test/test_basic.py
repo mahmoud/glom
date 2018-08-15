@@ -169,6 +169,7 @@ def test_call_and_target():
     assert glom(F, T(T)).a == F
     assert glom([F, 1], T[0](T[1]).a) == 1
     assert glom([[1]], T[0][0][0][UP]) == 1
+    assert glom([[1]], T[0][UP][UP][UP]) == [[1]]  # tops out at just T
 
     assert list(glom({'a': 'b'}, Call(T.values))) == ['b']
 
