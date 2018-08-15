@@ -1302,7 +1302,9 @@ class TargetRegistry(object):
                 raise TypeError('expected handler for op "%s" to be'
                                 ' callable or False, not: %r' % (op_name, handler))
             type_map[t] = handler
-            if not exact:
+
+        if not exact:
+            for t in known_types:
                 self._register_fuzzy_type(op_name, t, _type_tree=type_tree)
 
         self._op_type_map[op_name] = type_map

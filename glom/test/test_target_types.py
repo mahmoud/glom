@@ -214,6 +214,17 @@ def test_faulty_op_registration():
 
     assert 'fake_op' not in treg._op_auto_map
 
+    # check op with no autodiscovery
+    treg.register_op('lol', exact=True)
+    lol_type_map = treg.get_type_map('lol')
+    assert all([v is False for v in lol_type_map.values()])
+
+    # check op reregistration, this time not exact
+    assert not treg._op_type_tree.get('lol')
+    treg.register_op('lol', exact=False)
+    assert treg._op_type_tree.get('lol')
+
+
     def _autodiscover_faulty_return(type_obj):
         return 'hideeho'
 
