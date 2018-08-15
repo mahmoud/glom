@@ -13,6 +13,34 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
+18.3.0
+------
+*(August 14, 2018)*
+
+This release introduces the `Assign` Spec type, and its accompanying
+`glom.assign()` "deep-set" convenience function, a feature that
+required the refinement of glom's Extension API. `Path` and `T` also
+saw improvements.
+
+* `Assign` Spec type and `glom.assign()` top-level function for deep setting.
+* Extensions (and advanced users) can now register new operations. For
+  instance, `Assign` registers `"assign"`, which is now a peer of
+  `"get"` and `"iterate"`, which were the only built-in operations
+  glom provided.
+* Extensions no longer need to be registered. A `glom` extension is an
+  instance of any type that provides a `glomit()` method. Full docs
+  coming soon.
+* `T` and other `TType` instances now pickle correctly, fixing [#48][i48]
+* `Path` instances now behave like strings, with indexing returning
+  new `Path` objects, with full slice syntax support.
+* `Path` also supports `.values()` and `.items()` methods, which
+  enable getting sequences of the data backing the `Path()`, for when
+  a sub-`Path` object is not desirable.
+* `Path` objects are now comparable for equality. To compare a `T`,
+  simply wrap it in a `Path()` use the `==` operator.
+
+[i48]: https://github.com/mahmoud/glom/issues/48
+
 18.2.0
 ------
 *(July 5, 2018)*
