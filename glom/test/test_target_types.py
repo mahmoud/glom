@@ -220,6 +220,23 @@ def test_faulty_op_registration():
     with pytest.raises(TypeError, match="hideeho"):
         treg.register_op('fake_op', _autodiscover_faulty_return)
 
+    def _autodiscover_sneaky(type_obj):
+        # works with default registrations, but fails later on sets and frozensets
+        if type_obj is set:
+            return 'this should have been False or a callable, but was intentionally a string'
+        if type_obj is frozenset:
+            raise ValueError('this should have been False or a callable, but was intentionally a ValueError')
+        return False
+
+    treg.register_op('sneak', _autodiscover_sneaky)
+
+    with pytest.raises(TypeError, match="intentionally a string"):
+        treg.register(set)
+    with pytest.raises(TypeError, match="intentionally a ValueError"):
+        treg.register(frozenset)
+
+    return
+
 
 def test_reregister_type():
     treg = TargetRegistry()
