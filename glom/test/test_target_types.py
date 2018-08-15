@@ -59,23 +59,20 @@ def test_types_bare():
     assert repr(exc_info.value) == "UnregisteredTarget('get', <type 'object'>, OrderedDict(), ('__class__',))"
     assert str(exc_info.value) == "glom() called without registering any types for operation 'get'. see glom.register() or Glommer's constructor for details."
 
-    try:
+    with pytest.raises(UnregisteredTarget, match='without registering') as exc_info:
         glommer.glom([{'hi': 'hi'}], ['hi'])
-    except UnregisteredTarget as ute:
-        assert not ute.type_map
-        assert 'without registering' in str(ute)
-    else:
-        assert False, 'expected an UnregisteredTarget exception'
+    assert not exc_info.value.type_map
 
     glommer.register(object, get=getattr)
-    glommer.register(dict, exact=True)
+    glommer.register(dict, get=dict.__getitem__, exact=True)
 
     # check again that registering object for 'get' doesn't change the
     # fact that we don't have iterate support yet
     try:
-        glommer.glom([{'hi': 'hi'}], ['hi'])
+        glommer.glom({'test': [{'hi': 'hi'}]}, ('test', ['hi']))
     except UnregisteredTarget as ute:
-        assert str(ute) == "target type 'list' not registered for 'iterate', expected one of registered types: (dict)"
+        # feel free to update the "(at ['test'])" part to improve path display
+        assert str(ute) == "target type 'list' not registered for 'iterate', expected one of registered types: (dict) (at ['test'])"
     else:
         assert False, 'expected an UnregisteredTarget exception'
     return
