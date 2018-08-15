@@ -156,3 +156,15 @@ def test_path_items():
                             ('(', ((), {'test': 'yes'})))
 
     assert Path().items() == ()
+
+
+def test_path_eq():
+    assert Path('a', 'b') == Path('a', 'b')
+    assert Path('a') != Path('b')
+
+    assert Path() != object()
+
+
+def test_path_eq_t():
+    assert Path(T.a.b) == T.a.b
+    assert Path(T.a.b.c) != T.a.b
