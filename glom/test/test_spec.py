@@ -1,7 +1,7 @@
 
-from glom import glom, Spec, T, S
+import pytest
 
-from glom.core import Spec
+from glom import glom, Spec, T, S
 
 
 def test_spec():
@@ -12,6 +12,9 @@ def test_spec():
     echo2 = Spec(echo)
     assert echo2.glom(5) == 5
 
+    with pytest.raises(TypeError, match='expected spec to be'):
+        glom({}, object())
+    return
 
 def test_scope_spec():
     scope_spec = Spec(S)
