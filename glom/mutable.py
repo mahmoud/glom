@@ -1,7 +1,8 @@
-'''
-this module contains Specs that perform mutations
-'''
+"""
+This module contains Specs that perform mutations.
+"""
 import operator
+from pprint import pprint
 
 from .core import Path, T, S, Spec, glom, UnregisteredTarget
 from .core import TType, register_op, TargetRegistry
@@ -19,7 +20,31 @@ if getattr(__builtins__, '__dict__', None):
 
 
 class Assign(object):
+    """The Assign specifier type enables glom to modify the target,
+    performing a "deep-set" to mirror glom's original deep-get use
+    case.
+
+    Assign can be used to perform spot modifications of large data
+    structures when making a copy is not desirable.
+
+    >>> target = {'a': {}}
+    >>> spec = Assign('a.b', 'value')
+    >>> _ = glom(target, spec)
+    >>> pprint(target)
+    {'a': {'b': 'value'}}
+
+    A the assigned value can also be a Spec, which is useful for
+    copying values aronud within the data structure.
+
+    >>> _ = glom(target, Assign('a.c', Spec('a.b')))
+    >>> pprint(target)
+    {'a': {'b': 'value', 'c': 'value'}}
+
+    """
     def __init__(self, path, val):
+        # TODO: an option like require_preexisting or something to
+        # ensure that a value is mutated, not just added. Current
+        # workaround is to do a Check().
         if isinstance(path, basestring):
             path = Path.from_text(path)
         elif type(path) is TType:
@@ -58,6 +83,7 @@ class Assign(object):
             try:
                 assign(dest, self.arg, val)
             except Exception as e:
+                # should be a GlomError
                 raise TypeError('failed to assign on instance of type %r at %r (got %r)'
                                 % (dest.__class__.__name__, Path(*scope[Path]), e))
 
