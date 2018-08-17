@@ -33,12 +33,20 @@ class Assign(object):
     >>> pprint(target)
     {'a': {'b': 'value'}}
 
-    A the assigned value can also be a Spec, which is useful for
-    copying values aronud within the data structure.
+    The value to be assigned can also be a Spec, which is useful for
+    copying values around within the data structure.
 
     >>> _ = glom(target, Assign('a.c', Spec('a.b')))
     >>> pprint(target)
     {'a': {'b': 'value', 'c': 'value'}}
+
+    The target path can be a :data:`~glom.T` expression, for maximum control:
+
+    >>> err = ValueError('initial message')
+    >>> target = {'errors': [err]}
+    >>> _ = glom(target, Assign(T['errors'][0].args, ('new message',)))
+    >>> str(err)
+    'new message'
 
     """
     def __init__(self, path, val):
