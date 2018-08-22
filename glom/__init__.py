@@ -17,4 +17,4 @@ from glom.core import (glom,
                        UnregisteredTarget,
                        T, S)
 
-from glom.mutable import Assign, assign
+from glom.mutable import Assign, assign, PathAssignError

@@ -1,6 +1,6 @@
 import pytest
 
-from glom import glom, Path, T, Spec, Glommer
+from glom import glom, Path, T, Spec, Glommer, PathAssignError
 from glom.core import UnregisteredTarget
 from glom.mutable import Assign, assign
 
@@ -24,10 +24,10 @@ def test_assign():
     assert glom(r(), Assign(T['r']['r']['r']['r'], 1)) == {'r': 1}
     assert glom(r(), Assign(Path('r', 'r', T['r']), 1)) == {'r': 1}
     assert assign(r(), Path('r', 'r', T['r']), 1) == {'r': 1}
-    with pytest.raises(TypeError):
-        glom({}, Assign(1, 'a'))
-    with pytest.raises(ValueError):
-        glom({}, Assign(T, 1))
+    with pytest.raises(TypeError, match='path argument must be'):
+        Assign(1, 'a')
+    with pytest.raises(ValueError, match='path must have at least one element'):
+        Assign(T, 1)
 
 
 def test_assign_spec_val():
@@ -58,7 +58,7 @@ def test_bad_assign_target():
     glom(ok_target, spec)
     assert ok_target.a == 'b'
 
-    with pytest.raises(TypeError, match='failed to assign'):
+    with pytest.raises(PathAssignError, match='could not assign'):
         glom(BadTarget(), spec)
     return
 
@@ -68,8 +68,17 @@ def test_sequence_assign():
     assign(target, 'alist.2', 3)
     assert target['alist'][2] == 3
 
-    with pytest.raises(TypeError):
+    with pytest.raises(PathAssignError, match='could not assign') as exc_info:
         assign(target, 'alist.3', 4)
+
+    # the following test is because pypy's IndexError is different than CPython's:
+    # E         - PathAssignError(IndexError('list index out of range',), Path('alist'), '3')
+    # E         + PathAssignError(IndexError('list assignment index out of range',), Path('alist'), '3')
+    # E         ?                                  +++++++++++
+
+    exc_repr = repr(exc_info.value)
+    assert exc_repr.startswith('PathAssignError(')
+    assert exc_repr.endswith("'3')")
     return
 
 

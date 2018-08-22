@@ -114,6 +114,8 @@ other standard Python exceptions as appropriate.
 
 .. autoclass:: glom.UnregisteredTarget
 
+.. autoclass:: glom.PathAssignError
+
 .. autoclass:: glom.GlomError
 
 .. _debugging:

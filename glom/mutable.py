@@ -4,7 +4,7 @@ This module contains Specs that perform mutations.
 import operator
 from pprint import pprint
 
-from .core import Path, T, S, Spec, glom, UnregisteredTarget
+from .core import Path, T, S, Spec, glom, UnregisteredTarget, GlomError
 from .core import TType, register_op, TargetRegistry
 
 try:
@@ -17,6 +17,36 @@ if getattr(__builtins__, '__dict__', None):
     # pypy's __builtins__ is a module, as is CPython's REPL, but at
     # normal execution time it's a dict?
     __builtins__ = __builtins__.__dict__
+
+
+class PathAssignError(GlomError):
+    """This :exc:`GlomError` subtype is raised when an assignment fails,
+    stemming from an :func:`~glom.assign` call or other
+    :class:`~glom.Assign` usage.
+
+    One example would be assigning to an out-of-range position in a list::
+
+      >>> assign(["short", "list"], Path(5), 'too far')
+      Traceback (most recent call last):
+      ...
+      PathAssignError: could not assign 5 on object at Path(), got error: IndexError(...
+
+    Other assignment failures could be due to assigning to an
+    ``@property`` or exception being raised inside a ``__setattr__()``.
+
+    """
+    def __init__(self, exc, path, dest_name):
+        self.exc = exc
+        self.path = path
+        self.dest_name = dest_name
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.dest_name)
+
+    def __str__(self):
+        return ('could not assign %r on object at %r, got error: %r'
+                % (self.dest_name, self.path, self.exc))
 
 
 class Assign(object):
@@ -55,10 +85,10 @@ class Assign(object):
     ``Assign`` has built-in support for assigning to attributes of
     objects, keys of mappings (like dicts), and indexes of sequences
     (like lists). Additional types can be registered through
-    :func:`~glom.register()` using the ``"set"`` operation name.
+    :func:`~glom.register()` using the ``"assign"`` operation name.
 
     Attempting to assign to an immutable structure, like a
-    :class:`tuple`, will result in a :class:`~glom.PathAccessError`.
+    :class:`tuple`, will result in a :class:`~glom.PathAssignError`.
     """
     def __init__(self, path, val):
         # TODO: an option like require_preexisting or something to
@@ -102,9 +132,7 @@ class Assign(object):
             try:
                 assign(dest, self.arg, val)
             except Exception as e:
-                # should be a GlomError
-                raise TypeError('failed to assign on instance of type %r at %r (got %r)'
-                                % (dest.__class__.__name__, Path(*scope[Path]), e))
+                raise PathAssignError(e, self.path, self.arg)
 
         return target
 
@@ -114,8 +142,7 @@ def assign(obj, path, val):
     functionality, modifying nested data structures in-place::
 
       >>> target = {'a': [{'b': 'c'}, {'d': None}]}
-      # let's give 'd' a value of 'e'
-      >>> _ = assign(target, 'a.1.d', 'e')
+      >>> _ = assign(target, 'a.1.d', 'e')  # let's give 'd' a value of 'e'
       >>> pprint(target)
       {'a': [{'b': 'c'}, {'d': 'e'}]}
 
