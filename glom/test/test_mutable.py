@@ -68,8 +68,17 @@ def test_sequence_assign():
     assign(target, 'alist.2', 3)
     assert target['alist'][2] == 3
 
-    with pytest.raises(PathAssignError, match='could not assign'):
+    with pytest.raises(PathAssignError, match='could not assign') as exc_info:
         assign(target, 'alist.3', 4)
+
+    # the following test is because pypy's IndexError is different than CPython's:
+    # E         - PathAssignError(IndexError('list index out of range',), Path('alist'), '3')
+    # E         + PathAssignError(IndexError('list assignment index out of range',), Path('alist'), '3')
+    # E         ?                                  +++++++++++
+
+    exc_repr = repr(exc_info.value)
+    assert exc_repr.startswith('PathAssignError(')
+    assert exc_repr.endswith("'3')")
     return
 
 
