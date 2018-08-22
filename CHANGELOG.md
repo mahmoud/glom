@@ -13,6 +13,16 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
+18.3.1
+------
+
+*(August 22, 2018)*
+
+Fix a small bug where `Assign()` raised a `TypeError` instead of a
+`GlomError` subtype. This release added
+[`PathAssignError`](https://glom.readthedocs.io/en/latest/api.html#glom.PathAssignError),
+which is now raised instead.
+
 18.3.0
 ------
 *(August 14, 2018)*
