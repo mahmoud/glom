@@ -20,34 +20,45 @@ if getattr(__builtins__, '__dict__', None):
 
 
 class Assign(object):
-    """The Assign specifier type enables glom to modify the target,
+    """The ``Assign`` specifier type enables glom to modify the target,
     performing a "deep-set" to mirror glom's original deep-get use
     case.
 
-    Assign can be used to perform spot modifications of large data
-    structures when making a copy is not desirable.
+    ``Assign`` can be used to perform spot modifications of large data
+    structures when making a copy is not desired::
 
-    >>> target = {'a': {}}
-    >>> spec = Assign('a.b', 'value')
-    >>> _ = glom(target, spec)
-    >>> pprint(target)
-    {'a': {'b': 'value'}}
+      # deep assignment into a nested dictionary
+      >>> target = {'a': {}}
+      >>> spec = Assign('a.b', 'value')
+      >>> _ = glom(target, spec)
+      >>> pprint(target)
+      {'a': {'b': 'value'}}
 
-    The value to be assigned can also be a Spec, which is useful for
-    copying values around within the data structure.
+    The value to be assigned can also be a :class:`~glom.Spec`, which
+    is useful for copying values around within the data structure::
 
-    >>> _ = glom(target, Assign('a.c', Spec('a.b')))
-    >>> pprint(target)
-    {'a': {'b': 'value', 'c': 'value'}}
+      # copying one nested value to another
+      >>> _ = glom(target, Assign('a.c', Spec('a.b')))
+      >>> pprint(target)
+      {'a': {'b': 'value', 'c': 'value'}}
 
-    The target path can be a :data:`~glom.T` expression, for maximum control:
+    Like many other specifier types, ``Assign``'s destination path can be
+    a :data:`~glom.T` expression, for maximum control::
 
-    >>> err = ValueError('initial message')
-    >>> target = {'errors': [err]}
-    >>> _ = glom(target, Assign(T['errors'][0].args, ('new message',)))
-    >>> str(err)
-    'new message'
+      # changing the error message of an exception in an error list
+      >>> err = ValueError('initial message')
+      >>> target = {'errors': [err]}
+      >>> _ = glom(target, Assign(T['errors'][0].args, ('new message',)))
+      >>> str(err)
+      'new message'
 
+    ``Assign`` has built-in support for assigning to attributes of
+    objects, keys of mappings (like dicts), and indexes of sequences
+    (like lists). Additional types can be registered through
+    :func:`~glom.register()` using the ``"set"`` operation name.
+
+    Attempting to assign to an immutable structure, like a
+    :class:`tuple`, will result in a :class:`~glom.PathAccessError`.
     """
     def __init__(self, path, val):
         # TODO: an option like require_preexisting or something to
@@ -99,6 +110,18 @@ class Assign(object):
 
 
 def assign(obj, path, val):
+    """The ``assign()`` function provides convenient "deep set"
+    functionality, modifying nested data structures in-place::
+
+      >>> target = {'a': [{'b': 'c'}, {'d': None}]}
+      # let's give 'd' a value of 'e'
+      >>> _ = assign(target, 'a.1.d', 'e')
+      >>> pprint(target)
+      {'a': [{'b': 'c'}, {'d': 'e'}]}
+
+    For more information and examples, see the :class:`~glom.Assign`
+    specifier type, which this function wraps.
+    """
     return glom(obj, Assign(path, val))
 
 

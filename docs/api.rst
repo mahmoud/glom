@@ -49,6 +49,23 @@ specifiers to declare away overly branchy procedural code.
 
 .. autodata:: glom.OMIT
 
+Target mutation with Assign
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+*New in glom 18.3.0*
+
+Most of glom's API design defaults to safely copying your data. But
+such caution isn't always justified.
+
+When you already have a large or complex bit of nested data that you
+are sure you want to modify in-place, glom has you covered, with the
+:func:`~glom.assign` function, and the :func:`~glom.Assign` specifier
+type.
+
+.. autofunction:: glom.assign
+
+.. autoclass:: glom.Assign
+
 
 Reducing lambda usage with Call
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
