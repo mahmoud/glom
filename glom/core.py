@@ -29,6 +29,7 @@ import operator
 from abc import ABCMeta
 from pprint import pprint
 from collections import OrderedDict
+import re
 
 from boltons.typeutils import make_sentinel
 from boltons.iterutils import is_iterable
@@ -275,7 +276,15 @@ class Path(object):
         Path('a', 'b', 'c')
 
         """
-        return cls(*text.split('.'))
+        segments = re.split(r'([\.\?])', text)
+        if segments[0] not in '.?':
+            segments.insert(0, '.')
+        for i in range(0, len(segments), 2):
+            if segments[i] == '.':
+                segments[i] = 'P'
+        t = TType()
+        _T_PATHS[t] = (T,) + tuple(segments)
+        return cls(t)
 
     def glomit(self, target, scope):
         # The entrypoint for the Path extension
@@ -860,7 +869,7 @@ def _t_eval(target, _t, scope):
                 cur = cur[arg]
             except (KeyError, IndexError, TypeError) as e:
                 raise PathAccessError(e, Path(_t), i // 2)
-        elif op == 'P':
+        elif op in ('P', '?'):
             # Path type stuff (fuzzy match)
             get = scope[TargetRegistry].get_handler('get', cur)
             if not get:
@@ -870,6 +879,8 @@ def _t_eval(target, _t, scope):
             try:
                 cur = get(cur, arg)
             except Exception as e:
+                if op == '?':
+                    return None
                 raise PathAccessError(e, Path(_t), i // 2)
         elif op == '(':
             args, kwargs = arg

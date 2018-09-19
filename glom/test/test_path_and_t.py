@@ -13,6 +13,8 @@ def test_path():
 
     assert glom(target, Path('a', 'b.b', 1, _obj, -1)) == 'd'
 
+    assert glom(target, 'a?b') == None
+
 
 def test_empty_path_access():
     target = {}
