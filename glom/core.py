@@ -63,6 +63,12 @@ Mostly used to drop keys from dicts (as above) or filter objects from
 lists.
 
 """
+STOP = make_sentinel('STOP')
+STOP.__doc__ = """
+The ``STOP`` singleton can be used to halt execution of list or tuple.
+
+TODO: more
+"""
 
 
 class GlomError(Exception):
@@ -1131,6 +1137,8 @@ def _handle_list(target, spec, scope):
         val = scope[glom](t, subspec, scope.new_child({Path: scope[Path] + [i]}))
         if val is OMIT:
             continue
+        if val is STOP:
+            break
         ret.append(val)
     return ret
 
@@ -1138,7 +1146,12 @@ def _handle_list(target, spec, scope):
 def _handle_tuple(target, spec, scope):
     res = target
     for subspec in spec:
-        res = scope[glom](res, subspec, scope)
+        nxt = scope[glom](res, subspec, scope)
+        if nxt is OMIT:
+            continue
+        if nxt is STOP:
+            break
+        res = nxt
         if not isinstance(subspec, list):
             scope[Path] += [getattr(subspec, '__name__', subspec)]
     return res
