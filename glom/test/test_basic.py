@@ -130,7 +130,7 @@ def test_stop():
     target = ['a', ' b', ' c ', '   ', '  d']
     assert glom(target, [(lambda x: x.strip(),
                           lambda x: x if x else STOP,
-                          lambda x: x[0])])
+                          lambda x: x[0])]) == ['a', 'b', 'c', '', 'd']
     return
 
 
