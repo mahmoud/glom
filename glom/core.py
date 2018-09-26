@@ -61,8 +61,13 @@ object.
 
 Mostly used to drop keys from dicts (as above) or filter objects from
 lists.
+
+.. note::
+
+   SKIP was known as OMIT in versions 18.3.1 and prior. Versions 19+
+   will remove the OMIT alias entirely.
 """
-OMIT = SKIP  # backwards compat
+OMIT = SKIP  # backwards compat, remove in 19+
 
 STOP = make_sentinel('STOP')
 STOP.__doc__ = """

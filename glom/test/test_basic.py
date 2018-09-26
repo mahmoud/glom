@@ -5,6 +5,8 @@ from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Liter
 import glom.core as glom_core
 from glom.core import Spec, UP  # probationary
 
+from glom import OMIT  # backwards compat
+
 
 def test_initial_integration():
     class Example(object):
@@ -91,6 +93,8 @@ def test_coalesce():
 
 
 def test_skip():
+    assert OMIT is SKIP  # backwards compat
+
     target = {'a': {'b': 'c'},  # basic dictionary nesting
               'd': {'e': ['f'],    # list in dictionary
                     'g': 'h'},

@@ -4,7 +4,7 @@ from glom.core import (glom,
                        Glommer,
                        Call,
                        Spec,
-                       OMIT,
+                       OMIT,  # backwards compat
                        SKIP,
                        STOP,
                        Check,

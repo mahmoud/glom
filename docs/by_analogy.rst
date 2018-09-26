@@ -28,7 +28,7 @@ more like a list comp and the old ``filter()`` function.
 ``glom``'s list processing differs in two ways:
 
 * Required use of a callable or other ``glom`` spec, to enable deferred processing.
-* Ability to return :data:`~glom.OMIT`, which can exclude items from a list.
+* Ability to return :data:`~glom.SKIP`, which can exclude items from a list.
 
 
 Similarity to templating (Jinja, Django, Mustache)
