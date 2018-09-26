@@ -1,15 +1,25 @@
 
 from pytest import raises
 
-from glom import glom, Check, CheckError, Coalesce, OMIT, T
+from glom import glom, Check, CheckError, Coalesce, OMIT, STOP, T
 
 
 def test_check_basic():
     assert glom([0, OMIT], [T]) == [0]  # sanity check OMIT
 
-    target = [{'id': 0}, {'id': 1}]
+    target = [{'id': 0}, {'id': 1}, {'id': 2}]
+
+    # check that skipping non-passing values works
     assert glom(target, ([Coalesce(Check('id', equal_to=0), default=OMIT)], T[0])) == {'id': 0}
     assert glom(target, ([Check('id', equal_to=0, default=OMIT)], T[0])) == {'id': 0}
+
+    # check that stopping iteration on non-passing values works
+    assert glom(target, [Check('id', equal_to=0, default=STOP)]) == [{'id': 0}]
+
+    # check that stopping chain execution on non-passing values works
+    spec = (Check(validate=lambda x: len(x) > 0, default=STOP), T[0])
+    assert glom('hello', spec) == 'h'
+    assert glom('', spec) == ''  # would fail with IndexError if STOP didn't work
 
     target = [1, 'a']
     assert glom(target, [Check(type=str, default=OMIT)]) == ['a']

@@ -1075,7 +1075,10 @@ class Check(object):
                 except Exception as e:
                     msg = ('expected %r check to validate target'
                            % getattr(validator, '__name__', None) or ('#%s' % i))
-                    if type(e) is not self._ValidationError:
+                    if type(e) is self._ValidationError:
+                        if self.default is not RAISE:
+                            return self.default
+                    else:
                         msg += ' (got exception: %r)' % e
                     errs.append(msg)
 
