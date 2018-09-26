@@ -127,7 +127,7 @@ def test_stop():
     assert glom(target, [T]) == [0, 1, 2]
 
     # test that stop works on chains (but doesn't stop iteration up the stack)
-    target = ['a', ' b', ' c ', '   ', '  d']
+    target = ['a', ' b', ' c ', '   ', '  done']
     assert glom(target, [(lambda x: x.strip(),
                           lambda x: x if x else STOP,
                           lambda x: x[0])]) == ['a', 'b', 'c', '', 'd']
