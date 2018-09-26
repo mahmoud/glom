@@ -1,7 +1,7 @@
 
 import pytest
 
-from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S
+from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S
 import glom.core as glom_core
 from glom.core import Spec, UP  # probationary
 
@@ -90,7 +90,7 @@ def test_coalesce():
     assert glom(val, Coalesce(lambda x: 1/0, 'a.b', skip_exc=ZeroDivisionError)) == 'c'
 
 
-def test_omit():
+def test_skip():
     target = {'a': {'b': 'c'},  # basic dictionary nesting
               'd': {'e': ['f'],    # list in dictionary
                     'g': 'h'},
@@ -98,7 +98,7 @@ def test_omit():
               'n': 'o'}
 
     res = glom(target, {'a': 'a.b',
-                        'z': Coalesce('x', 'y', default=OMIT)})
+                        'z': Coalesce('x', 'y', default=SKIP)})
     assert res['a'] == 'c'  # sanity check
 
     assert 'x' not in target
@@ -107,8 +107,21 @@ def test_omit():
 
     # test that it works on lists
     target = range(7)
-    res = glom(target, [lambda t: t if t % 2 else OMIT])
+    res = glom(target, [lambda t: t if t % 2 else SKIP])
     assert res == [1, 3, 5]
+
+
+def test_stop():
+    # test that stop works on iterables
+    target = iter([0, 1, 2, STOP, 3, 4])
+    assert glom(target, [T]) == [0, 1, 2]
+
+    # test that stop works on chains (but doesn't stop iteration up the stack)
+    target = ['a', ' b', ' c ', '   ', '  d']
+    assert glom(target, [(lambda x: x.strip(),
+                          lambda x: x if x else STOP,
+                          lambda x: x[0])])
+    return
 
 
 def test_top_level_default():
