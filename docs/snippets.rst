@@ -94,10 +94,10 @@ to filter the odd numbers from a list.
 .. code-block:: python
 
     glom([1, 2, 3, 4, 5, 6], lambda t: [i for i in t if i % 2])
-    glom([1, 2, 3, 4, 5, 6], [lambda i: i if i % 2 else OMIT])
+    glom([1, 2, 3, 4, 5, 6], [lambda i: i if i % 2 else SKIP])
 
 
-The second approach demonstrates the use of ``glom.OMIT`` to
+The second approach demonstrates the use of ``glom.SKIP`` to
 back out of an execution.
 
 This can also be combined with :class:`~glom.Coalesce` to
@@ -109,7 +109,7 @@ or the attribute is missing.
 
 .. code-block:: python
 
-    glom(contacts, [Coalesce('primary_email.email', skip=('', None), default=OMIT)])
+    glom(contacts, [Coalesce('primary_email.email', skip=('', None), default=SKIP)])
 
 
 Preserve Type
@@ -163,9 +163,9 @@ application setup for the best results.
 Filter Iterable
 ---------------
 An iteration specifier can filter items out by
-using ``OMIT`` as the default.
+using ``SKIP`` as the default.
 
 
 .. code-block:: python
 
-    glom(['cat', 1, 'dog', 2], Check(types=str, default=OMIT))
+    glom(['cat', 1, 'dog', 2], Check(types=str, default=SKIP))

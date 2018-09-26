@@ -1,9 +1,11 @@
 
 import pytest
 
-from glom import glom, OMIT, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S
+from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S
 import glom.core as glom_core
 from glom.core import Spec, UP  # probationary
+
+from glom import OMIT  # backwards compat
 
 
 def test_initial_integration():
@@ -90,7 +92,9 @@ def test_coalesce():
     assert glom(val, Coalesce(lambda x: 1/0, 'a.b', skip_exc=ZeroDivisionError)) == 'c'
 
 
-def test_omit():
+def test_skip():
+    assert OMIT is SKIP  # backwards compat
+
     target = {'a': {'b': 'c'},  # basic dictionary nesting
               'd': {'e': ['f'],    # list in dictionary
                     'g': 'h'},
@@ -98,17 +102,36 @@ def test_omit():
               'n': 'o'}
 
     res = glom(target, {'a': 'a.b',
-                        'z': Coalesce('x', 'y', default=OMIT)})
+                        'z': Coalesce('x', 'y', default=SKIP)})
     assert res['a'] == 'c'  # sanity check
 
     assert 'x' not in target
     assert 'y' not in target
     assert 'z' not in res
 
-    # test that it works on lists
+    # test that skip works on lists
     target = range(7)
-    res = glom(target, [lambda t: t if t % 2 else OMIT])
+    res = glom(target, [lambda t: t if t % 2 else SKIP])
     assert res == [1, 3, 5]
+
+    # test that skip works on chains (enable conditional applications of transforms)
+    target = range(7)
+    # double each value if it's even, but convert all values to floats
+    res = glom(target, [(lambda x: x * 2 if x % 2 == 0 else SKIP, float)])
+    assert res == [0.0, 1.0, 4.0, 3.0, 8.0, 5.0, 12.0]
+
+
+def test_stop():
+    # test that stop works on iterables
+    target = iter([0, 1, 2, STOP, 3, 4])
+    assert glom(target, [T]) == [0, 1, 2]
+
+    # test that stop works on chains (but doesn't stop iteration up the stack)
+    target = ['a', ' b', ' c ', '   ', '  done']
+    assert glom(target, [(lambda x: x.strip(),
+                          lambda x: x if x else STOP,
+                          lambda x: x[0])]) == ['a', 'b', 'c', '', 'd']
+    return
 
 
 def test_top_level_default():

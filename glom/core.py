@@ -45,14 +45,14 @@ else:
 _type_type = type
 
 _MISSING = make_sentinel('_MISSING')
-OMIT =  make_sentinel('OMIT')
-OMIT.__doc__ = """
-The ``OMIT`` singleton can be returned from a function or included
+SKIP =  make_sentinel('SKIP')
+SKIP.__doc__ = """
+The ``SKIP`` singleton can be returned from a function or included
 via a :class:`~glom.Literal` to cancel assignment into the output
 object.
 
 >>> target = {'a': 'b'}
->>> spec = {'a': lambda t: t['a'] if t['a'] == 'a' else OMIT}
+>>> spec = {'a': lambda t: t['a'] if t['a'] == 'a' else SKIP}
 >>> glom(target, spec)
 {}
 >>> target = {'a': 'a'}
@@ -62,6 +62,22 @@ object.
 Mostly used to drop keys from dicts (as above) or filter objects from
 lists.
 
+.. note::
+
+   SKIP was known as OMIT in versions 18.3.1 and prior. Versions 19+
+   will remove the OMIT alias entirely.
+"""
+OMIT = SKIP  # backwards compat, remove in 19+
+
+STOP = make_sentinel('STOP')
+STOP.__doc__ = """
+The ``STOP`` singleton can be used to halt iteration of a list or
+execution of a tuple of subspecs.
+
+>>> target = range(10)
+>>> spec = [lambda x: x if x < 5 else STOP]
+>>> glom(target, spec)
+[0, 1, 2, 3, 4]
 """
 
 
@@ -1064,7 +1080,10 @@ class Check(object):
                 except Exception as e:
                     msg = ('expected %r check to validate target'
                            % getattr(validator, '__name__', None) or ('#%s' % i))
-                    if type(e) is not self._ValidationError:
+                    if type(e) is self._ValidationError:
+                        if self.default is not RAISE:
+                            return self.default
+                    else:
                         msg += ' (got exception: %r)' % e
                     errs.append(msg)
 
@@ -1078,7 +1097,6 @@ class Check(object):
                         (self.instance_of[0].__name__ if len(self.instance_of) == 1
                          else tuple([t.__name__ for t in self.instance_of]),
                          type(target).__name__))
-
 
         if errs:
             # TODO: due to the usage of basic path (not a Path
@@ -1108,7 +1126,7 @@ def _handle_dict(target, spec, scope):
     ret = type(spec)()  # TODO: works for dict + ordereddict, but sufficient for all?
     for field, subspec in spec.items():
         val = scope[glom](target, subspec, scope)
-        if val is OMIT:
+        if val is SKIP:
             continue
         ret[field] = val
     return ret
@@ -1129,8 +1147,10 @@ def _handle_list(target, spec, scope):
     ret = []
     for i, t in enumerate(iterator):
         val = scope[glom](t, subspec, scope.new_child({Path: scope[Path] + [i]}))
-        if val is OMIT:
+        if val is SKIP:
             continue
+        if val is STOP:
+            break
         ret.append(val)
     return ret
 
@@ -1138,7 +1158,12 @@ def _handle_list(target, spec, scope):
 def _handle_tuple(target, spec, scope):
     res = target
     for subspec in spec:
-        res = scope[glom](res, subspec, scope)
+        nxt = scope[glom](res, subspec, scope)
+        if nxt is SKIP:
+            continue
+        if nxt is STOP:
+            break
+        res = nxt
         if not isinstance(subspec, list):
             scope[Path] += [getattr(subspec, '__name__', subspec)]
     return res
