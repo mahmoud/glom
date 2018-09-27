@@ -162,10 +162,15 @@ application setup for the best results.
 
 Filter Iterable
 ---------------
-An iteration specifier can filter items out by
-using ``SKIP`` as the default.
+
+An iteration specifier can filter items out by using
+:data:`~glom.SKIP` as the default of a :class:`~glom.Check` object.
 
 
 .. code-block:: python
 
-    glom(['cat', 1, 'dog', 2], Check(types=str, default=SKIP))
+    glom(['cat', 1, 'dog', 2], [Check(types=str, default=SKIP)])
+    # ['cat', 'dog']
+
+You can also truncate the list at the first failing check by using
+:data:`~glom.STOP`.

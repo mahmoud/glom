@@ -48,6 +48,7 @@ specifiers to declare away overly branchy procedural code.
 .. autoclass:: glom.Coalesce
 
 .. autodata:: glom.SKIP
+.. autodata:: glom.STOP
 
 Target mutation with Assign
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
