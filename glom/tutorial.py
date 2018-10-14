@@ -76,7 +76,7 @@ Let's follow some astronomers on their journey exploring the solar system.
   >>> glom(target, spec)
   'jupiter'
 
-Our astronomers want to focus in on the Solar system, and represent planets as a list. 
+Our astronomers want to focus in on the Solar system, and represent planets as a list.
 Let's restructure the data to make a list of names:
 
   >>> target = {'system': {'planets': [{'name': 'earth'}, {'name': 'jupiter'}]}}
@@ -95,14 +95,34 @@ And let's say we want to capture a parallel list of moon counts with the names a
 We can react to changing data requirements as fast as the data itself can change, naturally restructuring our results,
 despite the input's nested nature. Like a list comprehension, but for nested data, our code mirrors our output.
 
+Handling Nested Lists
+=====================
+In the example above we introduced a new wrinkle: the target for ``planets`` has multiple
+entries stored in a list. Previously our targets were all nested dictionaries.
+
+To handle this we use a new *spec* pattern: ``(path, [subpath])``. In this pattern ``path`` is the path
+to the list, and ``subpath`` is the path within each element of the list. What's that? You need to handle
+lists within lists (within lists ...)? Then just repeat the pattern, replacing ``subpath`` with another
+``(path, [subpath])`` tuple. For example, say we have information about each planet's moons like so:
+
+  >>> target = {'system': {'planets': [{'name': 'earth', 'moons': [{'name': 'luna'}]},
+  ...                                  {'name': 'jupiter', 'moons': [{'name': 'io'},
+  ...                                                                {'name': 'europa'}]}]}}
+
+We can get the names of each moon from our nested lists by nesting our subpath specs:
+
+  >>> spec = {'planet_names': ('system.planets', ['name']),
+  ...         'moon_names': ('system.planets', [('moons', ['name'])])}
+  >>> pprint(glom(target, spec))
+  {'moon_names': [['luna'], ['io', 'europa']], 'planet_names': ['earth', 'jupiter']}
 
 Changing Requirements
 =====================
 
-Unfortunately, data in the real world is messy. You might be expecting a certain format and end up getting something 
-completely different. No worries, glom to the rescue. 
+Unfortunately, data in the real world is messy. You might be expecting a certain format and end up getting something
+completely different. No worries, glom to the rescue.
 
-Coalesce is a glom construct that allows you to specify fallback behavior for a list of subspecs. 
+Coalesce is a glom construct that allows you to specify fallback behavior for a list of subspecs.
 Subspecs are passed as positional arguments, while defaults can be set using keyword arguments.
 
 Let's say our astronomers recently got a new update in their systems, and sometimes ``system`` will contain
@@ -140,7 +160,7 @@ Going back to our example, let's say we wanted to get an aggregate moon count:
   >>> pprint(glom(target, {'moon_count': ('system.planets', ['moons'], sum)}))
   {'moon_count': 70}
 
-With glom, you have full access to Python at any given moment. 
+With glom, you have full access to Python at any given moment.
 Pass values to functions, whether built-in, imported, or defined inline with lambda.
 
 
