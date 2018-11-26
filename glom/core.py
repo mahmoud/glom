@@ -1116,7 +1116,16 @@ class _AbstractIterable(_AbstractIterableBase):
 
 
 def _get_sequence_item(target, index):
-    return target[int(index)]
+    try:
+        return target[int(index)]
+    except ValueError as e:
+        if 'invalid literal for int() with base 10:' in str(e):
+            msg = ("Error indexing the target. This can happen when your "
+                   "target is a list and your spec is not. Did you forget "
+                   "to put brackets around your spec?")
+            raise ValueError(msg)
+        else:
+            raise e
 
 
 # handlers are 3-arg callables, with args (spec, target, scope)
