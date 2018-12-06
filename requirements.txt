@@ -3,6 +3,7 @@ boltons==17.2.0
 coverage==4.5.1
 face>=0.1.0
 funcsigs==1.0.2
+hypothesis==3.82.1
 more-itertools==4.1.0
 pluggy==0.6.0
 py==1.5.2
