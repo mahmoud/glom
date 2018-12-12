@@ -1,6 +1,6 @@
 import pytest
 
-from glom import glom, Path, T, Spec, Glommer, PathAssignError
+from glom import glom, Path, T, Spec, Glommer, PathAssignError, PathAccessError
 from glom.core import UnregisteredTarget
 from glom.mutable import Assign, assign
 
@@ -60,6 +60,9 @@ def test_bad_assign_target():
 
     with pytest.raises(PathAssignError, match='could not assign'):
         glom(BadTarget(), spec)
+
+    with pytest.raises(PathAccessError, match='could not access'):
+        assign({}, 'a.b.c', 'moot')
     return
 
 

@@ -88,7 +88,9 @@ class Assign(object):
     :func:`~glom.register()` using the ``"assign"`` operation name.
 
     Attempting to assign to an immutable structure, like a
-    :class:`tuple`, will result in a :class:`~glom.PathAssignError`.
+    :class:`tuple`, will result in a
+    :class:`~glom.PathAssignError`. Attempting to assign to a path
+    that doesn't exist will raise a :class:`~PathAccessError`.
 
     To automatically backfill missing structures, you can pass a
     callable to the *missing* argument. This callable will be called
@@ -99,9 +101,9 @@ class Assign(object):
        >>> assign(target, 'a.b.c', 'hi', missing=dict)
        {'a': {'b': {'c': 'hi'}}}
 
-    Note that because using this option performs multiple assignments,
-    a failure can leave your target object in a partially modified
-    state.
+    Note that because using the *missing* option performs multiple
+    assignments, a failure can leave your target object in a partially
+    modified state.
 
     """
     def __init__(self, path, val, missing=None):
