@@ -4,7 +4,7 @@ This module contains Specs that perform mutations.
 import operator
 from pprint import pprint
 
-from .core import Path, T, S, Spec, glom, UnregisteredTarget, GlomError
+from .core import Path, T, S, Spec, glom, UnregisteredTarget, GlomError, PathAccessError
 from .core import TType, register_op, TargetRegistry
 
 try:
@@ -89,8 +89,22 @@ class Assign(object):
 
     Attempting to assign to an immutable structure, like a
     :class:`tuple`, will result in a :class:`~glom.PathAssignError`.
+
+    To automatically backfill missing structures, you can pass a
+    callable to the *missing* argument. This callable will be called
+    for each path segment along the assignment which is not
+    present.
+
+       >>> target = {}
+       >>> assign(target, 'a.b.c', 'hi', missing=dict)
+       {'a': {'b': {'c': 'hi'}}}
+
+    Note that because using this option performs multiple assignments,
+    a failure can leave your target object in a partially modified
+    state.
+
     """
-    def __init__(self, path, val):
+    def __init__(self, path, val, missing=None):
         # TODO: an option like require_preexisting or something to
         # ensure that a value is mutated, not just added. Current
         # workaround is to do a Check().
@@ -112,12 +126,23 @@ class Assign(object):
             raise ValueError('last part of path must be setattr or setitem')
         self.val = val
 
+        if missing is not None:
+            if not callable(missing):
+                raise TypeError('expected missing to be callable, not %r' % (missing,))
+        self.missing = missing
+
     def glomit(self, target, scope):
         if type(self.val) is Spec:
             val = scope[glom](target, self.val, scope)
         else:
             val = self.val
-        dest = scope[glom](target, self.path, scope)
+        try:
+            dest = scope[glom](target, self.path, scope)
+        except PathAccessError as pae:
+            if not self.missing:
+                raise
+            _backfill_path(self.missing, target, self.path, pae.part_idx)
+            dest = scope[glom](target, self.path, scope)
         # TODO: forward-detect immutable dest?
         if self.op == '[':
             dest[self.arg] = val
@@ -137,7 +162,19 @@ class Assign(object):
         return target
 
 
-def assign(obj, path, val):
+def _backfill_path(default_factory, target, path, path_idx=0):
+    """Used by Assign to create missing container objects along the
+    path. *default_factory* is the *missing* parameter of
+    Assign/assign(), and is used much the same as the first parameter
+    to collections.defaultdict.
+    """
+    for idx in range(path_idx, len(path)):
+        cur_path = path[:idx + 1]
+        assign(target, cur_path, default_factory())
+    return
+
+
+def assign(obj, path, val, missing=None):
     """The ``assign()`` function provides convenient "deep set"
     functionality, modifying nested data structures in-place::
 
@@ -146,10 +183,11 @@ def assign(obj, path, val):
       >>> pprint(target)
       {'a': [{'b': 'c'}, {'d': 'e'}]}
 
-    For more information and examples, see the :class:`~glom.Assign`
-    specifier type, which this function wraps.
+    Missing structures can also be automatically created with the
+    *missing* parameter. For more information and examples, see the
+    :class:`~glom.Assign` specifier type, which this function wraps.
     """
-    return glom(obj, Assign(path, val))
+    return glom(obj, Assign(path, val, missing=missing))
 
 
 _ALL_BUILTIN_TYPES = [v for v in __builtins__.values() if isinstance(v, type)]

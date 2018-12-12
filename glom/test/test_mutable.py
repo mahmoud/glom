@@ -88,3 +88,23 @@ def test_invalid_assign_op_target():
 
     with pytest.raises(ValueError):
         assign(target, spec, None)
+    return
+
+
+def test_assign_missing():
+    target = {}
+
+    val = object()
+    assign(target, 'a.b.c.d', val, missing=dict)
+
+    assert target == {'a': {'b': {'c': {'d': val}}}}
+
+    class Container(object):
+        pass
+
+    target = Container()
+    target.a = extant_a = Container()
+    assign(target, 'a.b.c.d', val, missing=Container)
+
+    assert target.a.b.c.d is val
+    assert target.a is extant_a  # make sure we didn't overwrite anything on the path
