@@ -111,3 +111,6 @@ def test_assign_missing():
 
     assert target.a.b.c.d is val
     assert target.a is extant_a  # make sure we didn't overwrite anything on the path
+
+    with pytest.raises(TypeError, match='callable'):
+        assign({}, 'a.b.c', 'lol', missing='invalidbcnotcallable')
