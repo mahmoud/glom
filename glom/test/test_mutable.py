@@ -94,14 +94,32 @@ def test_invalid_assign_op_target():
     return
 
 
-def test_assign_missing():
-    target = {}
+def test_assign_missing_signature():
+    # test signature (non-callable missing hook)
+    with pytest.raises(TypeError, match='callable'):
+        assign({}, 'a.b.c', 'lol', missing='invalidbcnotcallable')
+    return
 
+
+def test_assign_missing_dict():
+    target = {}
     val = object()
-    assign(target, 'a.b.c.d', val, missing=dict)
+
+    from itertools import count
+    counter = count()
+    def debugdict():
+        ret = dict()
+        #ret['id'] = id(ret)
+        #ret['inc'] = counter.next()
+        return ret
+
+    assign(target, 'a.b.c.d', val, missing=debugdict)
 
     assert target == {'a': {'b': {'c': {'d': val}}}}
 
+
+def test_assign_missing_object():
+    val = object()
     class Container(object):
         pass
 
@@ -112,5 +130,20 @@ def test_assign_missing():
     assert target.a.b.c.d is val
     assert target.a is extant_a  # make sure we didn't overwrite anything on the path
 
-    with pytest.raises(TypeError, match='callable'):
-        assign({}, 'a.b.c', 'lol', missing='invalidbcnotcallable')
+
+def test_assign_missing_with_extant_keys():
+    target = {}
+    value = object()
+    default_struct = {'b': {'c': {}}}
+
+    call_count = [0]
+
+    def _get_default_struct():
+        call_count[0] += 1  # make sure this is only called once
+        return default_struct
+
+    assign(target, 'a.b.c', value, missing=_get_default_struct)
+
+    assert target['a']['b']['c'] is value
+    assert target['a']['b'] is default_struct['b']
+    assert call_count == [1]

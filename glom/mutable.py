@@ -121,6 +121,7 @@ class Assign(object):
             self.op, self.arg = path.items()[-1]
         except IndexError:
             raise ValueError('path must have at least one element')
+        self._orig_path = path
         self.path = path[:-1]
 
         if self.op not in '[.P':
@@ -138,30 +139,39 @@ class Assign(object):
             val = scope[glom](target, self.val, scope)
         else:
             val = self.val
+
+        op, arg, path = self.op, self.arg, self.path
         try:
             dest = scope[glom](target, self.path, scope)
         except PathAccessError as pae:
             if not self.missing:
                 raise
-            _backfill_path(self.missing, target, self.path, pae.part_idx)
-            dest = scope[glom](target, self.path, scope)
+
+            remaining_path = self._orig_path[pae.part_idx + 1:]
+            val = assign(self.missing(), remaining_path, val, missing=self.missing)
+
+            op, arg = self._orig_path.items()[pae.part_idx]
+            path = self._orig_path[:pae.part_idx]
+            dest = scope[glom](target, path, scope)
+
         # TODO: forward-detect immutable dest?
-        if self.op == '[':
-            dest[self.arg] = val
-        elif self.op == '.':
-            setattr(dest, self.arg, val)
-        elif self.op == 'P':
-            assign = scope[TargetRegistry].get_handler('assign', dest)
-            if not assign:
+        if op == '[':
+            dest[arg] = val
+        elif op == '.':
+            setattr(dest, arg, val)
+        elif op == 'P':
+            _assign = scope[TargetRegistry].get_handler('assign', dest)
+            if not _assign:
                 raise UnregisteredTarget('assign', type(dest),
                                          scope[TargetRegistry].get_type_map('assign'),
                                          path=scope[Path])
             try:
-                assign(dest, self.arg, val)
+                _assign(dest, arg, val)
             except Exception as e:
-                raise PathAssignError(e, self.path, self.arg)
+                raise PathAssignError(e, path, arg)  # TODO: path
 
         return target
+
 
 
 def _backfill_path(default_factory, target, path, path_idx=0):
