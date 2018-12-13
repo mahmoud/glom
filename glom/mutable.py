@@ -169,19 +169,6 @@ class Assign(object):
         return target
 
 
-
-def _backfill_path(default_factory, target, path, path_idx=0):
-    """Used by Assign to create missing container objects along the
-    path. *default_factory* is the *missing* parameter of
-    Assign/assign(), and is used much the same as the first parameter
-    to collections.defaultdict.
-    """
-    for idx in range(path_idx, len(path)):
-        cur_path = path[:idx + 1]
-        assign(target, cur_path, default_factory())
-    return
-
-
 def assign(obj, path, val, missing=None):
     """The ``assign()`` function provides convenient "deep set"
     functionality, modifying nested data structures in-place::
