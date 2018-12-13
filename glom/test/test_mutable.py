@@ -1,6 +1,6 @@
 import pytest
 
-from glom import glom, Path, T, Spec, Glommer, PathAssignError
+from glom import glom, Path, T, Spec, Glommer, PathAssignError, PathAccessError
 from glom.core import UnregisteredTarget
 from glom.mutable import Assign, assign
 
@@ -60,6 +60,9 @@ def test_bad_assign_target():
 
     with pytest.raises(PathAssignError, match='could not assign'):
         glom(BadTarget(), spec)
+
+    with pytest.raises(PathAccessError, match='could not access'):
+        assign({}, 'a.b.c', 'moot')
     return
 
 
@@ -88,3 +91,96 @@ def test_invalid_assign_op_target():
 
     with pytest.raises(ValueError):
         assign(target, spec, None)
+    return
+
+
+def test_assign_missing_signature():
+    # test signature (non-callable missing hook)
+    with pytest.raises(TypeError, match='callable'):
+        assign({}, 'a.b.c', 'lol', missing='invalidbcnotcallable')
+    return
+
+
+def test_assign_missing_dict():
+    target = {}
+    val = object()
+
+    from itertools import count
+    counter = count()
+    def debugdict():
+        ret = dict()
+        #ret['id'] = id(ret)
+        #ret['inc'] = counter.next()
+        return ret
+
+    assign(target, 'a.b.c.d', val, missing=debugdict)
+
+    assert target == {'a': {'b': {'c': {'d': val}}}}
+
+
+def test_assign_missing_object():
+    val = object()
+    class Container(object):
+        pass
+
+    target = Container()
+    target.a = extant_a = Container()
+    assign(target, 'a.b.c.d', val, missing=Container)
+
+    assert target.a.b.c.d is val
+    assert target.a is extant_a  # make sure we didn't overwrite anything on the path
+
+
+def test_assign_missing_with_extant_keys():
+    """This test ensures that assign with missing doesn't overwrite
+    perfectly fine extant keys that are along the path it needs to
+    assign to. call count is also checked to make sure missing() isn't
+    invoked too many times.
+
+    """
+    target = {}
+    value = object()
+    default_struct = {'b': {'c': {}}}
+
+    call_count = [0]
+
+    def _get_default_struct():
+        call_count[0] += 1  # make sure this is only called once
+        return default_struct
+
+    assign(target, 'a.b.c', value, missing=_get_default_struct)
+
+    assert target['a']['b']['c'] is value
+    assert target['a']['b'] is default_struct['b']
+    assert call_count == [1]
+
+
+def test_assign_missing_unassignable():
+    """Check that the final assignment to the target object comes last,
+    ensuring that failed assignments don't leave targets in a bad
+    state.
+
+    """
+
+    class Tarjay(object):
+        init_count = 0
+        def __init__(self):
+            self.__class__.init_count += 1
+
+        @property
+        def unassignable(self):
+            return
+
+    value = object()
+    target = {"preexisting": "ok"}
+
+    with pytest.raises(PathAssignError):
+        assign(target, 'tarjay.unassignable.a.b.c', value, missing=Tarjay)
+
+    assert target == {'preexisting': 'ok'}
+
+    # why 3? "c" gets the value of "value", while "b", "a", and
+    # "tarjay" all succeed and are set to Tarjay instances. Then
+    # unassignable is already present, but not possible to assign to,
+    # raising the PathAssignError.
+    assert Tarjay.init_count == 3

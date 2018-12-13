@@ -4,7 +4,7 @@ This module contains Specs that perform mutations.
 import operator
 from pprint import pprint
 
-from .core import Path, T, S, Spec, glom, UnregisteredTarget, GlomError
+from .core import Path, T, S, Spec, glom, UnregisteredTarget, GlomError, PathAccessError
 from .core import TType, register_op, TargetRegistry
 
 try:
@@ -88,9 +88,21 @@ class Assign(object):
     :func:`~glom.register()` using the ``"assign"`` operation name.
 
     Attempting to assign to an immutable structure, like a
-    :class:`tuple`, will result in a :class:`~glom.PathAssignError`.
+    :class:`tuple`, will result in a
+    :class:`~glom.PathAssignError`. Attempting to assign to a path
+    that doesn't exist will raise a :class:`~PathAccessError`.
+
+    To automatically backfill missing structures, you can pass a
+    callable to the *missing* argument. This callable will be called
+    for each path segment along the assignment which is not
+    present.
+
+       >>> target = {}
+       >>> assign(target, 'a.b.c', 'hi', missing=dict)
+       {'a': {'b': {'c': 'hi'}}}
+
     """
-    def __init__(self, path, val):
+    def __init__(self, path, val, missing=None):
         # TODO: an option like require_preexisting or something to
         # ensure that a value is mutated, not just added. Current
         # workaround is to do a Check().
@@ -105,6 +117,7 @@ class Assign(object):
             self.op, self.arg = path.items()[-1]
         except IndexError:
             raise ValueError('path must have at least one element')
+        self._orig_path = path
         self.path = path[:-1]
 
         if self.op not in '[.P':
@@ -112,32 +125,51 @@ class Assign(object):
             raise ValueError('last part of path must be setattr or setitem')
         self.val = val
 
+        if missing is not None:
+            if not callable(missing):
+                raise TypeError('expected missing to be callable, not %r' % (missing,))
+        self.missing = missing
+
     def glomit(self, target, scope):
         if type(self.val) is Spec:
             val = scope[glom](target, self.val, scope)
         else:
             val = self.val
-        dest = scope[glom](target, self.path, scope)
+
+        op, arg, path = self.op, self.arg, self.path
+        try:
+            dest = scope[glom](target, self.path, scope)
+        except PathAccessError as pae:
+            if not self.missing:
+                raise
+
+            remaining_path = self._orig_path[pae.part_idx + 1:]
+            val = scope[glom](self.missing(), Assign(remaining_path, val, missing=self.missing), scope)
+
+            op, arg = self._orig_path.items()[pae.part_idx]
+            path = self._orig_path[:pae.part_idx]
+            dest = scope[glom](target, path, scope)
+
         # TODO: forward-detect immutable dest?
-        if self.op == '[':
-            dest[self.arg] = val
-        elif self.op == '.':
-            setattr(dest, self.arg, val)
-        elif self.op == 'P':
-            assign = scope[TargetRegistry].get_handler('assign', dest)
-            if not assign:
+        if op == '[':
+            dest[arg] = val
+        elif op == '.':
+            setattr(dest, arg, val)
+        elif op == 'P':
+            _assign = scope[TargetRegistry].get_handler('assign', dest)
+            if not _assign:
                 raise UnregisteredTarget('assign', type(dest),
                                          scope[TargetRegistry].get_type_map('assign'),
                                          path=scope[Path])
             try:
-                assign(dest, self.arg, val)
+                _assign(dest, arg, val)
             except Exception as e:
-                raise PathAssignError(e, self.path, self.arg)
+                raise PathAssignError(e, path, arg)
 
         return target
 
 
-def assign(obj, path, val):
+def assign(obj, path, val, missing=None):
     """The ``assign()`` function provides convenient "deep set"
     functionality, modifying nested data structures in-place::
 
@@ -146,10 +178,11 @@ def assign(obj, path, val):
       >>> pprint(target)
       {'a': [{'b': 'c'}, {'d': 'e'}]}
 
-    For more information and examples, see the :class:`~glom.Assign`
-    specifier type, which this function wraps.
+    Missing structures can also be automatically created with the
+    *missing* parameter. For more information and examples, see the
+    :class:`~glom.Assign` specifier type, which this function wraps.
     """
-    return glom(obj, Assign(path, val))
+    return glom(obj, Assign(path, val, missing=missing))
 
 
 _ALL_BUILTIN_TYPES = [v for v in __builtins__.values() if isinstance(v, type)]
