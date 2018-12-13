@@ -144,7 +144,7 @@ class Assign(object):
                 raise
 
             remaining_path = self._orig_path[pae.part_idx + 1:]
-            val = assign(self.missing(), remaining_path, val, missing=self.missing)
+            val = scope[glom](self.missing(), Assign(remaining_path, val, missing=self.missing), scope)
 
             op, arg = self._orig_path.items()[pae.part_idx]
             path = self._orig_path[:pae.part_idx]
@@ -164,7 +164,7 @@ class Assign(object):
             try:
                 _assign(dest, arg, val)
             except Exception as e:
-                raise PathAssignError(e, path, arg)  # TODO: path
+                raise PathAssignError(e, path, arg)
 
         return target
 
