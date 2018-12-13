@@ -101,10 +101,6 @@ class Assign(object):
        >>> assign(target, 'a.b.c', 'hi', missing=dict)
        {'a': {'b': {'c': 'hi'}}}
 
-    Note that because using the *missing* option performs multiple
-    assignments, a failure can leave your target object in a partially
-    modified state.
-
     """
     def __init__(self, path, val, missing=None):
         # TODO: an option like require_preexisting or something to
