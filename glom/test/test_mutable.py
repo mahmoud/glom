@@ -132,6 +132,12 @@ def test_assign_missing_object():
 
 
 def test_assign_missing_with_extant_keys():
+    """This test ensures that assign with missing doesn't overwrite
+    perfectly fine extant keys that are along the path it needs to
+    assign to. call count is also checked to make sure missing() isn't
+    invoked too many times.
+
+    """
     target = {}
     value = object()
     default_struct = {'b': {'c': {}}}
@@ -147,3 +153,34 @@ def test_assign_missing_with_extant_keys():
     assert target['a']['b']['c'] is value
     assert target['a']['b'] is default_struct['b']
     assert call_count == [1]
+
+
+def test_assign_missing_unassignable():
+    """Check that the final assignment to the target object comes last,
+    ensuring that failed assignments don't leave targets in a bad
+    state.
+
+    """
+
+    class Tarjay(object):
+        init_count = 0
+        def __init__(self):
+            self.__class__.init_count += 1
+
+        @property
+        def unassignable(self):
+            return
+
+    value = object()
+    target = {"preexisting": "ok"}
+
+    with pytest.raises(PathAssignError):
+        assign(target, 'tarjay.unassignable.a.b.c', value, missing=Tarjay)
+
+    assert target == {'preexisting': 'ok'}
+
+    # why 3? "c" gets the value of "value", while "b", "a", and
+    # "tarjay" all succeed and are set to Tarjay instances. Then
+    # unassignable is already present, but not possible to assign to,
+    # raising the PathAssignError.
+    assert Tarjay.init_count == 3
