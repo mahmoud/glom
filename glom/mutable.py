@@ -131,6 +131,7 @@ class Assign(object):
         self.missing = missing
 
     def glomit(self, target, scope):
+        scope = scope.parents  # reset scope to parent scope so changes are visible
         if type(self.val) is Spec:
             val = scope[glom](target, self.val, scope)
         else:
@@ -150,6 +151,7 @@ class Assign(object):
             path = self._orig_path[:pae.part_idx]
             dest = scope[glom](target, path, scope)
 
+        import pdb; pdb.set_trace()
         # TODO: forward-detect immutable dest?
         if op == '[':
             dest[arg] = val
