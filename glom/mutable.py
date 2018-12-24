@@ -151,7 +151,6 @@ class Assign(object):
             path = self._orig_path[:pae.part_idx]
             dest = scope[glom](target, path, scope)
 
-        import pdb; pdb.set_trace()
         # TODO: forward-detect immutable dest?
         if op == '[':
             dest[arg] = val

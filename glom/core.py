@@ -823,10 +823,11 @@ class TType(object):
         return _format_t(t_path[1:], t_path[0])
 
     def __getstate__(self):
-        return tuple(_T_PATHS[self])
+        t_path = _T_PATHS[self]
+        return tuple(('T' if t_path[0] is T else 'S',) + t_path[1:])
 
     def __setstate__(self, state):
-        _T_PATHS[self] = state
+        _T_PATHS[self] = (T if state[0] == 'T' else S,) + state[1:]
 
 
 _T_PATHS = weakref.WeakKeyDictionary()
@@ -1433,7 +1434,7 @@ def glom(target, spec, **kwargs):
 def _glom(target, spec, scope):
     scope = scope.new_child()
     scope[T] = target
-    scope['spec'] = spec
+    scope[Spec] = spec
 
     if isinstance(spec, TType):  # must go first, due to callability
         return _t_eval(target, spec, scope)

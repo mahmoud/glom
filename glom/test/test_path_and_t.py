@@ -86,6 +86,9 @@ def test_t_picklability():
 
     assert glom(TargetType(), spec) == 10
 
+    s_spec = S.attribute
+    assert repr(s_spec) == repr(pickle.loads(pickle.dumps(s_spec)))
+
 
 def test_path_len():
 
