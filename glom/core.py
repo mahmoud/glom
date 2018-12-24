@@ -339,6 +339,25 @@ class Path(object):
         cur_t_path = _T_PATHS[self.path_t]
         return tuple(zip(cur_t_path[1::2], cur_t_path[2::2]))
 
+    def startswith(self, other):
+        if isinstance(other, basestring):
+            other = Path(other)
+        if isinstance(other, Path):
+            other = other.path_t
+        if not isinstance(other, TType):
+            raise TypeError('can only check if Path starts with string, Path or T')
+        o_path = _T_PATHS[other]
+        return _T_PATHS[self.path_t][:len(o_path)] == o_path
+
+    def from_t(self):
+        '''return the same path but starting from T'''
+        t_path = _T_PATHS[self.path_t]
+        if t_path[0] is S:
+            new_t = TType()
+            _T_PATHS[new_t] = (T,) + t_path[1:]
+            return Path(new_t)
+        return self
+
     def __getitem__(self, i):
         cur_t_path = _T_PATHS[self.path_t]
         try:

@@ -1,7 +1,7 @@
 
 from pytest import raises
 
-from glom import glom, Path, T, PathAccessError, GlomError
+from glom import glom, Path, S, T, PathAccessError, GlomError
 
 def test_list_path_access():
     assert glom(list(range(10)), Path(1)) == 1

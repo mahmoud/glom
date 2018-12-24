@@ -1,6 +1,6 @@
 import pytest
 
-from glom import glom, Path, T, Spec, Glommer, PathAssignError, PathAccessError
+from glom import glom, Path, T, S, Spec, Glommer, PathAssignError, PathAccessError
 from glom.core import UnregisteredTarget
 from glom.mutable import Assign, assign
 
@@ -184,3 +184,10 @@ def test_assign_missing_unassignable():
     # unassignable is already present, but not possible to assign to,
     # raising the PathAssignError.
     assert Tarjay.init_count == 3
+
+
+def test_s_assign():
+    '''
+    check that assign works when storing things into S
+    '''
+    glom({}, (Assign(S['foo'], 'bar'), S['foo']))
