@@ -171,3 +171,26 @@ def test_path_eq():
 def test_path_eq_t():
     assert Path(T.a.b) == T.a.b
     assert Path(T.a.b.c) != T.a.b
+
+
+def test_startswith():
+    ref = T.a.b[1]
+
+    assert Path(ref).startswith(T)
+    assert Path(ref).startswith(T.a.b)
+    assert Path(ref).startswith(ref)
+    assert Path(ref).startswith(ref.c) is False
+
+    assert Path('a.b.c').startswith(Path())
+    assert Path('a.b.c').startswith('a.b.c')
+
+    with raises(TypeError):
+        assert Path('a.b.c').startswith(None)
+
+    return
+
+
+def test_from_t_identity():
+    ref = Path(T.a.b)
+    assert ref.from_t() == ref
+    assert ref.from_t() is ref
