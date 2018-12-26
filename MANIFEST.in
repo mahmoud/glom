@@ -2,5 +2,6 @@ include README.md LICENSE CHANGELOG.md tox.ini requirements-test.txt .coveragerc
 exclude TODO.md appveyor.yml
 global-exclude flycheck__*
 
+graft glom/test/data
 graft docs
 prune docs/_build
