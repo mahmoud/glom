@@ -13,6 +13,23 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
+18.4.0
+------
+*(December 25, 2018)*
+
+A couple features related to
+[`assign()`](https://glom.readthedocs.io/en/latest/api.html#glom.assign)
+and other minor additions and fixes.
+
+* Add new `missing` parameter to `assign()`, to autogenerate new
+  datastructures at paths that don't exist. Read more at the bottom of
+  the [`Assign` spec docstring](https://glom.readthedocs.io/en/latest/api.html#glom.Assign).
+* Allow `Assign` to operate on `S`-based specs to assign to the spec.
+* Add the [`STOP` singleton](https://glom.readthedocs.io/en/latest/api.html#glom.STOP).
+  `STOP` is to [`SKIP`](https://glom.readthedocs.io/en/latest/api.html#glom.SKIP)
+  what `break` is to `continue`. Useful as a default with conditional specs like
+  [`Check()`](https://glom.readthedocs.io/en/latest/api.html#validation-with-check).
+
 18.3.1
 ------
 
