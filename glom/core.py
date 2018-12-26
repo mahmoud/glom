@@ -266,8 +266,16 @@ class Path(object):
     Path(1, 2)
     """
     def __init__(self, *path_parts):
-        path_t = T
-        for part in path_parts:
+        if not path_parts:
+            self.path_t = T
+            return
+        if isinstance(path_parts[0], TType):
+            path_t = path_parts[0]
+            offset = 1
+        else:
+            path_t = T
+            offset = 0
+        for part in path_parts[offset:]:
             if isinstance(part, Path):
                 part = part.path_t
             if isinstance(part, TType):
@@ -330,6 +338,25 @@ class Path(object):
         """
         cur_t_path = _T_PATHS[self.path_t]
         return tuple(zip(cur_t_path[1::2], cur_t_path[2::2]))
+
+    def startswith(self, other):
+        if isinstance(other, basestring):
+            other = Path(other)
+        if isinstance(other, Path):
+            other = other.path_t
+        if not isinstance(other, TType):
+            raise TypeError('can only check if Path starts with string, Path or T')
+        o_path = _T_PATHS[other]
+        return _T_PATHS[self.path_t][:len(o_path)] == o_path
+
+    def from_t(self):
+        '''return the same path but starting from T'''
+        t_path = _T_PATHS[self.path_t]
+        if t_path[0] is S:
+            new_t = TType()
+            _T_PATHS[new_t] = (T,) + t_path[1:]
+            return Path(new_t)
+        return self
 
     def __getitem__(self, i):
         cur_t_path = _T_PATHS[self.path_t]
@@ -811,37 +838,15 @@ class TType(object):
         return _t_child(self, '(', (args, kwargs))
 
     def __repr__(self):
-        return _format_t(_T_PATHS[self][1:])
+        t_path = _T_PATHS[self]
+        return _format_t(t_path[1:], t_path[0])
 
     def __getstate__(self):
-        return tuple(_T_PATHS[self])
+        t_path = _T_PATHS[self]
+        return tuple(('T' if t_path[0] is T else 'S',) + t_path[1:])
 
     def __setstate__(self, state):
-        _T_PATHS[self] = state
-
-
-def _format_t(path):
-    def kwarg_fmt(kw):
-        if isinstance(kw, str):
-            return kw
-        return repr(kw)
-    prepr = ['T']
-    i = 0
-    while i < len(path):
-        op, arg = path[i], path[i + 1]
-        if op == '.':
-            prepr.append('.' + arg)
-        elif op == '[':
-            prepr.append("[%r]" % (arg,))
-        elif op == '(':
-            args, kwargs = arg
-            prepr.append("(%s)" % ", ".join([repr(a) for a in args] +
-                                            ["%s=%r" % (kwarg_fmt(k), v)
-                                             for k, v in kwargs.items()]))
-        elif op == 'P':
-            return _format_path(path)
-        i += 2
-    return "".join(prepr)
+        _T_PATHS[self] = (T if state[0] == 'T' else S,) + state[1:]
 
 
 _T_PATHS = weakref.WeakKeyDictionary()
@@ -907,6 +912,30 @@ S = TType()  # like T, but means grab stuff from Scope, not Target
 _T_PATHS[T] = (T,)
 _T_PATHS[S] = (S,)
 UP = make_sentinel('UP')
+
+
+def _format_t(path, root=T):
+    def kwarg_fmt(kw):
+        if isinstance(kw, str):
+            return kw
+        return repr(kw)
+    prepr = ['T' if root is T else 'S']
+    i = 0
+    while i < len(path):
+        op, arg = path[i], path[i + 1]
+        if op == '.':
+            prepr.append('.' + arg)
+        elif op == '[':
+            prepr.append("[%r]" % (arg,))
+        elif op == '(':
+            args, kwargs = arg
+            prepr.append("(%s)" % ", ".join([repr(a) for a in args] +
+                                            ["%s=%r" % (kwarg_fmt(k), v)
+                                             for k, v in kwargs.items()]))
+        elif op == 'P':
+            return _format_path(path)
+        i += 2
+    return "".join(prepr)
 
 
 class CheckError(GlomError):
@@ -1424,6 +1453,7 @@ def glom(target, spec, **kwargs):
 def _glom(target, spec, scope):
     scope = scope.new_child()
     scope[T] = target
+    scope[Spec] = spec
 
     if isinstance(spec, TType):  # must go first, due to callability
         return _t_eval(target, spec, scope)

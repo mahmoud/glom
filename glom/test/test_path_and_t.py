@@ -1,7 +1,7 @@
 
 from pytest import raises
 
-from glom import glom, Path, T, PathAccessError, GlomError
+from glom import glom, Path, S, T, PathAccessError, GlomError
 
 def test_list_path_access():
     assert glom(list(range(10)), Path(1)) == 1
@@ -86,6 +86,9 @@ def test_t_picklability():
 
     assert glom(TargetType(), spec) == 10
 
+    s_spec = S.attribute
+    assert repr(s_spec) == repr(pickle.loads(pickle.dumps(s_spec)))
+
 
 def test_path_len():
 
@@ -168,3 +171,26 @@ def test_path_eq():
 def test_path_eq_t():
     assert Path(T.a.b) == T.a.b
     assert Path(T.a.b.c) != T.a.b
+
+
+def test_startswith():
+    ref = T.a.b[1]
+
+    assert Path(ref).startswith(T)
+    assert Path(ref).startswith(T.a.b)
+    assert Path(ref).startswith(ref)
+    assert Path(ref).startswith(ref.c) is False
+
+    assert Path('a.b.c').startswith(Path())
+    assert Path('a.b.c').startswith('a.b.c')
+
+    with raises(TypeError):
+        assert Path('a.b.c').startswith(None)
+
+    return
+
+
+def test_from_t_identity():
+    ref = Path(T.a.b)
+    assert ref.from_t() == ref
+    assert ref.from_t() is ref

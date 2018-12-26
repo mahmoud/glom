@@ -137,8 +137,14 @@ class Assign(object):
             val = self.val
 
         op, arg, path = self.op, self.arg, self.path
+        if self.path.startswith(S):
+            dest_target = scope.parents
+            dest_path = self.path.from_t()
+        else:
+            dest_target = target
+            dest_path = self.path
         try:
-            dest = scope[glom](target, self.path, scope)
+            dest = scope[glom](dest_target, dest_path, scope)
         except PathAccessError as pae:
             if not self.missing:
                 raise
@@ -148,7 +154,7 @@ class Assign(object):
 
             op, arg = self._orig_path.items()[pae.part_idx]
             path = self._orig_path[:pae.part_idx]
-            dest = scope[glom](target, path, scope)
+            dest = scope[glom](dest_target, path, scope)
 
         # TODO: forward-detect immutable dest?
         if op == '[':
