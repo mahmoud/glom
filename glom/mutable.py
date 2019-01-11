@@ -72,6 +72,14 @@ class Assign(object):
       >>> pprint(target)
       {'a': {'b': 'value', 'c': 'value'}}
 
+    Another handy use of Assign is to deep-apply a function::
+
+      # sort a deep nested list
+      >>> target={'a':{'b':[3,1,2]}}
+      >>> _ = glom(target, Assign('a.b', Spec(('a.b',sorted))))
+      >>> pprint(target)
+      {'a': {'b': [1, 2, 3]}}
+
     Like many other specifier types, ``Assign``'s destination path can be
     a :data:`~glom.T` expression, for maximum control::
 
