@@ -19,4 +19,5 @@ from glom.core import (glom,
                        UnregisteredTarget,
                        T, S)
 
+from glom.flat import Sum
 from glom.mutable import Assign, assign, PathAssignError
