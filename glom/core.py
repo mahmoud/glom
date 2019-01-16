@@ -883,11 +883,7 @@ def _t_eval(target, _t, scope):
                 raise PathAccessError(e, Path(_t), i // 2)
         elif op == 'P':
             # Path type stuff (fuzzy match)
-            get = scope[TargetRegistry].get_handler('get', cur)
-            if not get:
-                raise UnregisteredTarget('get', type(cur),
-                                         scope[TargetRegistry].get_type_map('get'),
-                                         path=t_path[2:i+2:2])
+            get = scope[TargetRegistry].get_handler('get', cur, path=t_path[2:i+2:2])
             try:
                 cur = get(cur, arg)
             except Exception as e:
@@ -1163,11 +1159,7 @@ def _handle_dict(target, spec, scope):
 
 def _handle_list(target, spec, scope):
     subspec = spec[0]
-    iterate = scope[TargetRegistry].get_handler('iterate', target)
-    if not iterate:
-        raise UnregisteredTarget('iterate', type(target),
-                                 type_map=scope[TargetRegistry].get_type_map('iterate'),
-                                 path=scope[Path])
+    iterate = scope[TargetRegistry].get_handler('iterate', target, path=scope[Path])
     try:
         iterator = iterate(target)
     except Exception as e:
@@ -1215,22 +1207,31 @@ class TargetRegistry(object):
             self._register_default_types()
         return
 
-    def get_handler(self, op, obj):
+    def get_handler(self, op, obj, path=None, raise_exc=True):
         """for an operation and object **instance**, obj, return the
-        closest-matching handler function (or False)"""
-        try:
-            type_map = self._op_type_map[op]
-        except KeyError:
-            return False
-        try:
-            return type_map[type(obj)]
-        except KeyError:
-            pass
-        type_tree = self._op_type_tree.get(op, {})
-        closest = self._get_closest_type(obj, type_tree=type_tree)
-        if closest is None:
-            return False
-        return type_map[closest]
+        closest-matching handler function, raising UnregisteredTarget
+        if no handler can be found for *obj* (or False if
+        raise_exc=False)
+
+        """
+        ret = False
+        obj_type = type(obj)
+        type_map = self.get_type_map(op)
+        if type_map:
+            try:
+                ret = type_map[obj_type]
+            except KeyError:
+                type_tree = self._op_type_tree.get(op, {})
+                closest = self._get_closest_type(obj, type_tree=type_tree)
+                if closest is None:
+                    ret = False
+                else:
+                    ret = type_map[closest]
+
+        if ret is False and raise_exc:
+            raise UnregisteredTarget(op, obj_type, type_map=type_map, path=path)
+
+        return ret
 
     def get_type_map(self, op):
         try:
