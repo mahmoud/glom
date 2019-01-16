@@ -171,10 +171,6 @@ class Assign(object):
             setattr(dest, arg, val)
         elif op == 'P':
             _assign = scope[TargetRegistry].get_handler('assign', dest)
-            if not _assign:
-                raise UnregisteredTarget('assign', type(dest),
-                                         scope[TargetRegistry].get_type_map('assign'),
-                                         path=scope[Path])
             try:
                 _assign(dest, arg, val)
             except Exception as e:
