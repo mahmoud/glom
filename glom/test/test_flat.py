@@ -1,5 +1,5 @@
 
-from glom import glom, Sum, Coalesce
+from glom import glom, T, Sum, Fold, Coalesce
 
 def test_sum_integers():
     target = list(range(5))
@@ -33,3 +33,11 @@ def test_sum_seqs():
     target = [['a'], ['b'], ['cde'], ['']]
 
     assert glom(target, Sum(Sum(start=[]), start='')) == 'abcde'
+
+
+def test_fold():
+    target = range(1, 5)
+    assert glom(target, Fold(T, 0)) == 10
+    assert glom(target, Fold(T, start=2)) == 12
+
+    assert glom(target, Fold(T, 1, op=lambda l, r: l * r)) == 24
