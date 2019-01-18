@@ -10,13 +10,13 @@ _MISSING = make_sentinel('_MISSING')
 
 
 class Fold(object):
-    def __init__(self, subspec, start, op=operator.iadd):
+    def __init__(self, subspec, init, op=operator.iadd):
         self.subspec = subspec
-        self.start = start
+        self.init = init
         self.op = op
         if not callable(op):
             raise TypeError()
-        if not callable(start):
+        if not callable(init):
             raise TypeError()
 
     def glomit(self, target, scope):
@@ -35,7 +35,7 @@ class Fold(object):
         return self._fold(iterator)
 
     def _fold(self, iterator):
-        ret, op = self.start(), self.op
+        ret, op = self.init(), self.op
 
         for v in iterator:
             ret = op(ret, v)
@@ -45,21 +45,21 @@ class Fold(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r, start=%r, op=%r)' % (cn, self.subspec, self.start, self.op)
+        return '%s(%r, init=%r, op=%r)' % (cn, self.subspec, self.init, self.op)
 
 
 class Sum(Fold):
-    def __init__(self, subspec=T, start=int):
-        super(Sum, self).__init__(subspec=subspec, start=start, op=operator.iadd)
+    def __init__(self, subspec=T, init=int):
+        super(Sum, self).__init__(subspec=subspec, init=init, op=operator.iadd)
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r, start=%r)' % (cn, self.subspec, self.start)
+        return '%s(%r, init=%r)' % (cn, self.subspec, self.init)
 
 
 class Flatten(Fold):
-    def __init__(self, subspec=T, start=list, lazy=False):
-        super(Flatten, self).__init__(subspec=subspec, start=start, op=operator.iadd)
+    def __init__(self, subspec=T, init=list, lazy=False):
+        super(Flatten, self).__init__(subspec=subspec, init=init, op=operator.iadd)
         self.lazy = lazy
 
     def _fold(self, iterator):
