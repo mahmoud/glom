@@ -50,6 +50,15 @@ class Fold(object):
 
 
 class Sum(Fold):
+    """The `Sum` specifier type is used to aggregate integers and other
+    numericals using addition, much like the :func:`sum()` builtin.
+
+    >>> glom(range(5), Sum())
+    10
+
+    To "sum" lists and other iterables, see the :class:`Flatten`
+    spec. For other objects, see the :class:`Fold` specifier type.
+    """
     def __init__(self, subspec=T, init=int):
         super(Sum, self).__init__(subspec=subspec, init=init, op=operator.iadd)
 
@@ -59,6 +68,18 @@ class Sum(Fold):
 
 
 class Flatten(Fold):
+    """The `Flatten` specifier type is used to combine iterables. By
+    default it flattens an iterable of iterables into a single list
+    containing items from all iterables.
+
+    >>> target = [[1], [2, 3]]
+    >>> glom(target, Flatten())
+    [1, 2, 3]
+
+    You can also set the *lazy* flag to ``True``, which defers the
+    iteration and returns a generator instead. Use this to avoid
+    making extra lists during intermediate processing steps.
+    """
     def __init__(self, subspec=T, init=list, lazy=False):
         super(Flatten, self).__init__(subspec=subspec, init=init, op=operator.iadd)
         self.lazy = lazy
