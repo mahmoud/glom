@@ -64,5 +64,5 @@ class Flatten(Fold):
 
     def _fold(self, iterator):
         if self.lazy:
-            return itertools.chain(iterator)
+            return itertools.chain.from_iterable(iterator)
         return super(Flatten, self)._fold(iterator)

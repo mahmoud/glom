@@ -46,3 +46,10 @@ def test_fold():
 def test_flatten():
     target = [[1], [2], [3, 4]]
     assert glom(target, Flatten()) == [1, 2, 3, 4]
+
+    target = [(1, 2), [3]]
+    assert glom(target, Flatten()) == [1, 2, 3]
+
+    gen = glom(target, Flatten(lazy=True))
+    assert next(gen) == 1
+    assert list(gen) == [2, 3]
