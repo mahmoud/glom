@@ -1,6 +1,7 @@
 
 from glom import glom, T, Sum, Fold, Flatten, Coalesce
 
+
 def test_sum_integers():
     target = list(range(5))
 
@@ -17,6 +18,8 @@ def test_sum_integers():
 
     target = target + [{}]  # add a non-compliant dict
     assert glom(target, Sum([Coalesce('num', default=0)])) ==4
+
+    repr(Sum())
 
 
 def test_sum_seqs():
@@ -42,6 +45,8 @@ def test_fold():
 
     assert glom(target, Fold(T, lambda: 1, op=lambda l, r: l * r)) == 24
 
+    repr(Fold(T, int))
+
 
 def test_flatten():
     target = [[1], [2], [3, 4]]
@@ -53,3 +58,5 @@ def test_flatten():
     gen = glom(target, Flatten(lazy=True))
     assert next(gen) == 1
     assert list(gen) == [2, 3]
+
+    repr(Flatten())

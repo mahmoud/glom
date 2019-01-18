@@ -44,7 +44,6 @@ class Fold(object):
 
         return ret
 
-
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r, init=%r, op=%r)' % (cn, self.subspec, self.init, self.op)
@@ -68,3 +67,7 @@ class Flatten(Fold):
         if self.lazy:
             return itertools.chain.from_iterable(iterator)
         return super(Flatten, self)._fold(iterator)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r, init=%r, lazy=%r)' % (cn, self.subspec, self.init, self.lazy)
