@@ -20,4 +20,4 @@ from glom.core import (glom,
                        T, S)
 
 from glom.reduction import Sum, Fold, Flatten
-from glom.mutable import Assign, assign, PathAssignError
+from glom.mutation import Assign, assign, PathAssignError
