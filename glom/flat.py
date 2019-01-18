@@ -15,9 +15,11 @@ class Fold(object):
         self.init = init
         self.op = op
         if not callable(op):
-            raise TypeError()
+            raise TypeError('expected callable for %s op param, not: %r' %
+                            (self.__class__.__name__, op))
         if not callable(init):
-            raise TypeError()
+            raise TypeError('expected callable for %s init param, not: %r' %
+                            (self.__class__.__name__, op))
 
     def glomit(self, target, scope):
         if self.subspec is not T:
