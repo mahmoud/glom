@@ -62,6 +62,7 @@ def test_flatten():
     assert list(gen) == [2, 3]
 
     repr(Flatten())
+    repr(Flatten(init='lazy'))
 
 
 def test_flatten_func():
@@ -76,9 +77,15 @@ def test_flatten_func():
     with pytest.raises(FoldError):
         assert flatten(unflattenable)
 
-    # kind of an odd use
+    # kind of an odd use, but it works for now
     assert flatten(['a', 'b', 'cd'], init=str) == 'abcd'
 
     # another odd case
     subspec_target = {'items': {'numbers': [1, 2, 3]}}
     assert (flatten(subspec_target, spec='items.numbers', init=int) == 6)
+
+    with pytest.raises(ValueError):
+        flatten([], levels=-1)
+
+    with pytest.raises(TypeError):
+        flatten([], nonexistentkwarg=False)

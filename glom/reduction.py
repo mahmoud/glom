@@ -10,11 +10,43 @@ _MISSING = make_sentinel('_MISSING')
 
 
 class FoldError(GlomError):
-    "Error raised when Fold() is called on non-iterable targets"
+    """Error raised when Fold() is called on non-iterable
+    targets, and possibly other uses in the future."""
     pass
 
 
 class Fold(object):
+    """The `Fold` specifier type is glom's building block for reducing
+    iterables in data, implementing the classic `fold
+    <https://en.wikipedia.org/wiki/Fold_(higher-order_function)>`_
+    from functional programming, similar to Python's built-in
+    :func:`reduce`.
+
+    Args:
+       subspec: A spec representing the target to fold, which must be
+          an iterable, or otherwise registered to 'iterate' (with
+          :func:`~glom.register`).
+       init (callable): A function or type which will be invoked to
+          initialize the accumulator value.
+       op (callable): A function to call on the accumulator value and
+          every value, the result of which will become the new
+          accumulator value. Defaults to :func:`operator.iadd`.
+
+    Usage is as follows:
+
+       >>> target = [set([1, 2]), set([3]), set([2, 4])]
+       >>> result = glom(target, Fold(T, init=frozenset, op=frozenset.union))
+       >>> result == frozenset([1, 2, 3, 4])
+       True
+
+    Note the required ``spec`` and ``init`` arguments. ``op`` is
+    optional, but here must be used because the :type:`set` and
+    :type:`frozenset` types do not work with addition.
+
+    While :type:`~glom.Fold` is powerful, :type:`~glom.Flatten` and
+    :type:`~glom.Sum` are subtypes with more convenient defaults for
+    day-to-day use.
+    """
     def __init__(self, subspec, init, op=operator.iadd):
         self.subspec = subspec
         self.init = init
@@ -172,6 +204,8 @@ def flatten(target, **kwargs):
     subspec = kwargs.pop('spec', T)
     init = kwargs.pop('init', list)
     levels = kwargs.pop('levels', 1)
+    if kwargs:
+        raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
 
     if levels == 0:
         return target
