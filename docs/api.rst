@@ -76,6 +76,24 @@ to get the job done. But once a spec works, how can it be cleaned up?
 
 .. autofunction:: glom.Call
 
+Combining iterables with Flatten and friends
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+*New in glom 19.0.0*
+
+Got lists of lists? Sets of tuples? Or find yourself reaching for
+Python's builtin :func:`sum` and :func:`reduce`? To handle these
+situations, glom has three specifier types and one convenience
+function::
+
+.. autofunction:: glom.flatten
+
+.. autoclass:: glom.Flatten
+
+.. autoclass:: glom.Sum
+
+.. autoclass:: glom.Fold
+
 Object-oriented access and method calls with ``T``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

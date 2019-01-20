@@ -1,8 +1,8 @@
 import pytest
 
 from glom import glom, Path, T, S, Spec, Glommer, PathAssignError, PathAccessError
+from glom import assign, Assign, PathAssignError
 from glom.core import UnregisteredTarget
-from glom.mutable import Assign, assign
 
 
 def test_assign():

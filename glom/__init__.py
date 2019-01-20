@@ -19,4 +19,5 @@ from glom.core import (glom,
                        UnregisteredTarget,
                        T, S)
 
-from glom.mutable import Assign, assign, PathAssignError
+from glom.reduction import Sum, Fold, Flatten, flatten, FoldError
+from glom.mutation import Assign, assign, PathAssignError
