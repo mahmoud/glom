@@ -18,7 +18,7 @@ from setuptools import setup
 
 
 __author__ = 'Mahmoud Hashemi and Kurt Rose'
-__version__ = '18.4.1dev'
+__version__ = '19.1.0'
 __contact__ = 'mahmoud@hatnote.com'
 __url__ = 'https://github.com/mahmoud/glom'
 __license__ = 'BSD'
@@ -46,8 +46,10 @@ setup(name='glom',
           'Intended Audience :: Developers',
           'Topic :: Software Development :: Libraries',
           'Programming Language :: Python :: 2.7',
+          'Programming Language :: Python :: 3.4',
           'Programming Language :: Python :: 3.5',
           'Programming Language :: Python :: 3.6',
+          'Programming Language :: Python :: 3.7',
           'Programming Language :: Python :: Implementation :: CPython',
           'Programming Language :: Python :: Implementation :: PyPy', ]
       )
