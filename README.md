@@ -3,7 +3,7 @@
 *Restructuring data, the Python way*
 
 <a href="https://pypi.org/project/glom/"><img src="https://img.shields.io/pypi/v/glom.svg"></a>
-<a href="https://calver.org/"><img src="https://img.shields.io/badge/calver-YY.MINOR.MICRO-22bfda.svg"></a>
+<a href="https://calver.org/"><img src="https://img.shields.io/badge/calver-YY.MM.MICRO-22bfda.svg"></a>
 
 <img width="30%" align="right" src="./docs/_static/comet.png">
 
