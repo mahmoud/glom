@@ -53,7 +53,8 @@ def test_path_access_error_message():
         glom({}, 'a.b')
     assert ("PathAccessError: could not access 'a', part 0 of Path('a', 'b'), got error: KeyError"
             in exc_info.exconly())
-    assert repr(exc_info.value) == "PathAccessError(KeyError('a',), Path('a', 'b'), 0)"
+    ke = repr(KeyError('a'))  # py3.7+ changed the keyerror repr
+    assert repr(exc_info.value) == "PathAccessError(" + ke + ", Path('a', 'b'), 0)"
 
     # test multi-part Path with T, catchable as a KeyError
     with raises(KeyError) as exc_info:
@@ -61,14 +62,16 @@ def test_path_access_error_message():
         glom({'a': {'b': 'c'}}, Path('a', T.copy(), 'd'))
     assert ("PathAccessError: could not access 'd', part 3 of Path('a', T.copy(), 'd'), got error: KeyError"
             in exc_info.exconly())
-    assert repr(exc_info.value) == "PathAccessError(KeyError('d',), Path('a', T.copy(), 'd'), 3)"
+    ke = repr(KeyError('d'))  # py3.7+ changed the keyerror repr
+    assert repr(exc_info.value) == "PathAccessError(" + ke + ", Path('a', T.copy(), 'd'), 3)"
 
     # test AttributeError
     with raises(GlomError) as exc_info:
         glom({'a': {'b': 'c'}}, Path('a', T.b))
     assert ("PathAccessError: could not access 'b', part 1 of Path('a', T.b), got error: AttributeError"
             in exc_info.exconly())
-    assert repr(exc_info.value) == """PathAccessError(AttributeError("\'dict\' object has no attribute \'b\'",), Path(\'a\', T.b), 1)"""
+    ae = repr(AttributeError("'dict' object has no attribute 'b'"))
+    assert repr(exc_info.value) == "PathAccessError(" + ae + ", Path(\'a\', T.b), 1)"
 
 
 def test_t_picklability():

@@ -72,7 +72,9 @@ def test_coalesce():
     assert "'xxx'" in msg
     assert "'yyy'" in msg
     assert msg.count('PathAccessError') == 2
-    assert "[PathAccessError(KeyError('xxx',), Path('xxx'), 0), PathAccessError(KeyError('yyy',), Path('yyy'), 0)], [])" in repr(exc_info.value)
+    expected = "[PathAccessError(KeyError('xxx',), Path('xxx'), 0), PathAccessError(KeyError('yyy',), Path('yyy'), 0)], [])"
+    received = repr(exc_info.value)
+    assert expected.replace(',', '') in received.replace(',', '')  # normalize commas for py3.7+ repr change
 
     # check that defaulting works
     assert glom(val, Coalesce('xxx', 'yyy', default='zzz')) == 'zzz'
