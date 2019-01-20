@@ -1,7 +1,7 @@
 
 import pytest
 
-from glom import glom, T, Sum, Fold, Flatten, Coalesce, flatten, FoldError
+from glom import glom, T, Sum, Fold, Flatten, Coalesce, flatten, FoldError, Glommer
 
 
 def test_sum_integers():
@@ -49,6 +49,26 @@ def test_fold():
 
     repr(Fold(T, int))
 
+    # signature coverage
+    with pytest.raises(TypeError):
+        Fold(T, list, op=None)  # noncallable op
+
+    with pytest.raises(TypeError):
+        Fold(T, init=None)  # noncallable init
+
+
+def test_fold_bad_iter():
+    glommer = Glommer(register_default_types=False)
+
+    def bad_iter(obj):
+        raise RuntimeError('oops')
+
+    glommer.register(list, iterate=bad_iter)
+
+    with pytest.raises(TypeError):
+        target = []
+        glommer.glom(target, Flatten())
+
 
 def test_flatten():
     target = [[1], [2], [3, 4]]
@@ -71,6 +91,7 @@ def test_flatten_func():
 
     two_level_target = [[x] for x in target]
     assert flatten(two_level_target, levels=2) == [1, 2, 3, 4]
+    assert flatten(two_level_target, levels=0) == two_level_target
 
     unflattenable = 2
 
@@ -84,6 +105,7 @@ def test_flatten_func():
     subspec_target = {'items': {'numbers': [1, 2, 3]}}
     assert (flatten(subspec_target, spec='items.numbers', init=int) == 6)
 
+    # basic signature tests
     with pytest.raises(ValueError):
         flatten([], levels=-1)
 
