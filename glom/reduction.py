@@ -40,11 +40,11 @@ class Fold(object):
        True
 
     Note the required ``spec`` and ``init`` arguments. ``op`` is
-    optional, but here must be used because the :type:`set` and
-    :type:`frozenset` types do not work with addition.
+    optional, but here must be used because the :class:`set` and
+    :class:`frozenset` types do not work with addition.
 
-    While :type:`~glom.Fold` is powerful, :type:`~glom.Flatten` and
-    :type:`~glom.Sum` are subtypes with more convenient defaults for
+    While :class:`~glom.Fold` is powerful, :class:`~glom.Flatten` and
+    :class:`~glom.Sum` are subtypes with more convenient defaults for
     day-to-day use.
     """
     def __init__(self, subspec, init, op=operator.iadd):
@@ -99,8 +99,16 @@ class Sum(Fold):
     >>> glom(range(5), Sum())
     10
 
+    Note that this specifier takes a callable *init* parameter like
+    its friends, so to change the start value, be sure to wrap it in a
+    callable::
+
+    >>> glom(range(5), Sum(init=lambda: 5.0))
+    15.0
+
     To "sum" lists and other iterables, see the :class:`Flatten`
     spec. For other objects, see the :class:`Fold` specifier type.
+
     """
     def __init__(self, subspec=T, init=int):
         super(Sum, self).__init__(subspec=subspec, init=init, op=operator.iadd)
@@ -119,9 +127,9 @@ class Flatten(Fold):
     >>> glom(target, Flatten())
     [1, 2, 3]
 
-    You can also set the *lazy* flag to ``True``, which defers the
-    iteration and returns a generator instead. Use this to avoid
-    making extra lists during intermediate processing steps.
+    You can also set *init* to ``"lazy"``, which returns a generator
+    instead of a list. Use this to avoid making extra lists and other
+    collections during intermediate processing steps.
     """
     def __init__(self, subspec=T, init=list):
         if init == 'lazy':
@@ -144,18 +152,16 @@ class Flatten(Fold):
 
 
 def flatten(target, **kwargs):
-    """The ``flatten()`` function is a convenient wrapper around the
-    :class:`Flatten` specifier type.
-
-    ``flatten()`` turns an iterable of iterables into a single list,
-    but it has a few arguments which give it more power:
+    """At its most basic, ``flatten()`` turns an iterable of iterables
+    into a single list. But it has a few arguments which give it more
+    power:
 
     Args:
 
        init (callable): A function or type which gives the initial
           value of the return. The value must support addition. Common
-          values might be :type:`list` (the default), :type:`tuple`,
-          or even :type:`int`. You can also pass ``init="lazy"`` to
+          values might be :class:`list` (the default), :class:`tuple`,
+          or even :class:`int`. You can also pass ``init="lazy"`` to
           get a generator.
        levels (int): A positive integer representing the number of
           nested levels to flatten. Defaults to 1.
@@ -168,14 +174,16 @@ def flatten(target, **kwargs):
       >>> flatten(target)
       [1, 2, 3, 4]
 
-    Because integers support addition, we actually have two levels of flattening possible:
+    Because integers themselves support addition, we actually have two
+    levels of flattening possible, to get back a single integer sum:
 
       >>> flatten(target, init=int, levels=2)
       10
 
-    However flattening an integer itself will raise an exception:
+    However, flattening a non-iterable like an integer will raise an
+    exception:
 
-      >>> target = 3
+      >>> target = 10
       >>> flatten(target)
       Traceback (most recent call last):
       ...
@@ -183,7 +191,7 @@ def flatten(target, **kwargs):
 
     By default, ``flatten()`` will add a mix of iterables together,
     making it a more-robust alternative to the built-in
-    ``sum(list_of_iterables, [])`` trick most experienced Python
+    ``sum(list_of_lists, list())`` trick most experienced Python
     programmers are familiar with using:
 
       >>> list_of_iterables = [range(2), [2, 3], (4, 5)]
@@ -197,8 +205,10 @@ def flatten(target, **kwargs):
       >>> flatten(list_of_iterables)
       [0, 1, 2, 3, 4, 5]
 
-    For more involved flattening, see the :class:`Flatten` and
-    :class:`Fold` specifier types.
+    The ``flatten()`` function is a convenient wrapper around the
+    :class:`Flatten` specifier type. For embedding in larger specs,
+    and more involved flattening, see :class:`Flatten` and its base,
+    :class:`Fold`.
 
     """
     subspec = kwargs.pop('spec', T)
