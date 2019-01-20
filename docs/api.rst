@@ -84,7 +84,7 @@ Combining iterables with Flatten and friends
 Got lists of lists? Sets of tuples? Or find yourself reaching for
 Python's builtin :func:`sum` and :func:`reduce`? To handle these
 situations, glom has three specifier types and one convenience
-function::
+function:
 
 .. autofunction:: glom.flatten
 
