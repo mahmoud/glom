@@ -4,9 +4,14 @@ import itertools
 
 from boltons.typeutils import make_sentinel
 
-from .core import TargetRegistry, Path, T, glom
+from .core import TargetRegistry, Path, T, glom, GlomError, UnregisteredTarget
 
 _MISSING = make_sentinel('_MISSING')
+
+
+class FoldError(GlomError):
+    "Error raised when Fold() is called on non-iterable targets"
+    pass
 
 
 class Fold(object):
@@ -25,12 +30,18 @@ class Fold(object):
         if self.subspec is not T:
             target = scope[glom](target, self.subspec, scope)
 
-        iterate = scope[TargetRegistry].get_handler('iterate', target, path=scope[Path])
+        try:
+            iterate = scope[TargetRegistry].get_handler('iterate', target, path=scope[Path])
+        except UnregisteredTarget as ut:
+            raise FoldError('can only %s on iterable targets, not %s type (%s)'
+                            % (self.__class__.__name__, type(target).__name__, ut))
 
         try:
             iterator = iterate(target)
         except Exception as e:
-            # TODO: should this be a GlomError of some form?
+            # TODO: should this be a GlomError of some form? probably
+            # not, because it was registered, but an unexpected
+            # failure occurred.
             raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
                             % (target.__class__.__name__, Path(*scope[Path]), e))
 
@@ -80,9 +91,13 @@ class Flatten(Fold):
     iteration and returns a generator instead. Use this to avoid
     making extra lists during intermediate processing steps.
     """
-    def __init__(self, subspec=T, init=list, lazy=False):
+    def __init__(self, subspec=T, init=list):
+        if init == 'lazy':
+            self.lazy = True
+            init = list
+        else:
+            self.lazy = False
         super(Flatten, self).__init__(subspec=subspec, init=init, op=operator.iadd)
-        self.lazy = lazy
 
     def _fold(self, iterator):
         if self.lazy:
@@ -91,4 +106,79 @@ class Flatten(Fold):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r, init=%r, lazy=%r)' % (cn, self.subspec, self.init, self.lazy)
+        if self.lazy:
+            return '%s(%r, init="lazy")' % (cn, self.subspec)
+        return '%s(%r, init=%r)' % (cn, self.subspec, self.init)
+
+
+def flatten(target, **kwargs):
+    """The ``flatten()`` function is a convenient wrapper around the
+    :class:`Flatten` specifier type.
+
+    ``flatten()`` turns an iterable of iterables into a single list,
+    but it has a few arguments which give it more power:
+
+    Args:
+
+       init (callable): A function or type which gives the initial
+          value of the return. The value must support addition. Common
+          values might be :type:`list` (the default), :type:`tuple`,
+          or even :type:`int`. You can also pass ``init="lazy"`` to
+          get a generator.
+       levels (int): A positive integer representing the number of
+          nested levels to flatten. Defaults to 1.
+       spec: The glomspec to fetch before flattening. This defaults to the
+          the root level of the object.
+
+    Usage is straightforward.
+
+      >>> target = [[1, 2], [3], [4]]
+      >>> flatten(target)
+      [1, 2, 3, 4]
+
+    Because integers support addition, we actually have two levels of flattening possible:
+
+      >>> flatten(target, init=int, levels=2)
+      10
+
+    However flattening an integer itself will raise an exception:
+
+      >>> target = 3
+      >>> flatten(target)
+      Traceback (most recent call last):
+      ...
+      FoldError: can only Flatten on iterable targets, not int type (...)
+
+    By default, ``flatten()`` will add a mix of iterables together,
+    making it a more-robust alternative to the built-in
+    ``sum(list_of_iterables, [])`` trick most experienced Python
+    programmers are familiar with using:
+
+      >>> list_of_iterables = [range(2), [2, 3], (4, 5)]
+      >>> sum(list_of_iterables, [])
+      Traceback (most recent call last):
+      ...
+      TypeError: can only concatenate list (not "tuple") to list
+
+    Whereas flatten() handles this just fine:
+
+      >>> flatten(list_of_iterables)
+      [0, 1, 2, 3, 4, 5]
+
+    For more involved flattening, see the :class:`Flatten` and
+    :class:`Fold` specifier types.
+
+    """
+    subspec = kwargs.pop('spec', T)
+    init = kwargs.pop('init', list)
+    levels = kwargs.pop('levels', 1)
+
+    if levels == 0:
+        return target
+    if levels < 0:
+        raise ValueError('expected levels >= 0, not %r' % levels)
+    spec = (subspec,)
+    spec += (Flatten(init="lazy"),) * (levels - 1)
+    spec += (Flatten(init=init),)
+
+    return glom(target, spec)

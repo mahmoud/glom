@@ -1,5 +1,7 @@
 
-from glom import glom, T, Sum, Fold, Flatten, Coalesce
+import pytest
+
+from glom import glom, T, Sum, Fold, Flatten, Coalesce, flatten, FoldError
 
 
 def test_sum_integers():
@@ -55,8 +57,28 @@ def test_flatten():
     target = [(1, 2), [3]]
     assert glom(target, Flatten()) == [1, 2, 3]
 
-    gen = glom(target, Flatten(lazy=True))
+    gen = glom(target, Flatten(init='lazy'))
     assert next(gen) == 1
     assert list(gen) == [2, 3]
 
     repr(Flatten())
+
+
+def test_flatten_func():
+    target = [[1], [2], [3, 4]]
+    assert flatten(target) == [1, 2, 3, 4]
+
+    two_level_target = [[x] for x in target]
+    assert flatten(two_level_target, levels=2) == [1, 2, 3, 4]
+
+    unflattenable = 2
+
+    with pytest.raises(FoldError):
+        assert flatten(unflattenable)
+
+    # kind of an odd use
+    assert flatten(['a', 'b', 'cd'], init=str) == 'abcd'
+
+    # another odd case
+    subspec_target = {'items': {'numbers': [1, 2, 3]}}
+    assert (flatten(subspec_target, spec='items.numbers', init=int) == 6)
