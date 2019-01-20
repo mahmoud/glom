@@ -174,3 +174,30 @@ An iteration specifier can filter items out by using
 
 You can also truncate the list at the first failing check by using
 :data:`~glom.STOP`.
+
+
+
+Lisp-style If Extension
+-----------------------
+
+Any class with a glomit method will be treated as a spec by glom.
+As an example, here is a lisp-style If expression custom spec type:
+
+.. code-block:: python
+    class If(object):
+        def __init__(self, cond, if_, else_=None):
+            self.cond, self.if_, self.else_ = cond, if_, else_
+
+        def glomit(self, target, scope):
+            g = lambda spec: scope[glom](target, spec, scope)
+            if g(self.cond):
+                return g(self.if_)
+            elif self.else_:
+                return g(self.else_)
+            else:
+                return None
+
+    glom(1, If(bool, {'yes': T}, {'no': T}))
+    # {'yes': 1}
+    glom(0, If(bool, {'yes': T}, {'no': T}))
+    # {'no': 0}
