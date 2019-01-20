@@ -79,7 +79,7 @@ to get the job done. But once a spec works, how can it be cleaned up?
 Combining iterables with Flatten and friends
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-*New in glom 19.0.0*
+*New in glom 19.1.0*
 
 Got lists of lists? Sets of tuples? Or find yourself reaching for
 Python's builtin :func:`sum` and :func:`reduce`? To handle these

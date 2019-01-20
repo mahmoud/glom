@@ -6,12 +6,22 @@ glom is a growing library! This document is a record of its growth.
 The glom team's approach to updates can be summed up as:
 
 * Always maintaining backwards compatibility
-* [CalVer](https://calver.org) versioning scheme (`YY.MINOR.MICRO`)
+* [CalVer](https://calver.org) versioning scheme (`YY.MM.MICRO`)
 * Stay streamlined. glom should be a well-designed bicycle, not an
   aircraft carrier.
 
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
+
+19.1.0
+------
+*(January 20, 2019)*
+
+Added features related to folding/reducing sequences. Read more about
+`Fold`, `Sum`, `Flatten`, and `flatten`
+[here](https://glom.readthedocs.io/en/latest/api.html#combining-iterables-with-flatten-and-friends).
+
+Also switched CalVer version scheme to `YY.MM.MICRO`.
 
 18.4.0
 ------
