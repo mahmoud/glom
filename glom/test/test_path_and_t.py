@@ -197,3 +197,8 @@ def test_from_t_identity():
     ref = Path(T.a.b)
     assert ref.from_t() == ref
     assert ref.from_t() is ref
+
+
+def test_t_dict_key():
+    target = {'a': 'A'}
+    assert glom(target, {T['a']: 'a'}) == {'A': 'A'}

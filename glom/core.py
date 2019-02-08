@@ -1153,6 +1153,8 @@ def _handle_dict(target, spec, scope):
         val = scope[glom](target, subspec, scope)
         if val is SKIP:
             continue
+        if type(field) in (Spec, TType):
+            field = scope[glom](target, field, scope)
         ret[field] = val
     return ret
 

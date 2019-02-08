@@ -217,7 +217,8 @@ def test_spec_and_recursion():
         [['ab', 'cd', 'ef'], ''.join],
         Call(T[1], args=(Spec((T[0], [T[1:]])),))) == 'bdf'
 
-
+    # test that spec works on the left of a dict spec
+    assert glom({'a': 'A'}, {Spec('a'): 'a', 'a': 'a'}) == {'A': 'A', 'a': 'A'}
 
 
 def test_scope():
