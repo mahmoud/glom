@@ -1,7 +1,7 @@
 
 import pytest
 
-from glom import glom, T, Sum, Fold, Flatten, Coalesce, flatten, FoldError, Glommer
+from glom import glom, T, Sum, Fold, Flatten, Coalesce, flatten, FoldError, Glommer, Merge
 
 
 def test_sum_integers():
@@ -111,3 +111,12 @@ def test_flatten_func():
 
     with pytest.raises(TypeError):
         flatten([], nonexistentkwarg=False)
+
+    return
+
+
+def test_merge():
+
+    target = [{'a': 'A'}, {'b': 'B'}]
+
+    assert glom(target, Merge()) == {'a': 'A', 'b': 'B'}

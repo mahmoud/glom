@@ -151,6 +151,30 @@ class Flatten(Fold):
         return '%s(%r, init=%r)' % (cn, self.subspec, self.init)
 
 
+class Merge(Fold):
+    def __init__(self, subspec=T, init=dict, op=None):
+        if op is None:
+            try:
+                op = init.update
+                op(init(), init())  # take it out for a spin
+            except AttributeError:
+                raise ValueError('expected "op" arg or an init type with update method,'
+                                 ' not %r and %r' % (op, init))
+        elif not callable(op):
+            raise TypeError('expected "op" to be callable, not %r' % op)
+        super(Merge, self).__init__(subspec=subspec, init=init, op=op)
+
+    def _fold(self, iterator):
+        # the difference here is that ret is mutated in-place, the
+        # variable not being reassigned, as in base Fold.
+        ret, op = self.init(), self.op
+
+        for v in iterator:
+            op(ret, v)
+
+        return ret
+
+
 def flatten(target, **kwargs):
     """At its most basic, ``flatten()`` turns an iterable of iterables
     into a single list. But it has a few arguments which give it more
