@@ -184,6 +184,7 @@ Any class with a glomit method will be treated as a spec by glom.
 As an example, here is a lisp-style If expression custom spec type:
 
 .. code-block:: python
+
     class If(object):
         def __init__(self, cond, if_, else_=None):
             self.cond, self.if_, self.else_ = cond, if_, else_
