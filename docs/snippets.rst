@@ -49,7 +49,7 @@ rather than spec.
 
 .. code-block:: python
 
-    glom({1:2, 2:3}, Call(dict, args=T.items())
+    glom({1:2, 2:3}, Call(dict, args=(T.items(),)))
     glom({1:2, 2:3}, lambda t: dict(t.items()))
     glom({1:2, 2:3}, dict)
 
