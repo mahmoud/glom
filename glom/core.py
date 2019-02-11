@@ -124,18 +124,20 @@ class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
     PathAccessError: could not access 'c', part 2 of Path('a', 'b', 'c'), got error: ...
 
     """
-    def __init__(self, exc, path, part_idx):
+    def __init__(self, exc, target, path, part_idx):
         self.exc = exc
+        self.target = target
         self.path = path
         self.part_idx = part_idx
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.part_idx)
+        return '%s(%r, %r, %r, %r)' % (cn, self.exc, self.target, self.path, self.part_idx)
 
     def __str__(self):
-        return ('could not access %r, part %r of %r, got error: %r'
-                % (self.path.values()[self.part_idx], self.part_idx, self.path, self.exc))
+        return ('could not access %r, part %r of %r on %r, got error: %r'
+                % (self.path.values()[self.part_idx], self.part_idx, self.path, self.target,
+                   self.exc))
 
 
 class CoalesceError(GlomError):
@@ -875,19 +877,19 @@ def _t_eval(target, _t, scope):
             try:
                 cur = getattr(cur, arg)
             except AttributeError as e:
-                raise PathAccessError(e, Path(_t), i // 2)
+                raise PathAccessError(e, target, Path(_t), i // 2)
         elif op == '[':
             try:
                 cur = cur[arg]
             except (KeyError, IndexError, TypeError) as e:
-                raise PathAccessError(e, Path(_t), i // 2)
+                raise PathAccessError(e, target, Path(_t), i // 2)
         elif op == 'P':
             # Path type stuff (fuzzy match)
             get = scope[TargetRegistry].get_handler('get', cur, path=t_path[2:i+2:2])
             try:
                 cur = get(cur, arg)
             except Exception as e:
-                raise PathAccessError(e, Path(_t), i // 2)
+                raise PathAccessError(e, target, Path(_t), i // 2)
         elif op == '(':
             args, kwargs = arg
             scope[Path] += t_path[2:i+2:2]

@@ -51,27 +51,27 @@ def test_path_access_error_message():
     # test fuzzy access
     with raises(GlomError) as exc_info:
         glom({}, 'a.b')
-    assert ("PathAccessError: could not access 'a', part 0 of Path('a', 'b'), got error: KeyError"
+    assert ("PathAccessError: could not access 'a', part 0 of Path('a', 'b') on {}, got error: KeyError"
             in exc_info.exconly())
     ke = repr(KeyError('a'))  # py3.7+ changed the keyerror repr
-    assert repr(exc_info.value) == "PathAccessError(" + ke + ", Path('a', 'b'), 0)"
+    assert repr(exc_info.value) == "PathAccessError(" + ke + ", {}, Path('a', 'b'), 0)"
 
     # test multi-part Path with T, catchable as a KeyError
     with raises(KeyError) as exc_info:
         # don't actually use glom to copy your data structures please
         glom({'a': {'b': 'c'}}, Path('a', T.copy(), 'd'))
-    assert ("PathAccessError: could not access 'd', part 3 of Path('a', T.copy(), 'd'), got error: KeyError"
+    assert ("PathAccessError: could not access 'd', part 3 of Path('a', T.copy(), 'd') on {'a': {'b': 'c'}}, got error: KeyError"
             in exc_info.exconly())
     ke = repr(KeyError('d'))  # py3.7+ changed the keyerror repr
-    assert repr(exc_info.value) == "PathAccessError(" + ke + ", Path('a', T.copy(), 'd'), 3)"
+    assert repr(exc_info.value) == "PathAccessError(" + ke + ", {'a': {'b': 'c'}}, Path('a', T.copy(), 'd'), 3)"
 
     # test AttributeError
     with raises(GlomError) as exc_info:
         glom({'a': {'b': 'c'}}, Path('a', T.b))
-    assert ("PathAccessError: could not access 'b', part 1 of Path('a', T.b), got error: AttributeError"
+    assert ("PathAccessError: could not access 'b', part 1 of Path('a', T.b) on {'a': {'b': 'c'}}, got error: AttributeError"
             in exc_info.exconly())
     ae = repr(AttributeError("'dict' object has no attribute 'b'"))
-    assert repr(exc_info.value) == "PathAccessError(" + ae + ", Path(\'a\', T.b), 1)"
+    assert repr(exc_info.value) == "PathAccessError(" + ae + ", {'a': {'b': 'c'}}, Path(\'a\', T.b), 1)"
 
 
 def test_t_picklability():
