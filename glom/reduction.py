@@ -9,6 +9,12 @@ from .core import TargetRegistry, Path, T, glom, GlomError, UnregisteredTarget
 _MISSING = make_sentinel('_MISSING')
 
 
+try:
+    basestring
+except NameError:
+    basestring = str
+
+
 class FoldError(GlomError):
     """Error raised when Fold() is called on non-iterable
     targets, and possibly other uses in the future."""
@@ -154,14 +160,13 @@ class Flatten(Fold):
 class Merge(Fold):
     def __init__(self, subspec=T, init=dict, op=None):
         if op is None:
-            try:
-                op = init.update
-                op(init(), init())  # take it out for a spin
-            except AttributeError:
-                raise ValueError('expected "op" arg or an init type with update method,'
-                                 ' not %r and %r' % (op, init))
-        elif not callable(op):
-            raise TypeError('expected "op" to be callable, not %r' % op)
+            op = 'update'
+        if isinstance(op, basestring):
+            test_init = init()
+            op = getattr(type(test_init), op, None)
+        if not callable(op):
+            raise ValueError('expected callable "op" arg or an "init" with an .update()'
+                             ' method not %r and %r' % (op, init))
         super(Merge, self).__init__(subspec=subspec, init=init, op=op)
 
     def _fold(self, iterator):

@@ -1,5 +1,6 @@
 
 import pytest
+from boltons.dictutils import OMD
 
 from glom import glom, T, Sum, Fold, Flatten, Coalesce, flatten, FoldError, Glommer, Merge
 
@@ -120,3 +121,18 @@ def test_merge():
     target = [{'a': 'A'}, {'b': 'B'}]
 
     assert glom(target, Merge()) == {'a': 'A', 'b': 'B'}
+
+    assert glom(target, Merge(op=dict.update)) == {'a': 'A', 'b': 'B'}
+
+    with pytest.raises(ValueError):
+        Merge(init=list)  # has no .update()
+
+    with pytest.raises(ValueError):
+        Merge(op='update_extend')  # doesn't work on base dict, the default init
+
+
+def test_merge_omd():
+    target = [{'a': 'A'}, {'a': 'aleph'}]
+
+    assert glom(target, Merge(init=OMD)) == OMD({'a': 'aleph'})
+    assert glom(target, Merge(init=OMD, op='update_extend')) == OMD([('a', 'A'), ('a', 'aleph')])
