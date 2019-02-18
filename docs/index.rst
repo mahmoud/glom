@@ -46,7 +46,7 @@ There's much, much more to glom, check out the :doc:`tutorial` and :doc:`API ref
 .. |calver| image:: https://img.shields.io/badge/calver-YY.MM.MICRO-22bfda.svg
             :target: https://calver.org
 
-.. |changelog| image:: https://img.shields.io/badge/CHANGELOG-UPDATED-dd66ff.svg
+.. |changelog| image:: https://img.shields.io/badge/CHANGELOG-UPDATED-b84ad6.svg
             :target: https://github.com/mahmoud/glom/blob/master/CHANGELOG.md
 
 

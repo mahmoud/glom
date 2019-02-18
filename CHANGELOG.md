@@ -17,8 +17,25 @@ summarized and well-linked.
 ------
 *(February 17, 2019)*
 
-Add `Merge()` spec and `merge()` convenience function, for turning
-iterables of mappings into a single mapping.
+Add [`Merge()` spec and `merge()` convenience
+function](https://glom.readthedocs.io/en/latest/api.html#glom.merge),
+for turning iterables of mappings into a single mapping.
+
+Additionally, `T` and `Spec()` instances which appear in the "key"
+portion of the default dict/mapping spec, are now evaluated, enabling
+operations [like this](https://github.com/mahmoud/glom/issues/85),
+which demonstrates both new features:
+
+```python
+
+from glom import glom, T, Merge
+
+target = [{"id": 1, "name": "foo"}, {"id": 2, "name": "bar"}]
+spec = Merge([{T["id"]: T["name"]}])
+
+glom(target, spec)
+# {1: 'foo', 2: 'bar'}
+```
 
 19.1.0
 ------
