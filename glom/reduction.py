@@ -249,6 +249,16 @@ class Merge(Fold):
           performs a merge of the second into the first. Can also be
           the string name of a method to fetch on the instance created
           from *init*. Defaults to ``"update"``.
+
+    .. note::
+
+       Besides the differing defaults, the primary difference between
+       :class:`Merge` and other :class:`Fold` subtypes is that its
+       *op* argument is assumed to be a two-argument function which
+       has no return value and modifies the left parameter
+       in-place. Because the initial state is a new object created with
+       the *init* parameter, none of the target values are modified.
+
     """
     def __init__(self, subspec=T, init=dict, op=None):
         if op is None:
@@ -275,7 +285,8 @@ class Merge(Fold):
 def merge(target, **kwargs):
     """By default, ``merge()`` turns an iterable of mappings into a
     single, merged :class:`dict`, leveraging the behavior of the
-    :meth:`~dict.update` method.
+    :meth:`~dict.update` method. A new mapping is created and none of
+    the passed mappings are modified.
 
     >>> target = [{'a': 'alpha'}, {'b': 'B'}, {'a': 'A'}]
     >>> res = merge(target)
