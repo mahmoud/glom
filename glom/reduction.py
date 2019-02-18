@@ -1,6 +1,7 @@
 
 import operator
 import itertools
+from pprint import pprint
 
 from boltons.typeutils import make_sentinel
 
@@ -157,29 +158,6 @@ class Flatten(Fold):
         return '%s(%r, init=%r)' % (cn, self.subspec, self.init)
 
 
-class Merge(Fold):
-    def __init__(self, subspec=T, init=dict, op=None):
-        if op is None:
-            op = 'update'
-        if isinstance(op, basestring):
-            test_init = init()
-            op = getattr(type(test_init), op, None)
-        if not callable(op):
-            raise ValueError('expected callable "op" arg or an "init" with an .update()'
-                             ' method not %r and %r' % (op, init))
-        super(Merge, self).__init__(subspec=subspec, init=init, op=op)
-
-    def _fold(self, iterator):
-        # the difference here is that ret is mutated in-place, the
-        # variable not being reassigned, as in base Fold.
-        ret, op = self.init(), self.op
-
-        for v in iterator:
-            op(ret, v)
-
-        return ret
-
-
 def flatten(target, **kwargs):
     """At its most basic, ``flatten()`` turns an iterable of iterables
     into a single list. But it has a few arguments which give it more
@@ -254,4 +232,69 @@ def flatten(target, **kwargs):
     spec += (Flatten(init="lazy"),) * (levels - 1)
     spec += (Flatten(init=init),)
 
+    return glom(target, spec)
+
+
+class Merge(Fold):
+    """By default, Merge turns an iterable of mappings into a single,
+    merged :class:`dict`, leveraging the behavior of the
+    :meth:`~dict.update` method. The start state can be customized
+    with *init*, as well as the update operation, with *op*.
+
+    Args:
+       subspec: The location of the iterable of mappings. Defaults to ``T``.
+       init (callable): A type or callable which returns a base
+          instance into which all other values will be merged.
+       op (callable): A callable, which takes two arguments, and
+          performs a merge of the second into the first. Can also be
+          the string name of a method to fetch on the instance created
+          from *init*. Defaults to ``"update"``.
+    """
+    def __init__(self, subspec=T, init=dict, op=None):
+        if op is None:
+            op = 'update'
+        if isinstance(op, basestring):
+            test_init = init()
+            op = getattr(type(test_init), op, None)
+        if not callable(op):
+            raise ValueError('expected callable "op" arg or an "init" with an .update()'
+                             ' method not %r and %r' % (op, init))
+        super(Merge, self).__init__(subspec=subspec, init=init, op=op)
+
+    def _fold(self, iterator):
+        # the difference here is that ret is mutated in-place, the
+        # variable not being reassigned, as in base Fold.
+        ret, op = self.init(), self.op
+
+        for v in iterator:
+            op(ret, v)
+
+        return ret
+
+
+def merge(target, **kwargs):
+    """By default, ``merge()`` turns an iterable of mappings into a
+    single, merged :class:`dict`, leveraging the behavior of the
+    :meth:`~dict.update` method.
+
+    >>> target = [{'a': 'alpha'}, {'b': 'B'}, {'a': 'A'}]
+    >>> res = merge(target)
+    >>> pprint(res)
+    {'a': 'A', 'b': 'B'}
+
+    Args:
+       target: The list of dicts, or some other iterable of mappings.
+
+    The start state can be customized with the *init* keyword
+    argument, as well as the update operation, with the *op* keyword
+    argument. For more on those customizations, see the :class:`Merge`
+    spec.
+
+    """
+    subspec = kwargs.pop('spec', T)
+    init = kwargs.pop('init', dict)
+    op = kwargs.pop('op', None)
+    if kwargs:
+        raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
+    spec = Merge(subspec, init, op)
     return glom(target, spec)

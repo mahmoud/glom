@@ -19,5 +19,5 @@ from glom.core import (glom,
                        UnregisteredTarget,
                        T, S)
 
-from glom.reduction import Sum, Fold, Flatten, flatten, FoldError, Merge
+from glom.reduction import Sum, Fold, Flatten, flatten, FoldError, Merge, merge
 from glom.mutation import Assign, assign, PathAssignError

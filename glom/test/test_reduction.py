@@ -2,7 +2,7 @@
 import pytest
 from boltons.dictutils import OMD
 
-from glom import glom, T, Sum, Fold, Flatten, Coalesce, flatten, FoldError, Glommer, Merge
+from glom import glom, T, Sum, Fold, Flatten, Coalesce, flatten, FoldError, Glommer, Merge, merge
 
 
 def test_sum_integers():
@@ -136,3 +136,14 @@ def test_merge_omd():
 
     assert glom(target, Merge(init=OMD)) == OMD({'a': 'aleph'})
     assert glom(target, Merge(init=OMD, op='update_extend')) == OMD([('a', 'A'), ('a', 'aleph')])
+
+
+def test_merge_func():
+
+    target = [{'a': 'A'}, {'b': 'B'}]
+    assert merge(target) == {'a': 'A', 'b': 'B'}
+    assert merge([]) == {}
+
+    # basic signature test
+    with pytest.raises(TypeError):
+        merge([], nonexistentkwarg=False)
