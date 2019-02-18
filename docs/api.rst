@@ -81,18 +81,23 @@ Combining iterables with Flatten and friends
 
 *New in glom 19.1.0*
 
-Got lists of lists? Sets of tuples? Or find yourself reaching for
-Python's builtin :func:`sum` and :func:`reduce`? To handle these
-situations, glom has three specifier types and one convenience
-function:
+Got lists of lists? Sets of tuples? A sequence of dicts (but only want
+one)? Do you find yourself reaching for Python's builtin :func:`sum`
+and :func:`reduce`? To handle these situations and more, glom has five
+specifier types and two convenience functions:
 
 .. autofunction:: glom.flatten
 
 .. autoclass:: glom.Flatten
 
+.. autoclass:: glom.merge
+
+.. autoclass:: glom.Merge
+
 .. autoclass:: glom.Sum
 
 .. autoclass:: glom.Fold
+
 
 Object-oriented access and method calls with ``T``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
