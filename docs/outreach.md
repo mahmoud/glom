@@ -26,3 +26,5 @@ If you're reading this, upvote!
 
 1. https://stackoverflow.com/a/54656024/178013
 1. https://stackoverflow.com/a/53354398/178013
+1. https://stackoverflow.com/questions/53108624/using-python-module-glom-extract-irregular-nested-lists-into-a-flattened-list-o
+1. https://stackoverflow.com/questions/54078102/get-value-of-nested-attribute-by-filtering-list-on-other-attribute-with-python-g
