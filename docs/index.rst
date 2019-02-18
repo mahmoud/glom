@@ -1,9 +1,9 @@
 glom
 ====
 
-*Restructuring data, the Python way*
+*Restructuring data, the Python way.*
 
-|release| |calver|
+|release| |calver| (`What's new? <https://github.com/mahmoud/glom/blob/master/CHANGELOG.md>`_).
 
 **glom** is a new approach to working with data in Python, featuring:
 
@@ -43,7 +43,7 @@ There's much, much more to glom, check out the :doc:`tutorial` and :doc:`API ref
 .. |release| image:: https://img.shields.io/pypi/v/glom.svg
              :target: https://pypi.org/project/glom/
 
-.. |calver| image:: https://img.shields.io/badge/calver-YY.MINOR.MICRO-22bfda.svg
+.. |calver| image:: https://img.shields.io/badge/calver-YY.MM.MICRO-22bfda.svg
             :target: https://calver.org
 
 .. toctree::
