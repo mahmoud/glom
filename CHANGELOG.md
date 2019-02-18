@@ -13,6 +13,13 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
+19.2.0
+------
+*(February 17, 2019)*
+
+Add `Merge()` spec and `merge()` convenience function, for turning
+iterables of mappings into a single mapping.
+
 19.1.0
 ------
 *(January 20, 2019)*
