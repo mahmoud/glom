@@ -3,7 +3,7 @@ glom
 
 *Restructuring data, the Python way.*
 
-|release| |calver| (`What's new? <https://github.com/mahmoud/glom/blob/master/CHANGELOG.md>`_).
+|release| |calver| |changelog|
 
 **glom** is a new approach to working with data in Python, featuring:
 
@@ -45,6 +45,10 @@ There's much, much more to glom, check out the :doc:`tutorial` and :doc:`API ref
 
 .. |calver| image:: https://img.shields.io/badge/calver-YY.MM.MICRO-22bfda.svg
             :target: https://calver.org
+
+.. |changelog| image:: https://img.shields.io/badge/CHANGELOG-UPDATED-dd66ff.svg
+            :target: https://github.com/mahmoud/glom/blob/master/CHANGELOG.md
+
 
 .. toctree::
    :maxdepth: 2
