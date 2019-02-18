@@ -103,15 +103,15 @@ class Sum(Fold):
     """The `Sum` specifier type is used to aggregate integers and other
     numericals using addition, much like the :func:`sum()` builtin.
 
-    >>> glom(range(5), Sum())
-    10
+       >>> glom(range(5), Sum())
+       10
 
     Note that this specifier takes a callable *init* parameter like
     its friends, so to change the start value, be sure to wrap it in a
     callable::
 
-    >>> glom(range(5), Sum(init=lambda: 5.0))
-    15.0
+       >>> glom(range(5), Sum(init=lambda: 5.0))
+       15.0
 
     To "sum" lists and other iterables, see the :class:`Flatten`
     spec. For other objects, see the :class:`Fold` specifier type.

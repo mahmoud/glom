@@ -90,7 +90,7 @@ specifier types and two convenience functions:
 
 .. autoclass:: glom.Flatten
 
-.. autoclass:: glom.merge
+.. autofunction:: glom.merge
 
 .. autoclass:: glom.Merge
 
