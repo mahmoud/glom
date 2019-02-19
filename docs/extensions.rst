@@ -9,17 +9,40 @@ functionality with your own data handling hooks. This document
 explains glom's execution model and how to integrate with it using
 glom's Extension API.
 
-Making a Specifier Type
------------------------
+When to make an extension
+-------------------------
 
-Any object instance witha ``glomit`` method can participate in a glom
-call. By way of example, here is a programming cliche implemented as a
-glom extension type
+From day one, ``glom`` has had built-in support for arbitrary callables, like so:
 
 .. code::
 
- class HelloWorldSpec(object):
-     def glomit(self, target, scope):
+   glom({'nums': range(5)}, ('nums', sum))
+   # 10
+
+With this built-in extensibility, what does a glom extension add?
+
+Glom extensions are useful when you want to:
+
+  * Perform validation at spec construction time
+  * Enable users to interact with new target types and operations
+  * Improve readability and reusability of your data transformations
+  * Temporarily change the glom runtime behavior
+
+If you're just building a one-off spec for transforming your own data,
+there's no reason to reach for an extension. ``glom``'s extension API
+is easy, but a good old Python ``lambda`` is even easier.
+
+Making a Specifier Type
+-----------------------
+
+Any object instance with a ``glomit`` method can participate in a glom
+call. By way of example, here is a programming cliche implemented as a
+glom extension type, with comments referencing notes below.
+
+.. code::
+
+ class HelloWorldSpec(object):  # 1
+     def glomit(self, target, scope):  # 2
          print("Hello, world!")
          return target
 
@@ -31,19 +54,19 @@ And now let's put it to use!
 
   target = {'example': 'object'}
 
-  glom(target, HelloWorldSpec())
+  glom(target, HelloWorldSpec())  # 3
   # prints "Hello, world!" and returns target
 
 There are a few things to note from this example:
 
   1. Specifier types do not need to inherit from any type. Just
      implement the ``glomit`` method.
-  2. By convention, instances are used in specs passed to
-     :func:`~glom.glom` calls, not the types themselves.
-  3. The ``glomit`` signature takes two parameters, ``target`` and
+  2. The ``glomit`` signature takes two parameters, ``target`` and
      ``scope``. The ``target`` should be familiar from using
      :func:`~glom.glom`, and it's the ``scope`` that makes glom really
      tick.
+  3. By convention, instances are used in specs passed to
+     :func:`~glom.glom` calls, not the types themselves.
 
 
 The glom Scope
