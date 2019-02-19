@@ -175,7 +175,7 @@ An iteration specifier can filter items out by using
 You can also truncate the list at the first failing check by using
 :data:`~glom.STOP`.
 
-
+.. _lisp-style-if:
 
 Lisp-style If Extension
 -----------------------

@@ -59,3 +59,4 @@ There's much, much more to glom, check out the :doc:`tutorial` and :doc:`API ref
    faq
    by_analogy
    snippets
+   extensions
