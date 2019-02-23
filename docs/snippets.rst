@@ -202,3 +202,32 @@ As an example, here is a lisp-style If expression custom spec type:
     # {'yes': 1}
     glom(0, If(bool, {'yes': T}, {'no': T}))
     # {'no': 0}
+
+
+Parellel Evaluation of Sub-Specs
+--------------------------------
+
+This is another example of a simple glom extension.
+Sometimes it is convenient to execute multiple glom-specs
+in parallel against a target, and get a sequence of their
+results.
+
+.. code-block:: python
+
+    class Seq(object):
+        def __init__(self, *subspecs):
+            self.subspecs = subspecs
+
+        def glomit(self, target, scope):
+            return [scope[glom](target, spec, scope) for spec in self.subspecs]
+
+    glom('1', Seq(float, int))
+    # [1.0, 1]
+
+
+Without this extension, the simplest way to achieve the same result is
+with a dict:
+
+.. code-block:: python
+
+    glom('1', ({1: float, 2: int}, T.values()))
