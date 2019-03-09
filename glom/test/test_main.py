@@ -28,3 +28,11 @@ def test_yaml_target():
     with pytest.raises(CommandLineError) as excinfo:
         main(argv)
     assert 'expected <block end>, but found' in str(excinfo.value)
+
+
+def test_python_full_spec_python_target():
+    argv = ['__', '--target-format', 'python', '--spec-format', 'python-full', 'T[T[3].bit_length()]', '{1: 2, 2: 3, 3: 4}']
+    assert main(argv) == 0
+
+    argv = ['__', '--target-format', 'python', '--spec-format', 'python-full', '(T.values(), [T])', '{1: 2, 2: 3, 3: 4}']
+    assert main(argv) == 0

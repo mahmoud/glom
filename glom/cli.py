@@ -22,7 +22,7 @@ Flags:
   --inspect                   interactively explore the data
 
 try out:
-
+`
 curl -s https://api.github.com/repos/mahmoud/glom/events | python -m glom '[{"type": "type", "date": "created_at", "user": "actor.login"}]'
 
 """
@@ -38,7 +38,10 @@ import json
 from face import Command, Flag, face_middleware, PosArgSpec, PosArgDisplay
 from face.command import CommandLineError
 
-from glom import glom, Path, GlomError, Inspect
+import glom
+from glom import Path, GlomError, Inspect
+
+PY3 = (sys.version_info[0] == 3)
 
 def glom_cli(target, spec, indent, debug, inspect):
     """Command-line interface to the glom library, providing nested data
@@ -53,7 +56,7 @@ def glom_cli(target, spec, indent, debug, inspect):
                        post_mortem=debug and stdin_open)
 
     try:
-        result = glom(target, spec)
+        result = glom.glom(target, spec)
     except GlomError as ge:
         print('%s: %s' % (ge.__class__.__name__, ge))
         return 1
@@ -128,8 +131,10 @@ def mw_handle_target(target_text, target_format):
                 _error('could not load target data, got: %s' % e)
         except ImportError:
             _error('No YAML package found. To process yaml files, run: pip install PyYAML')
+    elif target_format == 'python':
+        target = ast.literal_eval(target_text)
     else:
-        _error('expected spec-format to be one of python, json or yaml')
+        _error('expected target-format to be one of python, json, or yaml')
     return target
 
 @face_middleware(provides=['spec', 'target'])
@@ -158,8 +163,10 @@ def mw_get_target(next_, posargs_, target_file, target_format, spec_file, spec_f
         spec = ast.literal_eval(spec_text)
     elif spec_format == 'json':
         spec = json.loads(spec_text)
+    elif spec_format == 'python-full':
+        spec = _eval_python_full_spec(spec_text)
     else:
-        _error('expected spec-format to be one of python or json')
+        _error('expected spec-format to be one of json, python, or python-full')
 
     if target_text and target_file:
         _error('expected target file or target argument, not both')
@@ -178,3 +185,35 @@ def mw_get_target(next_, posargs_, target_file, target_format, spec_file, spec_f
     target = mw_handle_target(target_text, target_format)
 
     return next_(spec=spec, target=target)
+
+
+def _from_glom_import_star():
+    ret = dict(glom.__dict__)
+    for k in ('__builtins__', '__name__', '__doc__', '__package__'):
+        ret.pop(k, None)
+    for k, v in list(ret.items()):
+        if type(v) == type(glom):
+            ret.pop(k)
+    return ret
+
+
+def _eval_python_full_spec(py_text):
+    name = '__cli_glom_spec__'
+    code_str = '%s = %s' % (name, py_text)
+    env = _from_glom_import_star()
+    spec = _compile_code(code_str, name=name, env=env)
+    return spec
+
+
+def _compile_code(code_str, name, env=None, verbose=False):
+    code = compile(code_str, '<glom-generated code>', 'single')
+    if verbose:
+        print(code_str)
+    if env is None:
+        env = {}
+    if PY3:
+        exec(code, env)
+    else:
+        exec("exec code in env")
+
+    return env[name]

@@ -720,8 +720,10 @@ class Call(object):
        if you need to call a method.
 
     """
-    def __init__(self, func, args=None, kwargs=None):
-        if not (callable(func) or isinstance(func, TType)):
+    def __init__(self, func=None, args=None, kwargs=None):
+        if func is None:
+            func = T
+        if not (callable(func) or isinstance(func, (Spec, TType))):
             raise TypeError('expected func to be a callable or T'
                             ' expression, not: %r' % (func,))
         if args is None:
