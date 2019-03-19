@@ -28,3 +28,4 @@ If you're reading this, upvote!
 1. https://stackoverflow.com/a/53354398/178013
 1. https://stackoverflow.com/questions/53108624/using-python-module-glom-extract-irregular-nested-lists-into-a-flattened-list-o
 1. https://stackoverflow.com/questions/54078102/get-value-of-nested-attribute-by-filtering-list-on-other-attribute-with-python-g
+1. https://stackoverflow.com/questions/38220370/is-there-a-way-to-execute-jq-from-python/55017219#55017219 <- great answer!
