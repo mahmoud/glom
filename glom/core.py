@@ -1133,6 +1133,18 @@ class Check(object):
         return ret
 
 
+class Build(object):
+    """
+    switch to builder mode (the default)
+    """
+    def __init__(self, spec):
+        self.spec = spec
+
+    def glomit(self, target, scope):
+        scope[glom] = _glom_build
+        return scope[glom](target, self.spec, scope)
+
+
 class _AbstractIterable(_AbstractIterableBase):
     __metaclass__ = ABCMeta
     @classmethod
@@ -1455,7 +1467,7 @@ def glom(target, spec, **kwargs):
     return ret
 
 
-def _glom(target, spec, scope):
+def _glom_build(target, spec, scope):
     scope = scope.new_child()
     scope[T] = target
     scope[Spec] = spec
@@ -1480,7 +1492,7 @@ def _glom(target, spec, scope):
 
 
 _DEFAULT_SCOPE.update({
-    glom: _glom,
+    glom: _glom_build,
     TargetRegistry: TargetRegistry(register_default_types=True),
 })
 
