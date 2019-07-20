@@ -11,6 +11,13 @@ filter list on condition (e.g. >= 10)
 
 ensure that dictionary values are all strings
 Match({DEFAULT: str})
+
+3 syntaxes for combining expressions:
+
+(int) & (M > 0)
+And(int, M > 0)
+And & int & (M > 0)
+
 """
 from boltons.typeutils import make_sentinel
 
@@ -41,18 +48,49 @@ DEFAULT is used to represent keys that are not otherwise matched
 in a dict in match mode
 """
 
-class _Comparable(object):
+class _Bool(object):
     """
     abstract class for binary operations
     """
-    def __eq__(self, other):
-        return Equal(self, other)
-
     def __and__(self, other):
         return And(self, other)
 
     def __or__(self, other):
         return Or(self, other)
+
+
+class _AndMeta(type):
+    def __and__(self, other):
+        return And(other)
+
+
+#python 2/3 meta-class compatibility hack
+class And(_AndMeta('_AndBool', (_Bool,), {})):
+    def __init__(self, *children):
+        self.children = children
+
+    def glomit(self, target, scope):
+        # all children must match without exception
+        for child in children:
+            scope[glom](target, child, scope)
+
+
+class _OrMeta(type):
+    def __or__(self, other):
+        return Or(other)
+
+
+class Or(_OrMeta('_OrBool', (_Bool,), {})):
+    def __init__(self, *children):
+        self.children = children
+
+    def glomit(self, target, scope):
+        for child in children:
+            try:  # one child must match without exception
+                scope[glom](target, child, scope)
+                return
+            except GlomMatchError:
+                pass
 
 
 class MType(object):
@@ -64,11 +102,13 @@ class MType(object):
     def __eq__(self, other):
         return _m_child(self, '=', other)
 
-    def __and__(self, other):
-        return _m_child(self, '&', other)
+    def __gt__(self, other):
+        return _m_child(self, '>', other)
 
-    def __or__(self, other):
-        return _m_child(self, '|', other)
+    def __lt__(self, other):
+        return _m_child(self, '<', other)
+
+    # TODO: straightforward to extend this to all comparisons
 
 
 
@@ -77,6 +117,41 @@ _M_EXPRS = weakref.WeakKeyDictionary()
 M = MType()
 
 _M_EXPRS[M] = (M,)
+
+
+def _precedence(match):
+    """
+    in a dict spec, target-keys may match many
+    spec-keys (e.g. 1 will match int, M > 0, and 1);
+    therefore we need a precedence for which order to try
+    keys in; higher = later
+    """
+    if type(match) in (list, tuple, set, frozenset, dict):
+        return 4
+    if isinstance(match, type):
+        return 3
+    if hasattr(match, "glomit"):
+        return 2
+    if callable(match):
+        return 1
+    return 0  # == match
+
+
+def _handle_dict(target, spec, scope):
+    if not isinstance(target, dict):
+        raise GlomTypeMatchError(type(target), dict)
+    spec_keys = sorted(spec, key=_precedence)
+    for key, val in target.items():
+        for spec_key in spec_keys:
+            try:
+                _glom_match(key, spec_key, scope)
+            except GlomMatchError:
+                pass
+            else:
+                _glom_match(val, spec[spec_key], scope)
+                break
+        else:
+            raise GlomMatchError("key {!r} didn't match any of {!r}".format(key, spec_keys))
 
 
 def _glom_match(target, spec, scope):
@@ -90,14 +165,25 @@ def _glom_match(target, spec, scope):
         if not isinstance(target, spec):
             raise GlomTypeMatchError(type(target), spec)
     elif isinstance(spec, dict):
-
         return _handle_dict(target, spec, scope)
     elif isinstance(spec, list):
-        return _handle_list(target, spec, scope)
+        if not isinstance(target, list):
+            raise GlomTypeMatchError(type(target), list)
+        for item in target:
+            last_error = None
+            for child in spec:
+                try:
+                    _glom_match(item, child, scope)
+                    break
+                except GlomMatchError as e:
+                    last_error = e
+            else:
+                if target and not spec:
+                    raise GlomMatchError("{!r} does not match empty list".format(target))
+                raise e
+    # ...
     elif isinstance(spec, tuple):
         return _handle_tuple(target, spec, scope)
-    elif isinstance(spec, basestring):
-        return Path.from_text(spec).glomit(target, scope)
     elif callable(spec):
         return spec(target)
 
