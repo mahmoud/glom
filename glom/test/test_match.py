@@ -21,3 +21,5 @@ def test():
     glom(1.0, (M > 100) | float)
     glom(1.0, And & (M > 0) & float)
     glom(1.0, Or | (M > 100) | float)
+    glom(1.0, M & (M > 0) & float)
+    glom(1.0, M | (M > 100) | float)
