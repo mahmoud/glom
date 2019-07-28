@@ -78,6 +78,9 @@ class And(_AndMeta('_AndBool', (_Bool,), {})):
             scope[glom](target, child, scope)
         return target
 
+    def __repr__(self):
+        return "(" + ") & (".join([repr(c) for c in self.children]) + ")"
+
 
 class _OrMeta(type):
     def __or__(self, other):
@@ -95,6 +98,9 @@ class Or(_OrMeta('_OrBool', (_Bool,), {})):
                 return target
             except GlomMatchError:
                 pass
+
+    def __repr__(self):
+        return "(" + ") | (".join([repr(c) for c in self.children]) + ")"
 
 
 class MType(object):
@@ -130,7 +136,6 @@ class MType(object):
             lhs = target
         if rhs is M:
             rhs = target
-        # TODO: proper stack or recursion
         if op == '=':
             if lhs == rhs:
                 pass
@@ -142,6 +147,14 @@ class MType(object):
             else:
                 raise GlomMatchError("{!r} > {!r}".format(lhs, rhs))
         return target
+
+    def __repr__(self):
+        if self is M:
+            return "M"
+        op = self.op
+        if op == '=':
+            op = '=='
+        return "{} {} {}".format(repr(self.lhs), op, repr(self.rhs))
 
 
 M = MType(None, None, None)
