@@ -1136,6 +1136,10 @@ class Check(object):
 class Build(object):
     """
     switch to builder mode (the default)
+
+    TODO: this seems like it should be a sub-class of class Spec() --
+    if Spec() could help define the interface for new "modes" or dialects
+    that would also help make match mode feel less duct-taped on
     """
     def __init__(self, spec):
         self.spec = spec
@@ -1459,7 +1463,7 @@ def glom(target, spec, **kwargs):
     if kwargs:
         raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
     try:
-        ret = _glom(target, spec, scope)
+        ret = _glom_build(target, spec, scope)
     except skip_exc:
         if default is _MISSING:
             raise

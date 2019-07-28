@@ -1,8 +1,11 @@
 """
-Contains code associated with implementing "match" mode
+Contains code associated with implementing match specs
 
 match mode tends to build expression trees by conjoining
 together matches with And / &, Or / |
+
+a "mode" provides new definitions for the meaning of
+basic python data structures inside the glom spec
 
 example use cases:
 
@@ -23,7 +26,7 @@ from boltons.typeutils import make_sentinel
 
 import weakref
 
-from .core import GlomError, glom
+from .core import GlomError, glom, T, Spec
 
 
 class GlomMatchError(GlomError): pass
@@ -119,6 +122,16 @@ M = MType()
 _M_EXPRS[M] = (M,)
 
 
+def _m_child(lhs, op, rhs):
+    m = MType()
+    _M_EXPRS[m] = (lhs, op, rhs)
+    return m
+
+
+def _m_eval(target, m, scope):
+    pass
+
+
 def _precedence(match):
     """
     in a dict spec, target-keys may match many
@@ -181,12 +194,21 @@ def _glom_match(target, spec, scope):
                 if target and not spec:
                     raise GlomMatchError("{!r} does not match empty list".format(target))
                 raise e
-    # ...
+        return
     elif isinstance(spec, tuple):
-        return _handle_tuple(target, spec, scope)
-    elif callable(spec):
-        return spec(target)
+        if not isinstance(target, tuple):
+            raise GlomTypeMatchError(type(target), tuple)
+        if len(target) != len(spec):
+            raise GlomMatchError("{!r} does not match {!r}".format(target, spec))
+        for sub_target, sub_spec in zip(target, spec):
+            _glom_match(sub_target, sub_spec, scope)
+        return
+    #TODO: set, frozenset
+    if isinstance(spec, type):
+        if not isinstance(target, spec):
+            raise GlomTypeMatchError(type(target), spec)
+        return
 
-    raise TypeError('expected spec to be dict, list, tuple, callable, string,'
-                    ' or other Spec-like type, not: %r' % (spec,))
+    if target != spec:
+        raise GlomMatchError("{!r} does not match {!r}".format(target, spec))
 
