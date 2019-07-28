@@ -104,16 +104,17 @@ class MType(object):
     M == is an escape valve for comparisons with values that would otherwise
     be interpreted as specs by Match
     """
-    __slots__ = ('__weakref__',)
+    def __init__(self, lhs, op, rhs):
+        self.lhs, self.op, self.rhs = lhs, op, rhs
 
     def __eq__(self, other):
-        return _m_child(self, '=', other)
+        return MType(self, '=', other)
 
     def __gt__(self, other):
-        return _m_child(self, '>', other)
+        return MType(self, '>', other)
 
     def __lt__(self, other):
-        return _m_child(self, '<', other)
+        return MType(self, '<', other)
 
     def __and__(self, other):
         return And(self, other)
@@ -124,7 +125,7 @@ class MType(object):
     # TODO: straightforward to extend this to all comparisons
 
     def glomit(self, target, scope):
-        lhs, op, rhs = _M_EXPRS[self]
+        lhs, op, rhs = self.lhs, self.op, self.rhs
         if lhs is M:
             lhs = target
         if rhs is M:
@@ -143,18 +144,7 @@ class MType(object):
         return target
 
 
-
-_M_EXPRS = weakref.WeakKeyDictionary()
-
-M = MType()
-
-_M_EXPRS[M] = (M,)
-
-
-def _m_child(lhs, op, rhs):
-    m = MType()
-    _M_EXPRS[m] = (lhs, op, rhs)
-    return m
+M = MType(None, None, None)
 
 
 def _precedence(match):
