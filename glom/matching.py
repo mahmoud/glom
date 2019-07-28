@@ -30,7 +30,7 @@ from .core import GlomError, glom, T, Spec
 
 
 class GlomMatchError(GlomError): pass
-class GlomTypeMatchError(GlomError, TypeError): pass
+class GlomTypeMatchError(GlomMatchError, TypeError): pass
 
 
 class Match(object):
@@ -74,7 +74,7 @@ class And(_AndMeta('_AndBool', (_Bool,), {})):
 
     def glomit(self, target, scope):
         # all children must match without exception
-        for child in children:
+        for child in self.children:
             scope[glom](target, child, scope)
         return target
 
@@ -89,7 +89,7 @@ class Or(_OrMeta('_OrBool', (_Bool,), {})):
         self.children = children
 
     def glomit(self, target, scope):
-        for child in children:
+        for child in self.children:
             try:  # one child must match without exception
                 scope[glom](target, child, scope)
                 return target
@@ -115,6 +115,12 @@ class MType(object):
     def __lt__(self, other):
         return _m_child(self, '<', other)
 
+    def __and__(self, other):
+        return And(self, other)
+
+    def __or__(self, other):
+        return Or(self, other)
+
     # TODO: straightforward to extend this to all comparisons
 
     def glomit(self, target, scope):
@@ -133,7 +139,7 @@ class MType(object):
             if lhs > rhs:
                 pass
             else:
-                raise GlomMatchError("{!r} > {!r}".format(lha, rhs))
+                raise GlomMatchError("{!r} > {!r}".format(lhs, rhs))
         return target
 
 
