@@ -76,6 +76,7 @@ class And(_AndMeta('_AndBool', (_Bool,), {})):
         # all children must match without exception
         for child in children:
             scope[glom](target, child, scope)
+        return target
 
 
 class _OrMeta(type):
@@ -91,7 +92,7 @@ class Or(_OrMeta('_OrBool', (_Bool,), {})):
         for child in children:
             try:  # one child must match without exception
                 scope[glom](target, child, scope)
-                return
+                return target
             except GlomMatchError:
                 pass
 
@@ -99,6 +100,9 @@ class Or(_OrMeta('_OrBool', (_Bool,), {})):
 class MType(object):
     """
     Similar to T, but for matching
+
+    M == is an escape valve for comparisons with values that would otherwise
+    be interpreted as specs by Match
     """
     __slots__ = ('__weakref__',)
 
@@ -113,6 +117,25 @@ class MType(object):
 
     # TODO: straightforward to extend this to all comparisons
 
+    def glomit(self, target, scope):
+        lhs, op, rhs = _M_EXPRS[self]
+        if lhs is M:
+            lhs = target
+        if rhs is M:
+            rhs = target
+        # TODO: proper stack or recursion
+        if op == '=':
+            if lhs == rhs:
+                pass
+            else:
+                raise GlomMatchError("{!r} != {!r}".format(lhs, rhs))
+        elif op == '>':
+            if lhs > rhs:
+                pass
+            else:
+                raise GlomMatchError("{!r} > {!r}".format(lha, rhs))
+        return target
+
 
 
 _M_EXPRS = weakref.WeakKeyDictionary()
@@ -126,10 +149,6 @@ def _m_child(lhs, op, rhs):
     m = MType()
     _M_EXPRS[m] = (lhs, op, rhs)
     return m
-
-
-def _m_eval(target, m, scope):
-    pass
 
 
 def _precedence(match):
@@ -165,6 +184,7 @@ def _handle_dict(target, spec, scope):
                 break
         else:
             raise GlomMatchError("key {!r} didn't match any of {!r}".format(key, spec_keys))
+    return target
 
 
 def _glom_match(target, spec, scope):
@@ -194,7 +214,7 @@ def _glom_match(target, spec, scope):
                 if target and not spec:
                     raise GlomMatchError("{!r} does not match empty list".format(target))
                 raise e
-        return
+        return target
     elif isinstance(spec, tuple):
         if not isinstance(target, tuple):
             raise GlomTypeMatchError(type(target), tuple)
@@ -202,12 +222,12 @@ def _glom_match(target, spec, scope):
             raise GlomMatchError("{!r} does not match {!r}".format(target, spec))
         for sub_target, sub_spec in zip(target, spec):
             _glom_match(sub_target, sub_spec, scope)
-        return
+        return target
     #TODO: set, frozenset
     if isinstance(spec, type):
         if not isinstance(target, spec):
             raise GlomTypeMatchError(type(target), spec)
-        return
+        return target
 
     if target != spec:
         raise GlomMatchError("{!r} does not match {!r}".format(target, spec))
