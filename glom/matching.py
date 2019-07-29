@@ -208,9 +208,9 @@ def _glom_match(target, spec, scope):
             raise GlomTypeMatchError(type(target), spec)
     elif isinstance(spec, dict):
         return _handle_dict(target, spec, scope)
-    elif isinstance(spec, list):
-        if not isinstance(target, list):
-            raise GlomTypeMatchError(type(target), list)
+    elif isinstance(spec, (list, set, frozenset)):
+        if not isinstance(target, type(spec)):
+            raise GlomTypeMatchError(type(target), type(spec))
         for item in target:
             last_error = None
             for child in spec:
@@ -221,7 +221,8 @@ def _glom_match(target, spec, scope):
                     last_error = e
             else:
                 if target and not spec:
-                    raise GlomMatchError("{!r} does not match empty list".format(target))
+                    raise GlomMatchError("{!r} does not match empty {}".format(
+                        target, type(spec).__name__))
                 raise e
         return target
     elif isinstance(spec, tuple):
@@ -232,7 +233,6 @@ def _glom_match(target, spec, scope):
         for sub_target, sub_spec in zip(target, spec):
             _glom_match(sub_target, sub_spec, scope)
         return target
-    #TODO: set, frozenset
     if isinstance(spec, type):
         if not isinstance(target, spec):
             raise GlomTypeMatchError(type(target), spec)

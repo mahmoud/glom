@@ -12,7 +12,12 @@ def _chk(spec, good_target, bad_target):
 def test():
     _chk(Match(1), 1, 2)
     _chk(Match(int), 1, 1.0)
+    # test unordered sequence comparisons
     _chk(Match([int]), [1], ["1"])
+    _chk(Match({int}), {1}, [1])
+    _chk(Match(frozenset({float})), frozenset({}), frozenset({"1"}))
+    with pytest.raises(GlomMatchError):
+        glom([1], Match([]))  # empty shouldn't match
     glom({"a": 1, "b": 2}, Match({str: int}))
     glom(2, M == 2)
     glom(int, M == int)
