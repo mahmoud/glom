@@ -75,7 +75,7 @@ class And(_AndMeta('_AndBool', (_Bool,), {})):
     def glomit(self, target, scope):
         # all children must match without exception
         for child in self.children:
-            scope[glom](target, child, scope)
+            target = scope[glom](target, child, scope)
         return target
 
     def __repr__(self):
@@ -92,12 +92,12 @@ class Or(_OrMeta('_OrBool', (_Bool,), {})):
         self.children = children
 
     def glomit(self, target, scope):
-        for child in self.children:
+        for child in self.children[:-1]:
             try:  # one child must match without exception
-                scope[glom](target, child, scope)
-                return target
+                return scope[glom](target, child, scope)
             except GlomMatchError:
                 pass
+        return scope[glom](target, self.children[-1], scope)
 
     def __repr__(self):
         return "(" + ") | (".join([repr(c) for c in self.children]) + ")"
@@ -123,9 +123,13 @@ class MType(object):
         return MType(self, '<', other)
 
     def __and__(self, other):
+        if self is M:
+            return And(other)
         return And(self, other)
 
     def __or__(self, other):
+        if self is M:
+            return Or(other)
         return Or(self, other)
 
     # TODO: straightforward to extend this to all comparisons

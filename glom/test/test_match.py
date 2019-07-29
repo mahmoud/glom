@@ -1,7 +1,10 @@
+import json
+
 import pytest
 
 from glom import glom
 from glom.matching import Match, M, GlomMatchError, And, Or
+from glom.core import Build
 
 
 def _chk(spec, good_target, bad_target):
@@ -28,3 +31,22 @@ def test():
     glom(1.0, Or | (M > 100) | float)
     glom(1.0, M & (M > 0) & float)
     glom(1.0, M | (M > 100) | float)
+    # test idiom for enum
+    with pytest.raises(GlomMatchError):
+        glom("c", Match("a"))
+    with pytest.raises(GlomMatchError):
+        glom("c", Match(Or("a", "b")))
+    _chk(Match(M | "a" | "b"), "a", "c")
+
+
+def test_cruddy_json():
+    _chk(
+        Match({'int_id?': M & Build(int) & (M > 0)}),
+        {'int_id?': '1'},
+        {'int_id?': '-1'})
+    # embed a build
+    squished_json = Match({
+        'smooshed_json': M & Build(json.loads) & {
+            'sub': M & Build(json.loads) & 1 }
+        })
+    glom({'smooshed_json': json.dumps({'sub': json.dumps(1)})}, squished_json)
