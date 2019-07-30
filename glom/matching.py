@@ -15,11 +15,10 @@ filter list on condition (e.g. >= 10)
 ensure that dictionary values are all strings
 Match({DEFAULT: str})
 
-3 syntaxes for combining expressions:
+2 syntaxes for combining expressions:
 
-(int) & (M > 0)
 And(int, M > 0)
-And & int & (M > 0)
+M & int & (M > 0)
 
 """
 from boltons.typeutils import make_sentinel
@@ -62,13 +61,7 @@ class _Bool(object):
         return Or(self, other)
 
 
-class _AndMeta(type):
-    def __and__(self, other):
-        return And(other)
-
-
-#python 2/3 meta-class compatibility hack
-class And(_AndMeta('_AndBool', (_Bool,), {})):
+class And(_Bool):
     def __init__(self, *children):
         self.children = children
 
@@ -82,12 +75,7 @@ class And(_AndMeta('_AndBool', (_Bool,), {})):
         return "(" + ") & (".join([repr(c) for c in self.children]) + ")"
 
 
-class _OrMeta(type):
-    def __or__(self, other):
-        return Or(other)
-
-
-class Or(_OrMeta('_OrBool', (_Bool,), {})):
+class Or(_Bool):
     def __init__(self, *children):
         self.children = children
 
@@ -95,7 +83,7 @@ class Or(_OrMeta('_OrBool', (_Bool,), {})):
         for child in self.children[:-1]:
             try:  # one child must match without exception
                 return scope[glom](target, child, scope)
-            except GlomMatchError:
+            except GlomError:
                 pass
         return scope[glom](target, self.children[-1], scope)
 
@@ -223,11 +211,11 @@ def _glom_match(target, spec, scope):
                     break
                 except GlomMatchError as e:
                     last_error = e
-            else:
+            else:  # did not break, something went wrong
                 if target and not spec:
                     raise GlomMatchError("{!r} does not match empty {}".format(
                         target, type(spec).__name__))
-                raise e
+                raise last_error
         return target
     elif isinstance(spec, tuple):
         if not isinstance(target, tuple):

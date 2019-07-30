@@ -27,8 +27,6 @@ def test():
     glom(1.0, M > 0)
     glom(1.0, (M > 0) & float)
     glom(1.0, (M > 100) | float)
-    glom(1.0, And & (M > 0) & float)
-    glom(1.0, Or | (M > 100) | float)
     glom(1.0, M & (M > 0) & float)
     glom(1.0, M | (M > 100) | float)
     # test idiom for enum
@@ -50,3 +48,13 @@ def test_cruddy_json():
             'sub': M & Build(json.loads) & 1 }
         })
     glom({'smooshed_json': json.dumps({'sub': json.dumps(1)})}, squished_json)
+
+
+def pattern_matching_experiment():
+    pattern_matcher = (M &
+        Match(1) & 'one' |
+        Match(2) & 'two' |
+        Match(float) & 'float'
+        )
+    assert glom.glom(1, pattern_matcher) == 'one'
+    assert glom.glom(1.1, pattern_matcher) == 'float'
