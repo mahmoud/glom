@@ -36,6 +36,11 @@ def test():
         glom("c", Match(Or("a", "b")))
     _chk(Match(M | "a" | "b"), "a", "c")
     glom({None: 1}, Match({DEFAULT: object}))
+    _chk(Match((int, str)), (1, "cat"), (1, 2))
+    with pytest.raises(GlomMatchError):
+        glom({1: 2}, Match({(): int}))
+    with pytest.raises(GlomMatchError):
+        glom(1, Match({}))
 
 
 def test_cruddy_json():
@@ -64,3 +69,10 @@ def pattern_matching_experiment():
     assert glom.glom(
         {'one': 1, 'two': [1, 2, 3]}, pattern_matcher) == [1, 2, 3]
     assert glom.glom('nomatch', pattern_matcher) == "default"
+
+
+def test_reprs():
+    repr(M)
+    repr(M == 1)
+    repr(M | M == 1)
+    repr(M & M == 1)
