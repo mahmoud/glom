@@ -1133,6 +1133,41 @@ class Check(object):
         return ret
 
 
+class Capture(object):
+    """
+    Capture the current target into a variable
+    for use later.
+
+    They can be referenced via S[V].name
+
+    Variables have a global scope within a glom spec,
+    to avoid the problem of how to specify lifetime
+    of a captured variable for now
+    """
+    def __init__(self, name):
+        self.name = name
+
+    def glomit(self, target, scope):
+        setattr(scope[V], name, target)
+        return target
+
+
+class VType(object):
+    def __getattr__(self, name):
+        return Capture(name)
+
+
+V = VType()
+
+
+class _CapturedVars(object):
+    """
+    instances of this hold onto captured variables
+    """
+    def __init__(self, init_vars):
+        self.__dict__ = init_vars
+
+
 class Build(object):
     """
     switch to builder mode (the default)
@@ -1457,7 +1492,8 @@ def glom(target, spec, **kwargs):
     skip_exc = kwargs.pop('skip_exc', () if default is _MISSING else GlomError)
     scope = _DEFAULT_SCOPE.new_child({
         Path: kwargs.pop('path', []),
-        Inspect: kwargs.pop('inspector', None)
+        Inspect: kwargs.pop('inspector', None),
+        V: _CapturedVars(kwargs.get('vars', {})),
     })
     scope.update(kwargs.pop('scope', {}))
     if kwargs:

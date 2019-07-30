@@ -2,9 +2,9 @@ import json
 
 import pytest
 
-from glom import glom
-from glom.matching import Match, M, GlomMatchError, And, Or
-from glom.core import Build
+from glom import glom, S
+from glom.matching import Match, M, GlomMatchError, And, Or, DEFAULT
+from glom.core import Build, V
 
 
 def _chk(spec, good_target, bad_target):
@@ -35,6 +35,7 @@ def test():
     with pytest.raises(GlomMatchError):
         glom("c", Match(Or("a", "b")))
     _chk(Match(M | "a" | "b"), "a", "c")
+    glom({None: 1}, Match({DEFAULT: object}))
 
 
 def test_cruddy_json():
@@ -58,3 +59,8 @@ def pattern_matching_experiment():
         )
     assert glom.glom(1, pattern_matcher) == 'one'
     assert glom.glom(1.1, pattern_matcher) == 'float'
+    pattern_matcher = (M &
+        Match({'one': 1, 'two': V.two}) & S[V].two | "default")
+    assert glom.glom(
+        {'one': 1, 'two': [1, 2, 3]}, pattern_matcher) == [1, 2, 3]
+    assert glom.glom('nomatch', pattern_matcher) == "default"

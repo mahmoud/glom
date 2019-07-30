@@ -49,6 +49,8 @@ DEFAULT.__doc__ = """
 DEFAULT is used to represent keys that are not otherwise matched
 in a dict in match mode
 """
+DEFAULT.glomit = lambda target, scope: target
+
 
 class _Bool(object):
     """
@@ -159,6 +161,8 @@ def _precedence(match):
     therefore we need a precedence for which order to try
     keys in; higher = later
     """
+    if match is DEFAULT:
+        return 5
     if type(match) in (list, tuple, set, frozenset, dict):
         return 4
     if isinstance(match, type):
