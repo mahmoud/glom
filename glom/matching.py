@@ -117,6 +117,8 @@ class MType(object):
             return And(other)
         return And(self, other)
 
+    __rand__ = __and__
+
     def __or__(self, other):
         if self is M:
             return Or(other)

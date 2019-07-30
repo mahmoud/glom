@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from glom import glom, S
+from glom import glom, S, Literal
 from glom.matching import Match, M, GlomMatchError, And, Or, DEFAULT
 from glom.core import Build, V
 
@@ -56,19 +56,20 @@ def test_cruddy_json():
     glom({'smooshed_json': json.dumps({'sub': json.dumps(1)})}, squished_json)
 
 
-def pattern_matching_experiment():
-    pattern_matcher = (M &
-        Match(1) & 'one' |
-        Match(2) & 'two' |
-        Match(float) & 'float'
+def test_pattern_matching():
+    pattern_matcher = (
+        M & Match(1) & Literal('one') |
+        M & Match(2) & Literal('two') |
+        M & Match(float) & Literal('float')
         )
-    assert glom.glom(1, pattern_matcher) == 'one'
-    assert glom.glom(1.1, pattern_matcher) == 'float'
-    pattern_matcher = (M &
-        Match({'one': 1, 'two': V.two}) & S[V].two | "default")
-    assert glom.glom(
+    assert glom(1, pattern_matcher) == 'one'
+    assert glom(1.1, pattern_matcher) == 'float'
+    pattern_matcher = (
+        M & Match({'one': 1, 'two': V.two}) & S[V].two |
+        Literal("default"))
+    assert glom(
         {'one': 1, 'two': [1, 2, 3]}, pattern_matcher) == [1, 2, 3]
-    assert glom.glom('nomatch', pattern_matcher) == "default"
+    assert glom('nomatch', pattern_matcher) == "default"
 
 
 def test_reprs():

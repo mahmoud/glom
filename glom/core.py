@@ -1148,7 +1148,7 @@ class Capture(object):
         self.name = name
 
     def glomit(self, target, scope):
-        setattr(scope[V], name, target)
+        setattr(scope[V], self.name, target)
         return target
 
 
