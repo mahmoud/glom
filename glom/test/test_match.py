@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from glom import glom, S, Literal
+from glom import glom, S, Literal, T
 from glom.matching import Match, M, GlomMatchError, And, Or, DEFAULT
 from glom.core import Build, V
 
@@ -71,6 +71,11 @@ def test_pattern_matching():
         {'one': 1, 'two': [1, 2, 3]}, pattern_matcher) == [1, 2, 3]
     assert glom('nomatch', pattern_matcher) == "default"
 
+    # obligatory fibonacci
+
+    fib = (M > 2) & (lambda n: glom(n - 1, fib) + glom(n - 2, fib)) | T
+
+    assert glom(5, fib) == 8
 
 def test_reprs():
     repr(M)
