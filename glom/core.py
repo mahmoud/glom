@@ -42,6 +42,9 @@ else:
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
     from collections import ChainMap
 
+import glom.mutation
+
+
 _type_type = type
 
 _MISSING = make_sentinel('_MISSING')
@@ -78,6 +81,14 @@ execution of a tuple of subspecs.
 >>> spec = [lambda x: x if x < 5 else STOP]
 >>> glom(target, spec)
 [0, 1, 2, 3, 4]
+"""
+
+LAST_CHILD_SCOPE = make_sentinel('LAST_CHILD_SCOPE')
+LAST_CHILD_SCOPE.__doc__ = """
+Marker that can be used by parents to keep track of the last child
+scope executed.  Useful for "lifting" results out of child scopes
+for scopes that want to chain the scopes of their children together
+similar to tuple.
 """
 
 
@@ -836,6 +847,14 @@ class TType(object):
             return t
         return _t_child(self, '[', item)
 
+    '''  DOH! needs walrus operator
+    def __setitem__(self, name, spec):
+        return glom.mutation.Assign(self[name], spec)
+
+    def __setattr__(self, name, spec):
+        return glom.mutation.Assign(getattr(self, name), spec)
+    '''
+
     def __call__(self, *args, **kwargs):
         return _t_child(self, '(', (args, kwargs))
 
@@ -1189,6 +1208,9 @@ def _handle_tuple(target, spec, scope):
         if nxt is STOP:
             break
         res = nxt
+        scope = scope[LAST_CHILD_SCOPE]
+        # TODO: with scope-chaining, is this path munging still needed
+        # or can that responsibility belong to the child scopes?
         if not isinstance(subspec, list):
             scope[Path] += [getattr(subspec, '__name__', subspec)]
     return res
@@ -1456,7 +1478,7 @@ def glom(target, spec, **kwargs):
 
 
 def _glom(target, spec, scope):
-    scope = scope.new_child()
+    scope = scope[LAST_CHILD_SCOPE] = scope.new_child()
     scope[T] = target
     scope[Spec] = spec
 
