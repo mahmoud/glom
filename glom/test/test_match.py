@@ -4,7 +4,7 @@ import pytest
 
 from glom import glom, S, Literal, T
 from glom.matching import Match, M, GlomMatchError, And, Or, DEFAULT
-from glom.core import Build, V
+from glom.core import Build, V, SKIP
 
 
 def _chk(spec, good_target, bad_target):
@@ -80,6 +80,12 @@ def test_pattern_matching():
     fib = (M > 2) & (lambda n: glom(n - 1, fib) + glom(n - 2, fib)) | T
 
     assert glom(5, fib) == 8
+
+
+def test_examples():
+    assert glom(8, (M > 7) & Literal(7)) == 7
+    assert glom(range(10), [(M > 7) & Literal(7) | T]) == [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]
+    assert glom(range(10), [(M > 7) & Literal(SKIP) | T]) == [0, 1, 2, 3, 4, 5, 6, 7]
 
 def test_reprs():
     repr(M)

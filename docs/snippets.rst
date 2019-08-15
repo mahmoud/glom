@@ -231,3 +231,26 @@ with a dict:
 .. code-block:: python
 
     glom('1', ({1: float, 2: int}, T.values()))
+
+
+Clamp Values
+------------
+
+A common numerical operation is to clamp values -- if they
+are above or below a certain value, assign them to that value.
+
+Using a pattern-matching glom idiom, this can be implemented
+simply:
+
+.. code-block:: python
+
+    glom(range(10), [(M > 7) & Literal(7) | T])
+    # [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]
+
+
+What if you want to drop rather than clamp out-of-range values?
+
+.. code-block:: python
+
+    glom(range(10), [(M > 7) & Literal(SKIP) | T])
+    # [0, 1, 2, 3, 4, 5, 6, 7]

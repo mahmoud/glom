@@ -34,7 +34,7 @@ from .core import GlomError, glom, T, Spec
 # because negative matches are part of normal control flow
 # (e.g. often it is idiomatic to cascade from one possible match
 # to the next and take the first one that works)
-class GlomMatchError(Exception):
+class GlomMatchError(GlomError):
     def __init__(self, fmt, *args):
         super(GlomMatchError, self).__init__(fmt, args)
 
