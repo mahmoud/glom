@@ -95,6 +95,9 @@ class Or(_Bool):
         return "(" + ") | (".join([repr(c) for c in self.children]) + ")"
 
 
+_M_OP_MAP = {'=': '==', '!': '!=', 'g': '>=', 'l': '<='}
+
+
 class MType(object):
     """
     Similar to T, but for matching
@@ -108,11 +111,20 @@ class MType(object):
     def __eq__(self, other):
         return MType(self, '=', other)
 
+    def __ne__(self, other):
+        return MType(self, '!', other)
+
     def __gt__(self, other):
         return MType(self, '>', other)
 
     def __lt__(self, other):
         return MType(self, '<', other)
+
+    def __ge__(self, other):
+        return MType(self, 'g', other)
+
+    def __le__(self, other):
+        return MType(self, 'l', other)
 
     def __and__(self, other):
         if self is M:
@@ -126,32 +138,28 @@ class MType(object):
             return Or(other)
         return Or(self, other)
 
-    # TODO: straightforward to extend this to all comparisons
-
     def glomit(self, target, scope):
         lhs, op, rhs = self.lhs, self.op, self.rhs
         if lhs is M:
             lhs = target
         if rhs is M:
             rhs = target
-        if op == '=':
-            if lhs == rhs:
-                pass
-            else:
-                raise GlomMatchError("{!r} != {!r}".format(lhs, rhs))
-        elif op == '>':
-            if lhs > rhs:
-                pass
-            else:
-                raise GlomMatchError("{!r} > {!r}".format(lhs, rhs))
-        return target
+        matched = (
+            (op == '=' and lhs == rhs) or
+            (op == '!' and lhs != rhs) or
+            (op == '>' and lhs > rhs) or
+            (op == '<' and lhs < rhs) or
+            (op == 'g' and lhs >= rhs) or
+            (op == 'l' and lhs <= rhs)
+        )
+        if matched:
+            return target
+        raise GlomMatchError("{!r} {} {!r}".format(lhs, _M_OP_MAP.get(op, op), rhs))
 
     def __repr__(self):
         if self is M:
             return "M"
-        op = self.op
-        if op == '=':
-            op = '=='
+        op = _M_OP_MAP.get(self.op, self.op)
         return "{!r} {} {!r}".format(self.lhs, op, self.rhs)
 
 
