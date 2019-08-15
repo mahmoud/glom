@@ -223,7 +223,6 @@ def _glom_match(target, spec, scope):
         if not isinstance(target, type(spec)):
             raise GlomTypeMatchError(type(target), type(spec))
         for item in target:
-            last_error = None
             for child in spec:
                 try:
                     _glom_match(item, child, scope)
@@ -234,6 +233,8 @@ def _glom_match(target, spec, scope):
                 if target and not spec:
                     raise GlomMatchError("{!r} does not match empty {}".format(
                         target, type(spec).__name__))
+                # NOTE: unless error happens above, break will skip else branch
+                # so last_error will have been assigned
                 raise last_error
         return target
     elif isinstance(spec, tuple):
