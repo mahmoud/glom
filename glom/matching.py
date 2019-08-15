@@ -30,7 +30,19 @@ from boltons.typeutils import make_sentinel
 from .core import GlomError, glom, T, Spec
 
 
-class GlomMatchError(GlomError): pass
+# NOTE: it is important that GlomMatchErrors be cheap to construct,
+# because negative matches are part of normal control flow
+# (e.g. often it is idiomatic to cascade from one possible match
+# to the next and take the first one that works)
+class GlomMatchError(Exception):
+    def __init__(self, fmt, *args):
+        super(GlomMatchError, self).__init__(fmt, args)
+
+    def __repr__(self):
+        fmt, args = self.args
+        return "{}({})".format(self.__class__.__name__, fmt.format(*args))
+
+
 class GlomTypeMatchError(GlomMatchError, TypeError): pass
 
 
@@ -154,7 +166,7 @@ class MType(object):
         )
         if matched:
             return target
-        raise GlomMatchError("{!r} {} {!r}".format(lhs, _M_OP_MAP.get(op, op), rhs))
+        raise GlomMatchError("{!r} {} {!r}", lhs, _M_OP_MAP.get(op, op), rhs)
 
     def __repr__(self):
         if self is M:
@@ -203,7 +215,7 @@ def _handle_dict(target, spec, scope):
                 _glom_match(val, spec[spec_key], scope)
                 break
         else:
-            raise GlomMatchError("key {!r} didn't match any of {!r}".format(key, spec_keys))
+            raise GlomMatchError("key {!r} didn't match any of {!r}", key, spec_keys)
     return target
 
 
@@ -231,8 +243,8 @@ def _glom_match(target, spec, scope):
                     last_error = e
             else:  # did not break, something went wrong
                 if target and not spec:
-                    raise GlomMatchError("{!r} does not match empty {}".format(
-                        target, type(spec).__name__))
+                    raise GlomMatchError(
+                        "{!r} does not match empty {}", target, type(spec).__name__)
                 # NOTE: unless error happens above, break will skip else branch
                 # so last_error will have been assigned
                 raise last_error
@@ -241,7 +253,7 @@ def _glom_match(target, spec, scope):
         if not isinstance(target, tuple):
             raise GlomTypeMatchError(type(target), tuple)
         if len(target) != len(spec):
-            raise GlomMatchError("{!r} does not match {!r}".format(target, spec))
+            raise GlomMatchError("{!r} does not match {!r}", target, spec)
         for sub_target, sub_spec in zip(target, spec):
             _glom_match(sub_target, sub_spec, scope)
         return target
@@ -251,5 +263,5 @@ def _glom_match(target, spec, scope):
         return target
 
     if target != spec:
-        raise GlomMatchError("{!r} does not match {!r}".format(target, spec))
+        raise GlomMatchError("{!r} does not match {!r}", target, spec)
 
