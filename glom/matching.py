@@ -21,9 +21,11 @@ And(int, M > 0)
 M & int & (M > 0)
 
 """
-from boltons.typeutils import make_sentinel
+from __future__ import unicode_literals
 
-import weakref
+import sys
+
+from boltons.typeutils import make_sentinel
 
 from .core import GlomError, glom, T, Spec
 
@@ -150,7 +152,7 @@ class MType(object):
         op = self.op
         if op == '=':
             op = '=='
-        return "{} {} {}".format(repr(self.lhs), op, repr(self.rhs))
+        return "{!r} {} {!r}".format(self.lhs, op, self.rhs)
 
 
 M = MType(None, None, None)
@@ -179,7 +181,10 @@ def _precedence(match):
 def _handle_dict(target, spec, scope):
     if not isinstance(target, dict):
         raise GlomTypeMatchError(type(target), dict)
-    spec_keys = sorted(spec, key=_precedence)
+    spec_keys = spec  # cheating a little bit here, list-vs-dict, but saves an object copy sometimes
+    if sys.version_info < (3, 6):
+        # apply a deterministic precedence if the python version itself does not guarantee ordering
+        spec_keys = sorted(spec_keys, key=_precedence)
     for key, val in target.items():
         for spec_key in spec_keys:
             try:
