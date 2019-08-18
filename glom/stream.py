@@ -6,7 +6,7 @@ from a file) without exploding memory.
 """
 from __future__ import unicode_literals
 
-from .core import glom
+from .core import glom, T
 
 
 class Iter(object):
@@ -16,7 +16,7 @@ class Iter(object):
 
 	Basically, a lazy version of the default list-spec behavior.
 	"""
-	def __init__(self, spec):
+	def __init__(self, spec=T):
 		self.spec = spec
 
 	def glomit(self, target, scope):

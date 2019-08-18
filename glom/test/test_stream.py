@@ -10,3 +10,5 @@ def test_iter():
 	cnt_1 = glom(cnt, Iter(lambda t: t + 1))
 	assert (cnt_1.next(), cnt_1.next()) == (1, 2)
 	assert cnt.next() == 2
+
+	assert list(glom("123", (Iter(int), enumerate))) == [(0, 1), (1, 2), (2, 3)]
