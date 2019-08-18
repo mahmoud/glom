@@ -21,4 +21,4 @@ class Iter(object):
 
 	def glomit(self, target, scope):
 		for sub in target:
-			yield scope[glom](target, self.spec, scope)
+			yield scope[glom](sub, self.spec, scope)
