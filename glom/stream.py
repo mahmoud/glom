@@ -10,15 +10,15 @@ from .core import glom, T
 
 
 class Iter(object):
-	"""
-	Given an iterable target, yields the result of applying the passed
-	spec to each element of the target.
+    """
+    Given an iterable target, yields the result of applying the passed
+    spec to each element of the target.
 
-	Basically, a lazy version of the default list-spec behavior.
-	"""
-	def __init__(self, spec=T):
-		self.spec = spec
+    Basically, a lazy version of the default list-spec behavior.
+    """
+    def __init__(self, spec=T):
+        self.spec = spec
 
-	def glomit(self, target, scope):
-		for sub in target:
-			yield scope[glom](sub, self.spec, scope)
+    def glomit(self, target, scope):
+        for sub in target:
+            yield scope[glom](sub, self.spec, scope)
