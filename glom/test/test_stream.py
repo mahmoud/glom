@@ -7,6 +7,9 @@ from ..stream import Iter, Partial
 from ..core import glom, SKIP, STOP, T
 
 
+RANGE_5 = list(range(5))
+
+
 def test_iter():
     assert list(glom(['1', '2', '3'], Iter(int))) == [1, 2, 3]
     cnt = count()
@@ -22,7 +25,17 @@ def test_iter():
     with pytest.raises(TypeError):
         Iter(nonexistent_kwarg=True)
 
-    assert list(glom(range(10), Partial(dropwhile)(lambda x: x < 5)(T))) == (
-        [5, 6, 7, 8, 9])
 
-    assert list(glom([1, 2], Partial(chain, T, T))) == [1, 2, 1, 2]
+@pytest.mark.skip(reason='filter broken until _handle_tuple and SKIP interaction fixed')
+def test_filter():
+
+    is_odd = lambda x: x % 2
+    spec = Iter().filter(is_odd)
+    out = glom(RANGE_5, spec)
+    assert list(out) == [1, 3]
+
+
+def test_map():
+    spec = Iter().map(lambda x: x * 2)
+    out = glom(RANGE_5, spec)
+    assert list(out) == [0, 2, 4, 6, 8]

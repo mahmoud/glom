@@ -1082,6 +1082,7 @@ class Check(object):
         errs = []
         if self.spec is not T:
             target = scope[glom](target, self.spec, scope)
+        import pdb;pdb.set_trace()
         if self.types and type(target) not in self.types:
             if self.default is not RAISE:
                 return self.default

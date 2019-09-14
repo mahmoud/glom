@@ -53,7 +53,7 @@ class Iter(object):
 
     """
     def __init__(self, subspec=T, **kwargs):
-        self.subspec = subspec
+        self.subspec = subspec if type(subspec) is tuple else (subspec,)
         self.sentinel = kwargs.pop('sentinel', STOP)
         if kwargs:
             raise TypeError('unexpected keyword arguments: %r' % sorted(kwargs))
@@ -78,10 +78,11 @@ class Iter(object):
 
     def filter(self, subspec):
         # if falsey, skip
-        return Iter(subspec=self.subspec + (Check(subspec, default=SKIP),))
+        # TODO: gotta fix handle_tuple and SKIP interaction if this is gonna work
+        return Iter(Check(subspec, default=SKIP))
 
     def map(self, subspec):
-        return self
+        return Iter(subspec=self.subspec + (subspec,), sentinel=self.sentinel)
 
     def zip(self, subspec, otherspec, fill_value=_MISSING):
         return
