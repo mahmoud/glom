@@ -6,8 +6,29 @@ from a file) without excessive memory usage.
 """
 from __future__ import unicode_literals
 
-from .core import glom, T, STOP, SKIP
+from .core import glom, T, STOP, SKIP, Check, _MISSING, Path, TargetRegistry
 
+
+"""
+itertools to add:
+
+* filter
+* map
+* zip
+* takewhile / dropwhile
+* split
+* chunked
+* windowed
+* unique
+
+(Iter(T.items)
+ .filter(T.is_activated)
+ .map(fetch_from_db))
+
+(Iter((T.items, Check(T.is_activated, default=SKIP), fetch_from_db)))
+
+# should there be a .first() or something?
+"""
 
 class Iter(object):
     """``Iter()`` is glom's counterpart to the built-in :func:`iter()`
@@ -26,7 +47,7 @@ class Iter(object):
          iterable stream, causes the iteration to stop. Same as with the
          built-in :func:`iter`.
 
-    >>> glom("123123", (Iter(int), set, tuple))
+    >>> glom(['1', '2', '1', '3'], (Iter(int), set, tuple))
     (1, 2, 3)
 
 
@@ -39,15 +60,44 @@ class Iter(object):
         return
 
     def glomit(self, target, scope):
-        iterator = iter(target)
-        for sub in iterator:
-            yld = scope[glom](sub, self.subspec, scope)
+        iterate = scope[TargetRegistry].get_handler('iterate', target, path=scope[Path])
+        try:
+            iterator = iterate(target)
+        except Exception as e:
+            raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
+                            % (target.__class__.__name__, Path(*scope[Path]), e))
+
+        for i, sub in enumerate(iterator):
+            yld = scope[glom](sub, self.subspec, scope.new_child({Path: scope[Path] + [i]}))
             if yld is SKIP:
                 continue
             elif yld is STOP:
                 return
             yield yld
         return
+
+    def filter(self, subspec):
+        # if falsey, skip
+        return Iter(subspec=self.subspec + (Check(subspec, default=SKIP),))
+
+    def map(self, subspec):
+        return self
+
+    def zip(self, subspec, otherspec, fill_value=_MISSING):
+        return
+
+    def windowed(self, subspec):
+        return
+
+    def chain(self):
+        # like sum but lazy, target presumed to be an iterable of iterables
+        return
+
+
+class Pipe(object):
+    # Iter is the streaming dual of []
+    # Pipe is the streaming dual of ()
+    pass
 
 
 class Partial(object):
@@ -69,7 +119,7 @@ class Partial(object):
         all_args = []
         all_kwargs = {}
         recurse = lambda spec: scope[glom](target, spec, scope)
-        for i in range(len(self.args) / 2):
+        for i in range(len(self.args) // 2):
             args = self.args[i * 2]
             kwargs = self.args[i * 2 + 1]
             if i % 2:
