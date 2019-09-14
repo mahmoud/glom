@@ -57,7 +57,7 @@ class Iter(object):
 
     """
     def __init__(self, subspec=T, **kwargs):
-        self.subspec = subspec if type(subspec) is tuple else (subspec,)
+        self.subspec = subspec
         self._spec_stack = kwargs.pop('spec_stack', [])
 
         self.sentinel = kwargs.pop('sentinel', STOP)
@@ -88,10 +88,10 @@ class Iter(object):
     def filter(self, subspec):
         # if falsey, skip
         # TODO: gotta fix handle_tuple and SKIP interaction if this is gonna work
-        return Iter(Check(subspec, default=SKIP))
+        return Iter(spec_stack=self._spec_stack + [Iter(Check(subspec, default=SKIP))])
 
     def map(self, subspec):
-        return Iter(subspec=self.subspec + (subspec,), sentinel=self.sentinel)
+        return Iter(spec_stack=self._spec_stack + [self, Iter(subspec)])
 
     def zip(self, subspec, otherspec, fill_value=_MISSING):
         return
@@ -106,7 +106,7 @@ class Iter(object):
 
     def chain(self):
         # like sum but lazy, target presumed to be an iterable of iterables
-        return Iter(spec_stack=self._spec_stack + [Flatten(init='lazy')])  # Call(chain.from_iterable, args=(T,))])
+        return Iter(spec_stack=self._spec_stack + [Flatten(init='lazy')])
 
 
 class Pipe(object):

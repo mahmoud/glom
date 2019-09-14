@@ -26,7 +26,7 @@ def test_iter():
         Iter(nonexistent_kwarg=True)
 
 
-@pytest.mark.skip(reason='filter broken until _handle_tuple and SKIP interaction fixed')
+# @pytest.mark.skip(reason='filter broken until _handle_tuple and SKIP interaction fixed')
 def test_filter():
     is_odd = lambda x: x % 2
     spec = Iter().filter(is_odd)
