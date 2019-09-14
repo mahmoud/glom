@@ -6,8 +6,12 @@ from a file) without excessive memory usage.
 """
 from __future__ import unicode_literals
 
-from .core import glom, T, STOP, SKIP, Check, _MISSING, Path, TargetRegistry
+from itertools import chain
 
+from boltons.iterutils import split_iter
+
+from .core import glom, T, STOP, SKIP, Check, _MISSING, Path, TargetRegistry, Call
+from .reduction import Flatten
 
 """
 itertools to add:
@@ -54,12 +58,17 @@ class Iter(object):
     """
     def __init__(self, subspec=T, **kwargs):
         self.subspec = subspec if type(subspec) is tuple else (subspec,)
+        self._spec_stack = kwargs.pop('spec_stack', [])
+
         self.sentinel = kwargs.pop('sentinel', STOP)
         if kwargs:
             raise TypeError('unexpected keyword arguments: %r' % sorted(kwargs))
         return
 
     def glomit(self, target, scope):
+        for iter_spec in self._spec_stack:
+            target = scope[glom](target, iter_spec, scope)
+
         iterate = scope[TargetRegistry].get_handler('iterate', target, path=scope[Path])
         try:
             iterator = iterate(target)
@@ -90,9 +99,14 @@ class Iter(object):
     def windowed(self, subspec):
         return
 
+    def split(self, sep=None, maxsplit=None):
+        _split_iter = Call(split_iter, args=(T,), kwargs={'sep': sep, 'maxsplit': maxsplit})
+        # the sentinel is kind of meaningless here, but the intention is that it'll carry through for future chaining
+        return Iter(spec_stack=self._spec_stack + [_split_iter, self])
+
     def chain(self):
         # like sum but lazy, target presumed to be an iterable of iterables
-        return
+        return Iter(spec_stack=self._spec_stack + [Flatten(init='lazy')])  # Call(chain.from_iterable, args=(T,))])
 
 
 class Pipe(object):

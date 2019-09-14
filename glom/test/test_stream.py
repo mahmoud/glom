@@ -28,7 +28,6 @@ def test_iter():
 
 @pytest.mark.skip(reason='filter broken until _handle_tuple and SKIP interaction fixed')
 def test_filter():
-
     is_odd = lambda x: x % 2
     spec = Iter().filter(is_odd)
     out = glom(RANGE_5, spec)
@@ -39,3 +38,14 @@ def test_map():
     spec = Iter().map(lambda x: x * 2)
     out = glom(RANGE_5, spec)
     assert list(out) == [0, 2, 4, 6, 8]
+
+
+def test_split_chain():
+    falsey_stream = [1, None, None, 2, 3, None, 4]
+    spec = Iter().split()
+    out = glom(falsey_stream, spec)
+    assert list(out) == [[1], [2, 3], [4]]
+
+    spec = Iter().split().chain()
+    out = glom(falsey_stream, spec)
+    assert list(out) == [1, 2, 3, 4]
