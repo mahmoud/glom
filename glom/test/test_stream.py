@@ -33,6 +33,15 @@ def test_filter():
     out = glom(RANGE_5, spec)
     assert list(out) == [1, 3]
 
+    # let's just make sure we're actually streaming just in case
+    counter = count()
+    out = glom(counter, spec)
+    assert next(out) == 1
+    assert next(out) == 3
+    assert next(counter) == 4
+    assert next(counter) == 5
+    assert next(out) == 7
+
 
 def test_map():
     spec = Iter().map(lambda x: x * 2)
