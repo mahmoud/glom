@@ -1,7 +1,9 @@
 
 import pytest
 
-from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S
+from itertools import chain, dropwhile
+
+from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S, Partial
 import glom.core as glom_core
 from glom.core import Spec, UP  # probationary
 
@@ -201,6 +203,13 @@ def test_call_and_target():
     with pytest.raises(TypeError, match='expected func to be a callable or T'):
         Call(func=object())
     return
+
+
+def test_partial():
+    assert list(glom(range(10), Partial(dropwhile)(lambda x: x < 5)(T))) == (
+    [5, 6, 7, 8, 9])
+
+    assert list(glom([1, 2], Partial(chain, T, T))) == [1, 2, 1, 2]
 
 
 def test_spec_and_recursion():

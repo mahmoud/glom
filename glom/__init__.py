@@ -3,6 +3,7 @@ from glom.core import (glom,
                        register,
                        Glommer,
                        Call,
+                       Partial,
                        Spec,
                        OMIT,  # backwards compat
                        SKIP,
