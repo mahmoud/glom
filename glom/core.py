@@ -753,6 +753,40 @@ class Call(object):
         return '%s(%r, args=%r, kwargs=%r)' % (cn, self.func, self.args, self.kwargs)
 
 
+class Partial(object):
+    """
+    makes "upgrading" arbitrary python functions into
+    glom specs more convenient, so that itertools, toolz, et al
+    may be more easily integrated into streaming glom chains
+    """
+    def __init__(self, func, *a, **kw):
+        self.func = func
+        self.args = (a, kw)
+
+    def __call__(self, *a, **kw):
+        ret = Partial(self.func)
+        ret.args = self.args + (a, kw)
+        return ret
+
+    def glomit(self, target, scope):
+        all_args = []
+        all_kwargs = {}
+        recurse = lambda spec: scope[glom](target, spec, scope)
+        for i in range(len(self.args) // 2):
+            args = self.args[i * 2]
+            kwargs = self.args[i * 2 + 1]
+            if i % 2:
+                # odd arg-sets are literals
+                all_args.extend(args)
+                all_kwargs.update(kwargs)
+            else:
+                # even arg-sets are specs
+                all_args.extend([recurse(arg) for arg in args])
+                # TODO: detect "overwritten" kwargs and avoid computing
+                all_kwargs.update({k: recurse(v) for k, v in kwargs.items()})
+        return self.func(*all_args, **all_kwargs)
+
+
 class TType(object):
     """``T``, short for "target". A singleton object that enables
     object-oriented expression of a glom specification.
