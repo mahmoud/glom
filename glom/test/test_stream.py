@@ -132,6 +132,6 @@ def test_zip():
     assert list(out) == [(0, 0), (1, 1), (2, 2), (3, 2), (4, 3)]
 
     target = [1, 2, 3]
-    spec = Iter().zip(otherspec=Spec(reversed))
+    spec = Iter().zip(otherspec=Spec((reversed, list, T[:2])), fill=None)
     out = glom(target, spec)
-    assert list(out) == [(1, 3), (2, 2), (3, 1)]
+    assert list(out) == [(1, 3), (2, 2), (3, None)]

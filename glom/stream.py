@@ -11,7 +11,7 @@ try:
     from itertools import izip, izip_longest
 except ImportError:
     izip = zip  # py3
-    from itertools import zip_longest
+    from itertools import zip_longest as izip_longest
 
 from boltons.iterutils import split_iter, chunked_iter, windowed_iter, unique_iter
 
@@ -135,7 +135,7 @@ class Iter(object):
         _zip, kw = izip, {}
         if fill is not _MISSING:
             _zip = izip_longest
-            kw['fill'] = fill
+            kw['fillvalue'] = fill
         _zip_iter = Call(_zip, args=(spec, otherspec), kwargs=kw)
         return Iter(spec_stack=[_zip_iter, self])
 
