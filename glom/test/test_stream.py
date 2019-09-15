@@ -58,3 +58,15 @@ def test_split_chain():
     spec = Iter().split().chain()
     out = glom(falsey_stream, spec)
     assert list(out) == [1, 2, 3, 4]
+
+
+def test_chunked():
+    int_list = list(range(9))
+
+    spec = Iter().chunked(3)
+    out = glom(int_list, spec)
+    assert list(out) == [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
+
+    spec = Iter().chunked(3).map(sum)
+    out = glom(int_list, spec)
+    assert list(out) == [3, 12, 21]

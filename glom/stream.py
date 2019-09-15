@@ -8,7 +8,7 @@ from __future__ import unicode_literals
 
 from itertools import chain
 
-from boltons.iterutils import split_iter
+from boltons.iterutils import split_iter, chunked_iter, windowed_iter
 
 from .core import glom, T, STOP, SKIP, Check, _MISSING, Path, TargetRegistry, Call
 from .reduction import Flatten
@@ -65,7 +65,12 @@ class Iter(object):
             raise TypeError('unexpected keyword arguments: %r' % sorted(kwargs))
         return
 
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r, spec_stack=%r)' % (cn, self.subspec, self._spec_stack)
+
     def glomit(self, target, scope):
+        _orig_target = target
         for iter_spec in self._spec_stack:
             target = scope[glom](target, iter_spec, scope)
 
@@ -88,25 +93,31 @@ class Iter(object):
     def filter(self, subspec):
         # if falsey, skip
         # TODO: gotta fix handle_tuple and SKIP interaction if this is gonna work
-        return Iter(spec_stack=self._spec_stack + [Iter(Check(subspec, default=SKIP))])
+        return Iter(spec_stack=[self, Iter(Check(subspec, default=SKIP))])
 
     def map(self, subspec):
-        return Iter(spec_stack=self._spec_stack + [self, Iter(subspec)])
+        return Iter(subspec, spec_stack=[self])
 
-    def zip(self, subspec, otherspec, fill_value=_MISSING):
+    def zip(self, subspec, otherspec, fill=_MISSING):
         return
 
-    def windowed(self, subspec):
+    def chunked(self, size, fill=_MISSING):
+        kw = {'size': size}
+        if fill is not _MISSING:
+            kw['fill'] = fill
+        _chunked_iter = Call(chunked_iter, args=(T,), kwargs=kw)
+        return Iter(spec_stack=[self, _chunked_iter])
+
+    def windowed(self, size):
         return
 
     def split(self, sep=None, maxsplit=None):
         _split_iter = Call(split_iter, args=(T,), kwargs={'sep': sep, 'maxsplit': maxsplit})
-        # the sentinel is kind of meaningless here, but the intention is that it'll carry through for future chaining
-        return Iter(spec_stack=self._spec_stack + [_split_iter, self])
+        return Iter(spec_stack=[_split_iter, self])
 
     def chain(self):
         # like sum but lazy, target presumed to be an iterable of iterables
-        return Iter(spec_stack=self._spec_stack + [Flatten(init='lazy')])
+        return Iter(spec_stack=[self, Flatten(init='lazy')])
 
 
 class Pipe(object):
