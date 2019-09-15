@@ -7,6 +7,11 @@ from a file) without excessive memory usage.
 from __future__ import unicode_literals
 
 from itertools import islice
+try:
+    from itertools import izip, izip_longest
+except ImportError:
+    izip = zip  # py3
+    from itertools import zip_longest
 
 from boltons.iterutils import split_iter, chunked_iter, windowed_iter, unique_iter
 
@@ -126,9 +131,13 @@ class Iter(object):
     def limit(self, count):
         return self.slice(count)
 
-    def zip(self, subspec, otherspec, fill=_MISSING):
-        # TODO
-        return
+    def zip(self, spec=T, otherspec=T, fill=_MISSING):
+        _zip, kw = izip, {}
+        if fill is not _MISSING:
+            _zip = izip_longest
+            kw['fill'] = fill
+        _zip_iter = Call(_zip, args=(spec, otherspec), kwargs=kw)
+        return Iter(spec_stack=[_zip_iter, self])
 
 
 

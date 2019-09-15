@@ -4,7 +4,7 @@ import pytest
 from itertools import count, dropwhile, chain
 
 from ..stream import Iter, Partial
-from ..core import glom, SKIP, STOP, T
+from ..core import glom, SKIP, STOP, T, Call, Spec
 
 
 RANGE_5 = list(range(5))
@@ -119,3 +119,19 @@ def test_slice():
 
     out = glom(range(5), Iter().limit(10))
     assert list(out) == [0, 1, 2, 3, 4]
+
+
+def test_zip():
+    out = glom(range(3), Iter().zip())
+    assert list(out) == [(0, 0), (1, 1), (2, 2)]
+
+    out = glom(range(3), Iter().zip().chain())
+    assert list(out) == [0, 0, 1, 1, 2, 2]
+
+    out = glom(range(5), Iter().zip().map(lambda x: (x[0], x[1].bit_length())))
+    assert list(out) == [(0, 0), (1, 1), (2, 2), (3, 2), (4, 3)]
+
+    target = [1, 2, 3]
+    spec = Iter().zip(otherspec=Spec(reversed))
+    out = glom(target, spec)
+    assert list(out) == [(1, 3), (2, 2), (3, 1)]
