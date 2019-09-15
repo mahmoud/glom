@@ -6,9 +6,9 @@ from a file) without excessive memory usage.
 """
 from __future__ import unicode_literals
 
-from itertools import chain
+from itertools import islice
 
-from boltons.iterutils import split_iter, chunked_iter, windowed_iter
+from boltons.iterutils import split_iter, chunked_iter, windowed_iter, unique_iter
 
 from .core import glom, T, STOP, SKIP, Check, _MISSING, Path, TargetRegistry, Call
 from .reduction import Flatten
@@ -70,7 +70,6 @@ class Iter(object):
         return '%s(%r, spec_stack=%r)' % (cn, self.subspec, self._spec_stack)
 
     def glomit(self, target, scope):
-        _orig_target = target
         for iter_spec in self._spec_stack:
             target = scope[glom](target, iter_spec, scope)
 
@@ -91,15 +90,10 @@ class Iter(object):
         return
 
     def filter(self, subspec):
-        # if falsey, skip
-        # TODO: gotta fix handle_tuple and SKIP interaction if this is gonna work
         return Iter(spec_stack=[self, Iter(Check(subspec, default=SKIP))])
 
     def map(self, subspec):
         return Iter(subspec, spec_stack=[self])
-
-    def zip(self, subspec, otherspec, fill=_MISSING):
-        return
 
     def chunked(self, size, fill=_MISSING):
         kw = {'size': size}
@@ -109,7 +103,12 @@ class Iter(object):
         return Iter(spec_stack=[self, _chunked_iter])
 
     def windowed(self, size):
-        return
+        _windowed_iter = Call(windowed_iter, args=(T,), kwargs={'size': size})
+        return Iter(spec_stack=[self, _windowed_iter])
+
+    def unique(self, key=None):
+        _unique_iter = Call(unique_iter, args=(T,), kwargs={'key': key})
+        return Iter(spec_stack=[self, _unique_iter])
 
     def split(self, sep=None, maxsplit=None):
         _split_iter = Call(split_iter, args=(T,), kwargs={'sep': sep, 'maxsplit': maxsplit})
@@ -118,6 +117,19 @@ class Iter(object):
     def chain(self):
         # like sum but lazy, target presumed to be an iterable of iterables
         return Iter(spec_stack=[self, Flatten(init='lazy')])
+
+    def slice(self, *a):
+        # TODO: make a kwarg-compatible version of this (islice takes no kwargs)
+        _slice_iter = Call(islice, args=(T,) + a)
+        return Iter(spec_stack=[_slice_iter, self])
+
+    def limit(self, count):
+        return self.slice(count)
+
+    def zip(self, subspec, otherspec, fill=_MISSING):
+        # TODO
+        return
+
 
 
 class Pipe(object):

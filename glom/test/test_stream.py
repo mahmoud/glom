@@ -70,3 +70,52 @@ def test_chunked():
     spec = Iter().chunked(3).map(sum)
     out = glom(int_list, spec)
     assert list(out) == [3, 12, 21]
+
+
+def test_windowed():
+    int_list = list(range(5))
+
+    spec = Iter().windowed(3)
+    out = glom(int_list, spec)
+    assert list(out) == [(0, 1, 2), (1, 2, 3), (2, 3, 4)]
+
+    spec = spec.filter(lambda x: bool(x[0] % 2)).map(sum)
+    out = glom(int_list, spec)
+    assert next(out) == 6
+
+    out = glom(range(10), spec)
+    assert list(out) == [6, 12, 18, 24]
+
+
+def test_unique():
+    int_list = list(range(10))
+
+    spec = Iter().unique()
+    out = glom(int_list, spec)
+    assert list(out) == int_list
+
+    spec = Iter(lambda x: x % 4).unique()
+    out = glom(int_list, spec)
+    assert list(out) == int_list[:4]
+
+
+def test_slice():
+    cnt = count()
+
+    spec = Iter().slice(3)
+    out = glom(cnt, spec)
+
+    assert list(out) == [0, 1, 2]
+    assert next(cnt) == 3
+
+    out = glom(range(10), Iter().slice(1, 5))
+    assert list(out) == [1, 2, 3, 4]
+
+    out = glom(range(10), Iter().slice(1, 6, 2))
+    assert list(out) == [1, 3, 5]
+
+    out = glom(range(10), Iter().limit(3))
+    assert list(out) == [0, 1, 2]
+
+    out = glom(range(5), Iter().limit(10))
+    assert list(out) == [0, 1, 2, 3, 4]
