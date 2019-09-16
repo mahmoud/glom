@@ -6,8 +6,8 @@ from a file) without excessive memory usage.
 """
 from __future__ import unicode_literals
 
-from operator import not_
 from itertools import islice, dropwhile
+from functools import partial
 try:
     from itertools import izip, izip_longest
 except ImportError:
@@ -16,7 +16,7 @@ except ImportError:
 
 from boltons.iterutils import split_iter, chunked_iter, windowed_iter, unique_iter
 
-from .core import glom, T, STOP, SKIP, Check, _MISSING, Path, TargetRegistry, Call
+from .core import glom, T, STOP, SKIP, Check, _MISSING, Path, TargetRegistry, Call, Spec, S
 from .reduction import Flatten
 
 """
@@ -133,6 +133,11 @@ class Iter(object):
 
     def takewhile(self, subspec):
         return Iter(Check(subspec, default=STOP), spec_stack=[self])
+
+    def dropwhile(self, subspec):
+        spec_glom = Spec(Call(partial, args=(Spec(subspec).glom,), kwargs={'scope': S}))
+        _dropwhile_iter = Call(dropwhile, args=(spec_glom, T))
+        return Iter(spec_stack=[self, _dropwhile_iter])
 
     # dropwhile is hard because of the statefulness and the
     # requirement to return the first non-drop value. I'd recommend

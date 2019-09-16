@@ -142,3 +142,13 @@ def test_while():
     out = glom(cnt, Iter().takewhile(lambda x: x < 3))
     assert list(out) == [0, 1, 2]
     assert next(cnt) == 4
+
+    range_iter = iter(range(7))
+    out = glom(range_iter, Iter().dropwhile(lambda x: x < 3 or x > 5))
+    assert list(out) == [3, 4, 5, 6]  # 6 still here despite the x>5 above
+
+    out = glom(range(10), Iter().dropwhile(lambda x: x >= 0).limit(10))
+    assert list(out) == []
+
+    out = glom(range(8), Iter().dropwhile((T.bit_length(), lambda x: x < 3)))
+    assert list(out) == [4, 5, 6, 7]

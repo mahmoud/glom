@@ -475,8 +475,9 @@ class Spec(object):
     def glom(self, target, **kw):
         scope = dict(self.scope)
         scope.update(kw.get('scope', {}))
-        kw['scope'] = scope
-        return glom(target, self.spec, **kw)
+        kw['scope'] = ChainMap(scope)
+        glom_ = scope.get(glom, glom)
+        return glom_(target, self.spec, **kw)
 
     def glomit(self, target, scope):
         scope.update(self.scope)
