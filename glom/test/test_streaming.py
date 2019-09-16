@@ -3,8 +3,8 @@ import pytest
 
 from itertools import count, dropwhile, chain
 
-from ..stream import Iter, Partial
-from ..core import glom, SKIP, STOP, T, Call, Spec
+from glom import Iter
+from glom import glom, SKIP, STOP, T, Call, Spec
 
 
 RANGE_5 = list(range(5))
