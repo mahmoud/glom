@@ -6,7 +6,8 @@ from a file) without excessive memory usage.
 """
 from __future__ import unicode_literals
 
-from itertools import islice
+from operator import not_
+from itertools import islice, dropwhile
 try:
     from itertools import izip, izip_longest
 except ImportError:
@@ -20,15 +21,6 @@ from .reduction import Flatten
 
 """
 itertools to add:
-
-* filter
-* map
-* zip
-* takewhile / dropwhile
-* split
-* chunked
-* windowed
-* unique
 
 (Iter(T.items)
  .filter(T.is_activated)
@@ -94,11 +86,11 @@ class Iter(object):
             yield yld
         return
 
-    def filter(self, subspec):
-        return Iter(spec_stack=[self, Iter(Check(subspec, default=SKIP))])
-
     def map(self, subspec):
         return Iter(subspec, spec_stack=[self])
+
+    def filter(self, subspec):
+        return Iter(spec_stack=[self, Iter(Check(subspec, default=SKIP))])
 
     def chunked(self, size, fill=_MISSING):
         kw = {'size': size}
@@ -139,6 +131,13 @@ class Iter(object):
         _zip_iter = Call(_zip, args=(spec, otherspec), kwargs=kw)
         return Iter(spec_stack=[_zip_iter, self])
 
+    def takewhile(self, subspec):
+        return Iter(Check(subspec, default=STOP), spec_stack=[self])
+
+    # dropwhile is hard because of the statefulness and the
+    # requirement to return the first non-drop value. I'd recommend
+    # folks use the itertools dropwhile if they really need it for
+    # now.
 
 
 class Pipe(object):
