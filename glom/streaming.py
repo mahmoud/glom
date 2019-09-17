@@ -87,12 +87,39 @@ class Iter(object):
         return
 
     def map(self, subspec):
+        """Return a new Iter() spec which will apply the provided subspec to
+        each element of the iterable.
+
+        Because a spec can be a callable, this functions as the
+        equivalent of the built-in :func:`map` in Python 3, but with
+        the full power of glom specs.
+        """
         return Iter(subspec, spec_stack=[self])
 
     def filter(self, subspec):
+        """Return a new Iter() spec which will skip over elements matching the
+        given subspec.
+
+        Because a spec can be a callable, this functions as the
+        equivalent of the built-in :func:`filter` in Python 3, but with
+        the full power of glom specs.
+        """
+        # TODO: invert kwarg for itertools.filterfalse
         return Iter(spec_stack=[self, Iter(Check(subspec, default=SKIP))])
 
     def chunked(self, size, fill=_MISSING):
+        """Return a new Iter() spec which groups elements in the iterable
+        into lists of length *size*.
+
+        If the optional *fill* argument is provided, iterables not
+        evenly divisible by *size* will be padded out by the *fill*
+        constant. Otherwise, the final chunk will be shorter than *size*.
+
+        >>> list(glom(range(10), Iter().chunked(3)))
+        [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9]]
+        >>> list(glom(range(10), Iter().chunked(3, fill=None)))
+        [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9, None, None]]
+        """
         kw = {'size': size}
         if fill is not _MISSING:
             kw['fill'] = fill
@@ -100,11 +127,34 @@ class Iter(object):
         return Iter(spec_stack=[self, _chunked_iter])
 
     def windowed(self, size):
+        """Return a new Iter() spec which will yield a sliding window of
+        adjacent elements in the iterable. Each tuple yielded will be
+        of length *size*.
+
+        Useful for getting adjacent pairs and triples.
+
+        >>> list(glom(range(4), Iter().windowed(2)))
+        [(0, 1), (1, 2), (2, 3)]
+        """
         _windowed_iter = Call(windowed_iter, args=(T,), kwargs={'size': size})
         return Iter(spec_stack=[self, _windowed_iter])
 
-    def unique(self, key=None):
-        _unique_iter = Call(unique_iter, args=(T,), kwargs={'key': key})
+    def unique(self, subspec=None):
+        """Return a new Iter() spec which lazily filters out duplicate
+        values, i.e., only the first appearance of a value in a stream will
+        be yielded.
+
+        >>> target = list('gloMolIcious')
+        >>> out = list(glom(target, Iter().unique(T.lower())))
+        >>> ''.join(out)
+        u'gloMIcus'
+
+        """
+        if not subspec:
+            _unique_iter = Call(unique_iter, args=(T,))
+        else:
+            spec_glom = Spec(Call(partial, args=(Spec(subspec).glom,), kwargs={'scope': S}))
+            _unique_iter = Call(unique_iter, args=(T, spec_glom))
         return Iter(spec_stack=[self, _unique_iter])
 
     def split(self, sep=None, maxsplit=None):
