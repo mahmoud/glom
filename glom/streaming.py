@@ -6,7 +6,7 @@ from a file) without excessive memory usage.
 """
 from __future__ import unicode_literals
 
-from itertools import islice, dropwhile
+from itertools import islice, dropwhile, takewhile
 import inspect
 from functools import partial, wraps
 try:
@@ -100,7 +100,7 @@ class Iter(object):
         return iter(iterator)
 
     def _add_op(self, opname, args, callback):
-        return type(self)(_iter_stack=self._iter_stack + [(opname, args, callback)])
+        return type(self)(_iter_stack=[(opname, args, callback)] + self._iter_stack)
 
     def map(self, subspec):
         """Return a new Iter() spec which will apply the provided subspec to
@@ -194,14 +194,6 @@ class Iter(object):
         # like sum but lazy, target presumed to be an iterable of iterables
         return Iter(spec_stack=[self, Flatten(init='lazy')])
 
-    def slice(self, *a):
-        # TODO: make a kwarg-compatible version of this (islice takes no kwargs)
-        _slice_iter = Call(islice, args=(T,) + a)
-        return Iter(spec_stack=[_slice_iter, self])
-
-    def limit(self, count):
-        return self.slice(count)
-
     def zip(self, spec=T, otherspec=T, fill=_MISSING):
         _zip, kw = izip, {}
         if fill is not _MISSING:
@@ -209,14 +201,29 @@ class Iter(object):
             kw['fillvalue'] = fill
         _zip_iter = Call(_zip, args=(spec, otherspec), kwargs=kw)
         return Iter(spec_stack=[_zip_iter, self])
+    '''
+
+    def slice(self, *a):
+        # TODO: make a kwarg-compatible version of this (islice takes no kwargs)
+        try:
+            islice([], *a)
+        except TypeError:
+            raise TypeError('invalid slice arguments: %r' % (a,))
+        return self._add_op('slice', a, lambda it, scope: islice(it, *a))
+
+    def limit(self, count):
+        return self.slice(count)
 
     def takewhile(self, subspec):
-        return Iter(Check(subspec, default=STOP), spec_stack=[self])
-    '''
+        return self._add_op(
+            'takewhile',
+            (subspec,),
+            lambda it, scope: takewhile(
+                lambda t: scope[glom](t, subspec, scope), it))
 
     def dropwhile(self, subspec):
         return self._add_op(
             'dropwhile',
             (subspec,),
             lambda it, scope: dropwhile(
-                lambda t: scope[glom](t, subspec, scope)), it)
+                lambda t: scope[glom](t, subspec, scope), it))
