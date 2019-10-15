@@ -77,13 +77,15 @@ class Iter(object):
             arg_names, _, _, _ = inspect.getargspec(meth)
             arg_names = arg_names[1:]  # get rid of self
             # TODO: something fancier with defaults:
-            if len(arg_names) == 1:
+            chunks.append("." + fname)
+            if len(args) == 0:
+                chunks.append("()")
+            elif len(arg_names) == 1:
                 assert len(args) == 1
-                chunks.append('.{}({!r})'.format(fname, args[0]))
+                chunks.append('({!r})'.format(args[0]))
             else:
-                chunks.append('.{}({})'.format(
-                    fname, ", ".join([
-                        '{}={!r}'.format(name, val) for name, val in zip(arg_names, args)])))
+                chunks.append('({})'.format(", ".join([
+                    '{}={!r}'.format(name, val) for name, val in zip(arg_names, args)])))
         return ''.join(chunks)
 
     def glomit(self, target, scope):
