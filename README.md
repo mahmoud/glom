@@ -58,7 +58,7 @@ ramp up.
 
 ## Examples
 #### Without glom
-```
+```python
 >>> data = {'a': {'b': {'c': 'd'}}}
 >>> data['a']['b']['c']
 'd'
@@ -70,7 +70,7 @@ TypeError: 'NoneType' object is not subscriptable
 ```
 
 #### With glom
-```
+```python
 >>> glom(data, 'a.b.c')
 'd'
 >>> glom(data2, 'a.b.c')
