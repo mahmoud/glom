@@ -7,11 +7,14 @@ from a file) without excessive memory usage.
 from __future__ import unicode_literals
 
 from itertools import islice, dropwhile
-from functools import partial
+import inspect
+from functools import partial, wraps
 try:
-    from itertools import izip, izip_longest
+    from itertools import izip, izip_longest, imap
 except ImportError:
     izip = zip  # py3
+    imap = map
+    ifilter = filter
     from itertools import zip_longest as izip_longest
 
 from boltons.iterutils import split_iter, chunked_iter, windowed_iter, unique_iter
@@ -55,7 +58,7 @@ class Iter(object):
     """
     def __init__(self, subspec=T, **kwargs):
         self.subspec = subspec
-        self._spec_stack = kwargs.pop('spec_stack', [])
+        self._iter_stack = kwargs.pop('_iter_stack', [])
 
         self.sentinel = kwargs.pop('sentinel', STOP)
         if kwargs:
@@ -64,12 +67,26 @@ class Iter(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r, spec_stack=%r)' % (cn, self.subspec, self._spec_stack)
+        chunks = [self.__class__.__name__]
+        if self.subspec != T:
+            chunks.append('({!r})'.format(self.subspec))
+        else:
+            chunks.append('()')
+        for fname, args, callback in reversed(self._iter_stack):
+            meth = getattr(self, fname)
+            arg_names, _, _, _ = inspect.getargspec(meth)
+            arg_names = arg_names[1:]  # get rid of self
+            # TODO: something fancier with defaults:
+            if len(arg_names) == 1:
+                assert len(args) == 1
+                chunks.append('.{}({!r})'.format(fname, args[0]))
+            else:
+                chunks.append('.{}({})'.format(
+                    fname, ", ".join([
+                        '{}={!r}'.format(name, val) for name, val in zip(arg_names, args)])))
+        return ''.join(chunks)
 
     def glomit(self, target, scope):
-        for iter_spec in self._spec_stack:
-            target = scope[glom](target, iter_spec, scope)
-
         iterate = scope[TargetRegistry].get_handler('iterate', target, path=scope[Path])
         try:
             iterator = iterate(target)
@@ -77,14 +94,13 @@ class Iter(object):
             raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
                             % (target.__class__.__name__, Path(*scope[Path]), e))
 
-        for i, sub in enumerate(iterator):
-            yld = scope[glom](sub, self.subspec, scope.new_child({Path: scope[Path] + [i]}))
-            if yld is SKIP:
-                continue
-            elif yld is STOP:
-                return
-            yield yld
-        return
+        for fname, args, callback in reversed(self._iter_stack):
+            iterator = callback(iterator, scope)
+
+        return iter(iterator)
+
+    def _add_op(self, opname, args, callback):
+        return type(self)(_iter_stack=self._iter_stack + [(opname, args, callback)])
 
     def map(self, subspec):
         """Return a new Iter() spec which will apply the provided subspec to
@@ -94,10 +110,16 @@ class Iter(object):
         equivalent of the built-in :func:`map` in Python 3, but with
         the full power of glom specs.
         """
-        return Iter(subspec, spec_stack=[self])
+        # whatever validation you want goes here
+        # TODO: DRY the self._add_op with a decorator?
+        return self._add_op(
+            'map',
+            (subspec,),
+            lambda iterable, scope: imap(
+                lambda t: scope[glom](t, subspec, scope), iterable))
 
     def filter(self, subspec):
-        """Return a new Iter() spec which will skip over elements matching the
+        """Return a new Iter() spec which will include only elements matching the
         given subspec.
 
         Because a spec can be a callable, this functions as the
@@ -105,7 +127,11 @@ class Iter(object):
         the full power of glom specs.
         """
         # TODO: invert kwarg for itertools.filterfalse
-        return Iter(spec_stack=[self, Iter(Check(subspec, default=SKIP))])
+        return self._add_op(
+            'filter',
+            (subspec,),
+            lambda iterable, scope: ifilter(
+                lambda t: scope[glom](t, Check(spec, default=SKIP), scope), iterable))
 
     def chunked(self, size, fill=_MISSING):
         """Return a new Iter() spec which groups elements in the iterable
@@ -121,11 +147,14 @@ class Iter(object):
         [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9, None, None]]
         """
         kw = {'size': size}
+        args = size,
         if fill is not _MISSING:
             kw['fill'] = fill
-        _chunked_iter = Call(chunked_iter, args=(T,), kwargs=kw)
-        return Iter(spec_stack=[self, _chunked_iter])
+            args += (fill,)
+        return self._add_op(
+            'chunked', args, lambda it, scope: chunked_iter(it, **kw))
 
+    '''  # TODO: port over to new pattern
     def windowed(self, size):
         """Return a new Iter() spec which will yield a sliding window of
         adjacent elements in the iterable. Each tuple yielded will be
@@ -183,14 +212,11 @@ class Iter(object):
 
     def takewhile(self, subspec):
         return Iter(Check(subspec, default=STOP), spec_stack=[self])
+    '''
 
     def dropwhile(self, subspec):
-        spec_glom = Spec(Call(partial, args=(Spec(subspec).glom,), kwargs={'scope': S}))
-        _dropwhile_iter = Call(dropwhile, args=(spec_glom, T))
-        return Iter(spec_stack=[self, _dropwhile_iter])
-
-
-class Pipe(object):
-    # Iter is the streaming dual of []
-    # Pipe is the streaming dual of ()
-    pass
+        return self._add_op(
+            'dropwhile',
+            (subspec,),
+            lambda it, scope: dropwhile(
+                lambda t: scope[glom](t, subspec, scope)), it)
