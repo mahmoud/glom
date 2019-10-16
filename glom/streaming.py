@@ -195,6 +195,31 @@ class Iter(object):
             lambda it, scope: unique_iter(it, key=lambda t: scope[glom](t, subspec, scope)))
 
     def split(self, sep=None, maxsplit=None):
+        """Return a new Iter() spec which will lazily split an iterable based
+        on a separator (or list of separators), *sep*. Like
+        :meth:`str.split()`, but for all iterables.
+
+        ``split_iter()`` yields lists of non-separator values. A separator will
+        never appear in the output.
+
+        >>> target = [1, 2, None, None, 3, None, 4, None]
+        >>> list(glom(target, Iter().split()))
+        [[1, 2], [3], [4]]
+
+        Note that ``split_iter`` is based on :func:`str.split`, so if
+        *sep* is ``None``, ``split()`` **groups** separators. If empty lists
+        are desired between two contiguous ``None`` values, simply use
+        ``sep=[None]``:
+
+        >>> list(glom(target, Iter().split(sep=[None])))
+        [[1, 2], [], [3], [4], []]
+
+        A max number of splits may also be set:
+
+        >>> list(glom(target, Iter().split(maxsplit=2)))
+        [[1, 2], [3], [4, None]]
+
+        """
         return self._add_op(
             'split',
             (sep, maxsplit),
@@ -230,6 +255,8 @@ class Iter(object):
             (subspec,),
             lambda it, scope: dropwhile(
                 lambda t: scope[glom](t, subspec, scope), it))
+
+    # Terminal methods follow
 
     def all(self):
         return (self, list)
