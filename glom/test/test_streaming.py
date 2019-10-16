@@ -172,3 +172,28 @@ def test_faulty_iterate():
 
     with pytest.raises(TypeError):
         glommer.glom('abc', (Iter(), list))
+
+
+def test_first():
+    spec = Iter().first(T.imag)
+
+    target = iter([1, 2, 3j, 4])
+    out = glom(target, spec)
+    assert out == 3j
+    assert next(target) == 4
+    assert repr(spec) == '(Iter(), First(T.imag))'
+
+    spec = Iter().first(T.imag, default=0)
+    target = iter([1, 2, 4])
+    out = glom(target, spec)
+    assert out == 0
+    assert repr(spec) == '(Iter(), First(T.imag, default=0))'
+
+
+def test_all():
+    int_iter = iter(range(10))
+
+    out = glom(int_iter, Iter().all())
+    assert out == list(range(10))
+    assert next(int_iter, None) is None
+    assert repr(Iter().all()) == repr((Iter(), list))

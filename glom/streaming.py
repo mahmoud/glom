@@ -17,7 +17,7 @@ except ImportError:
     ifilter = filter
     from itertools import zip_longest as izip_longest
 
-from boltons.iterutils import split_iter, chunked_iter, windowed_iter, unique_iter
+from boltons.iterutils import split_iter, chunked_iter, windowed_iter, unique_iter, first, one
 
 from .core import glom, T, STOP, SKIP, Check, _MISSING, Path, TargetRegistry, Call, Spec, S
 from .reduction import Flatten
@@ -62,13 +62,12 @@ class Iter(object):
         return
 
     def __repr__(self):
-        cn = self.__class__.__name__
         chunks = [self.__class__.__name__]
         if self.subspec != T:
             chunks.append('({!r})'.format(self.subspec))
         else:
             chunks.append('()')
-        for fname, args, callback in reversed(self._iter_stack):
+        for fname, args, _ in reversed(self._iter_stack):
             meth = getattr(self, fname)
             arg_names, _, _, _ = inspect.getargspec(meth)
             arg_names = arg_names[1:]  # get rid of self
@@ -90,7 +89,7 @@ class Iter(object):
     def glomit(self, target, scope):
         iterator = self._iterate(target, scope)
 
-        for fname, args, callback in reversed(self._iter_stack):
+        for _, _, callback in reversed(self._iter_stack):
             iterator = callback(iterator, scope)
 
         return iter(iterator)
@@ -231,3 +230,29 @@ class Iter(object):
             (subspec,),
             lambda it, scope: dropwhile(
                 lambda t: scope[glom](t, subspec, scope), it))
+
+    def all(self):
+        return (self, list)
+
+    def first(self, spec=T, default=None):
+        return (self, First(spec=spec, default=default))
+
+
+class First(object):
+    __slots__ = ('_spec', '_default', '_first')
+
+    def __init__(self, spec=T, default=None):
+        self._spec = spec
+        self._default = default
+
+        spec_glom = Spec(Call(partial, args=(Spec(spec).glom,), kwargs={'scope': S}))
+        self._first = Call(first, args=(T,), kwargs={'default': default, 'key': spec_glom})
+
+    def glomit(self, target, scope):
+        return self._first.glomit(target, scope)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        if self._default is None:
+            return '%s(%r)' % (cn, self._spec)
+        return '%s(%r, default=%r)' % (cn, self._spec, self._default)
