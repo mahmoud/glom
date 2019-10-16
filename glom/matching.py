@@ -27,7 +27,7 @@ import sys
 
 from boltons.typeutils import make_sentinel
 
-from .core import GlomError, glom, T, Spec
+from .core import GlomError, glom, T, Spec, MODE
 
 
 # NOTE: it is important that GlomMatchErrors be cheap to construct,
@@ -54,7 +54,7 @@ class Match(object):
         self.spec = spec
 
     def glomit(self, target, scope):
-        scope[glom] = _glom_match
+        scope[MODE] = _glom_match
         return scope[glom](target, self.spec, scope)
 
 
@@ -208,11 +208,11 @@ def _handle_dict(target, spec, scope):
     for key, val in target.items():
         for spec_key in spec_keys:
             try:
-                _glom_match(key, spec_key, scope)
+                scope[glom](key, spec_key, scope)
             except GlomMatchError:
                 pass
             else:
-                _glom_match(val, spec[spec_key], scope)
+                scope[glom](val, spec[spec_key], scope)
                 break
         else:
             raise GlomMatchError("key {!r} didn't match any of {!r}", key, spec_keys)
@@ -220,13 +220,7 @@ def _handle_dict(target, spec, scope):
 
 
 def _glom_match(target, spec, scope):
-    scope = scope.new_child()
-    scope[T] = target
-    scope[Spec] = spec
-
-    if callable(getattr(spec, 'glomit', None)):
-        return spec.glomit(target, scope)
-    elif isinstance(spec, type):
+    if isinstance(spec, type):
         if not isinstance(target, spec):
             raise GlomTypeMatchError(type(target), spec)
     elif isinstance(spec, dict):
@@ -237,7 +231,7 @@ def _glom_match(target, spec, scope):
         for item in target:
             for child in spec:
                 try:
-                    _glom_match(item, child, scope)
+                    scope[glom](item, child, scope)
                     break
                 except GlomMatchError as e:
                     last_error = e
@@ -255,7 +249,7 @@ def _glom_match(target, spec, scope):
         if len(target) != len(spec):
             raise GlomMatchError("{!r} does not match {!r}", target, spec)
         for sub_target, sub_spec in zip(target, spec):
-            _glom_match(sub_target, sub_spec, scope)
+            scope[glom](sub_target, sub_spec, scope)
         return target
     if isinstance(spec, type):
         if not isinstance(target, spec):

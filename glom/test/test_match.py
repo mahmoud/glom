@@ -69,17 +69,22 @@ def test_pattern_matching():
     assert glom(1, pattern_matcher) == 'one'
     assert glom(1.1, pattern_matcher) == 'float'
     pattern_matcher = (
-        M & Match({'one': 1, 'two': V.two}) & S[V].two |
+        M & Match({'one': 1, 'two': V(two=T) }) & V.two |
         Literal("default"))
     assert glom(
         {'one': 1, 'two': [1, 2, 3]}, pattern_matcher) == [1, 2, 3]
     assert glom('nomatch', pattern_matcher) == "default"
+    assert glom({'one': 1}, pattern_matcher) == "default"
 
     # obligatory fibonacci
 
     fib = (M > 2) & (lambda n: glom(n - 1, fib) + glom(n - 2, fib)) | T
 
     assert glom(5, fib) == 8
+
+
+def test_capture():
+    assert glom('a', (V(a=T), V.a)) == 'a'
 
 
 def test_examples():

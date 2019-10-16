@@ -80,6 +80,8 @@ execution of a tuple of subspecs.
 [0, 1, 2, 3, 4]
 """
 
+MODE =  make_sentinel('MODE')
+
 
 class GlomError(Exception):
     """The base exception for all the errors that might be raised from
@@ -1133,31 +1135,33 @@ class Check(object):
         return ret
 
 
-class Capture(object):
-    """
-    Capture the current target into a variable
-    for use later.
-
-    They can be referenced via S[V].name
-
-    Variables have a global scope within a glom spec,
-    to avoid the problem of how to specify lifetime
-    of a captured variable for now
-    """
-    def __init__(self, name):
-        self.name = name
+class _Capture(object):
+    def __init__(self, kwargs):
+        self.kwargs = kwargs
 
     def glomit(self, target, scope):
-        setattr(scope[V], self.name, target)
+        for key, subspec in self.kwargs.items():
+            setattr(scope[V], key, scope[glom](target, subspec, scope))
         return target
 
 
-class VType(object):
+class _VType(object):
     def __getattr__(self, name):
-        return Capture(name)
+        return getattr(S[V], name)
+
+    def __call__(self, **kwargs):
+        """
+        Capture the current target into a variable
+        for use later.
+
+        Variables have a global scope within a glom spec,
+        to avoid the problem of how to specify lifetime
+        of a captured variable for now
+        """
+        return _Capture(kwargs)
 
 
-V = VType()
+V = _VType()
 
 
 class _CapturedVars(object):
@@ -1494,12 +1498,13 @@ def glom(target, spec, **kwargs):
         Path: kwargs.pop('path', []),
         Inspect: kwargs.pop('inspector', None),
         V: _CapturedVars(kwargs.get('vars', {})),
+        MODE: _glom_build,
     })
     scope.update(kwargs.pop('scope', {}))
     if kwargs:
         raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
     try:
-        ret = _glom_build(target, spec, scope)
+        ret = _glom(target, spec, scope)
     except skip_exc:
         if default is _MISSING:
             raise
@@ -1507,7 +1512,7 @@ def glom(target, spec, **kwargs):
     return ret
 
 
-def _glom_build(target, spec, scope):
+def _glom(target, spec, scope):
     scope = scope.new_child()
     scope[T] = target
     scope[Spec] = spec
@@ -1516,7 +1521,12 @@ def _glom_build(target, spec, scope):
         return _t_eval(target, spec, scope)
     elif callable(getattr(spec, 'glomit', None)):
         return spec.glomit(target, scope)
-    elif isinstance(spec, dict):
+
+    return scope[MODE](target, spec, scope)
+
+
+def _glom_build(target, spec, scope):
+    if isinstance(spec, dict):
         return _handle_dict(target, spec, scope)
     elif isinstance(spec, list):
         return _handle_list(target, spec, scope)
@@ -1532,7 +1542,7 @@ def _glom_build(target, spec, scope):
 
 
 _DEFAULT_SCOPE.update({
-    glom: _glom_build,
+    glom: _glom,
     TargetRegistry: TargetRegistry(register_default_types=True),
 })
 
