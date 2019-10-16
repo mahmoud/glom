@@ -10,7 +10,7 @@ from itertools import islice, dropwhile, takewhile, chain
 import inspect
 from functools import partial, wraps
 try:
-    from itertools import izip, izip_longest, imap
+    from itertools import izip, izip_longest, imap, ifilter
 except ImportError:
     izip = zip  # py3
     imap = map
@@ -84,7 +84,7 @@ class Iter(object):
                     '{}={!r}'.format(name, val) for name, val in zip(arg_names, args)])))
         return ''.join(chunks)
 
-    def glomit(self, target, scope):
+    def _iterate(self, target, scope):
         iterate = scope[TargetRegistry].get_handler('iterate', target, path=scope[Path])
         try:
             iterator = iterate(target)
@@ -92,13 +92,25 @@ class Iter(object):
             raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
                             % (target.__class__.__name__, Path(*scope[Path]), e))
 
+        for t in iterator:
+            yld = scope[glom](t, self.subspec, scope) if self.subspec is not T else t
+            if yld is SKIP:
+                continue
+            elif yld is STOP:
+                return
+            yield yld
+        return
+
+    def glomit(self, target, scope):
+        iterator = self._iterate(target, scope)
+
         for fname, args, callback in reversed(self._iter_stack):
             iterator = callback(iterator, scope)
 
         return iter(iterator)
 
     def _add_op(self, opname, args, callback):
-        return type(self)(_iter_stack=[(opname, args, callback)] + self._iter_stack)
+        return type(self)(subspec=self.subspec, _iter_stack=[(opname, args, callback)] + self._iter_stack)
 
     def map(self, subspec):
         """Return a new Iter() spec which will apply the provided subspec to
@@ -129,7 +141,7 @@ class Iter(object):
             'filter',
             (subspec,),
             lambda iterable, scope: ifilter(
-                lambda t: scope[glom](t, Check(spec, default=SKIP), scope), iterable))
+                lambda t: scope[glom](t, Check(subspec, default=SKIP), scope), iterable))
 
     def chunked(self, size, fill=_MISSING):
         """Return a new Iter() spec which groups elements in the iterable
@@ -152,7 +164,6 @@ class Iter(object):
         return self._add_op(
             'chunked', args, lambda it, scope: chunked_iter(it, **kw))
 
-    '''  # TODO: port over to new pattern
     def windowed(self, size):
         """Return a new Iter() spec which will yield a sliding window of
         adjacent elements in the iterable. Each tuple yielded will be
@@ -163,28 +174,23 @@ class Iter(object):
         >>> list(glom(range(4), Iter().windowed(2)))
         [(0, 1), (1, 2), (2, 3)]
         """
-        _windowed_iter = Call(windowed_iter, args=(T,), kwargs={'size': size})
-        return Iter(spec_stack=[self, _windowed_iter])
+        return self._add_op(
+            'windowed', (size,), lambda it, scope: windowed_iter(it, size))
 
-    def unique(self, subspec=None):
+    def unique(self, subspec=T):
         """Return a new Iter() spec which lazily filters out duplicate
         values, i.e., only the first appearance of a value in a stream will
         be yielded.
 
         >>> target = list('gloMolIcious')
         >>> out = list(glom(target, Iter().unique(T.lower())))
-        >>> ''.join(out)
-        u'gloMIcus'
-
+        >>> print(''.join(out))
+        gloMIcus
         """
-        if not subspec:
-            _unique_iter = Call(unique_iter, args=(T,))
-        else:
-            spec_glom = Spec(Call(partial, args=(Spec(subspec).glom,), kwargs={'scope': S}))
-            _unique_iter = Call(unique_iter, args=(T, spec_glom))
-        return Iter(spec_stack=[self, _unique_iter])
-
-    '''
+        return self._add_op(
+            'unique',
+            (subspec,),
+            lambda it, scope: unique_iter(it, key=lambda t: scope[glom](t, subspec, scope)))
 
     def split(self, sep=None, maxsplit=None):
         return self._add_op(
@@ -198,8 +204,6 @@ class Iter(object):
             'chain',
             (),
             lambda it, scope: chain.from_iterable(it))
-
-        return Iter(spec_stack=[self, Flatten(init='lazy')])
 
     def slice(self, *a):
         # TODO: make a kwarg-compatible version of this (islice takes no kwargs)
