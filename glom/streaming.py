@@ -79,10 +79,21 @@ class Iter(object):
             elif len(arg_names) == 1:
                 assert len(args) == 1
                 chunks.append('({!r})'.format(args[0]))
-            else:
+            elif arg_names:
                 chunks.append('({})'.format(", ".join([
                     '{}={!r}'.format(name, val) for name, val in zip(arg_names, args)])))
+            else:
+                # p much just slice bc no kwargs
+                chunks.append('({})'.format(", ".join(['%s' % a for a in args])))
         return ''.join(chunks)
+
+    def glomit(self, target, scope):
+        iterator = self._iterate(target, scope)
+
+        for fname, args, callback in reversed(self._iter_stack):
+            iterator = callback(iterator, scope)
+
+        return iter(iterator)
 
     def _iterate(self, target, scope):
         iterate = scope[TargetRegistry].get_handler('iterate', target, path=scope[Path])
@@ -100,14 +111,6 @@ class Iter(object):
                 return
             yield yld
         return
-
-    def glomit(self, target, scope):
-        iterator = self._iterate(target, scope)
-
-        for fname, args, callback in reversed(self._iter_stack):
-            iterator = callback(iterator, scope)
-
-        return iter(iterator)
 
     def _add_op(self, opname, args, callback):
         return type(self)(subspec=self.subspec, _iter_stack=[(opname, args, callback)] + self._iter_stack)
@@ -198,20 +201,19 @@ class Iter(object):
             (sep, maxsplit),
             lambda it, scope: split_iter(it, sep=sep, maxsplit=maxsplit))
 
-    def chain(self):
-        # like sum but lazy, target presumed to be an iterable of iterables
+    def flatten(self):
         return self._add_op(
-            'chain',
+            'flatten',
             (),
             lambda it, scope: chain.from_iterable(it))
 
-    def slice(self, *a):
+    def slice(self, *args):
         # TODO: make a kwarg-compatible version of this (islice takes no kwargs)
         try:
-            islice([], *a)
+            islice([], *args)
         except TypeError:
-            raise TypeError('invalid slice arguments: %r' % (a,))
-        return self._add_op('slice', a, lambda it, scope: islice(it, *a))
+            raise TypeError('invalid slice arguments: %r' % (args,))
+        return self._add_op('slice', args, lambda it, scope: islice(it, *args))
 
     def limit(self, count):
         return self._add_op('limit', (count,), lambda it, scope: islice(it, count))

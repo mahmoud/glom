@@ -4,7 +4,7 @@ import pytest
 from itertools import count, dropwhile, chain
 
 from glom import Iter
-from glom import glom, SKIP, STOP, T, Call, Spec
+from glom import glom, SKIP, STOP, T, Call, Spec, Glommer
 
 
 RANGE_5 = list(range(5))
@@ -26,7 +26,6 @@ def test_iter():
         Iter(nonexistent_kwarg=True)
 
 
-# @pytest.mark.skip(reason='filter broken until _handle_tuple and SKIP interaction fixed')
 def test_filter():
     is_odd = lambda x: x % 2
     spec = Iter().filter(is_odd)
@@ -42,22 +41,28 @@ def test_filter():
     assert next(counter) == 5
     assert next(out) == 7
 
+    assert repr(Iter().filter(T.a.b)).startswith('Iter().filter(T.a.b)')
+
 
 def test_map():
     spec = Iter().map(lambda x: x * 2)
     out = glom(RANGE_5, spec)
     assert list(out) == [0, 2, 4, 6, 8]
+    assert repr(Iter().map(T.a.b)).startswith('Iter().map(T.a.b)')
 
 
-def test_split_chain():
+def test_split_flatten():
     falsey_stream = [1, None, None, 2, 3, None, 4]
     spec = Iter().split()
     out = glom(falsey_stream, spec)
     assert list(out) == [[1], [2, 3], [4]]
 
-    spec = Iter().split().chain()
+    spec = Iter().split().flatten()
     out = glom(falsey_stream, spec)
     assert list(out) == [1, 2, 3, 4]
+
+    assert repr(Iter().split(sep=None, maxsplit=2)) == 'Iter().split(sep=None, maxsplit=2)'
+    assert repr(Iter(T.a.b[1]).flatten()) == 'Iter(T.a.b[1]).flatten()'
 
 
 def test_chunked():
@@ -78,6 +83,7 @@ def test_windowed():
     spec = Iter().windowed(3)
     out = glom(int_list, spec)
     assert list(out) == [(0, 1, 2), (1, 2, 3), (2, 3, 4)]
+    assert repr(spec) == 'Iter().windowed(3)'
 
     spec = spec.filter(lambda x: bool(x[0] % 2)).map(sum)
     out = glom(int_list, spec)
@@ -97,6 +103,7 @@ def test_unique():
     spec = Iter(lambda x: x % 4).unique()
     out = glom(int_list, spec)
     assert list(out) == int_list[:4]
+    assert repr(Iter().unique(T.a)) == 'Iter().unique(T.a)'
 
 
 def test_slice():
@@ -113,12 +120,18 @@ def test_slice():
 
     out = glom(range(10), Iter().slice(1, 6, 2))
     assert list(out) == [1, 3, 5]
+    assert repr(Iter().slice(1, 6, 2)) == 'Iter().slice(1, 6, 2)'
 
     out = glom(range(10), Iter().limit(3))
     assert list(out) == [0, 1, 2]
+    assert repr(Iter().limit(3)) == 'Iter().limit(3)'
 
     out = glom(range(5), Iter().limit(10))
     assert list(out) == [0, 1, 2, 3, 4]
+
+    # test broken args
+    with pytest.raises(TypeError):
+        Iter().slice(1, 2, 3, 4)
 
 
 def test_while():
@@ -126,6 +139,7 @@ def test_while():
     out = glom(cnt, Iter().takewhile(lambda x: x < 3))
     assert list(out) == [0, 1, 2]
     assert next(cnt) == 4
+    assert repr(Iter().takewhile(T.a) == 'Iter().takewhile(T.a)')
 
     range_iter = iter(range(7))
     out = glom(range_iter, Iter().dropwhile(lambda x: x < 3 or x > 5))
@@ -136,3 +150,25 @@ def test_while():
 
     out = glom(range(8), Iter().dropwhile((T.bit_length(), lambda x: x < 3)))
     assert list(out) == [4, 5, 6, 7]
+    assert repr(Iter().dropwhile(T.a) == 'Iter().dropwhile(T.a)')
+
+
+def test_iter_composition():
+    int_list = list(range(10))
+    out = glom(int_list, (Iter(), Iter(), list))
+    assert out == int_list
+
+    out = glom([int_list] * 3, Iter(Iter(lambda x: x % 4)).flatten().unique())
+    assert list(out) == [0, 1, 2, 3]
+
+
+def test_faulty_iterate():
+    glommer = Glommer()
+
+    def bad_iter(obj):
+        raise RuntimeError('oops')
+
+    glommer.register(str, iterate=bad_iter)
+
+    with pytest.raises(TypeError):
+        glommer.glom('abc', (Iter(), list))
