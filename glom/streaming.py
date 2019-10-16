@@ -8,7 +8,7 @@ from __future__ import unicode_literals
 
 from itertools import islice, dropwhile, takewhile, chain
 import inspect
-from functools import partial, wraps
+from functools import partial
 try:
     from itertools import izip, izip_longest, imap, ifilter
 except ImportError:
@@ -20,17 +20,7 @@ except ImportError:
 from boltons.iterutils import split_iter, chunked_iter, windowed_iter, unique_iter, first, one
 
 from .core import glom, T, STOP, SKIP, Check, _MISSING, Path, TargetRegistry, Call, Spec, S
-from .reduction import Flatten
 
-"""
-(Iter(T.items)
- .filter(T.is_activated)
- .map(fetch_from_db))
-
-(Iter((T.items, Check(T.is_activated, default=SKIP), fetch_from_db)))
-
-# should there be a .first() or something?
-"""
 
 class Iter(object):
     """``Iter()`` is glom's counterpart to the built-in :func:`iter()`
@@ -226,12 +216,30 @@ class Iter(object):
             lambda it, scope: split_iter(it, sep=sep, maxsplit=maxsplit))
 
     def flatten(self):
+        """Returns a new Iter() instance which combines iterables into a
+        single iterable.
+
+        >>> target = [[1, 2], [3, 4], [5]]
+        >>> list(glom(target, Iter().flatten()))
+        [1, 2, 3, 4, 5]
+        """
         return self._add_op(
             'flatten',
             (),
             lambda it, scope: chain.from_iterable(it))
 
     def slice(self, *args):
+        """
+        Returns a new Iter() spec which trims iterables.
+
+        >>> target = [0, 1, 2, 3, 4, 5]
+        >>> glom(target, Iter().slice(3).all())
+        [0, 1, 2]
+        >>> glom(target, Iter().slice(2, 4).all())
+        [2, 3]
+
+        For more info, see :func:`itertools.islice`.
+        """
         # TODO: make a kwarg-compatible version of this (islice takes no kwargs)
         try:
             islice([], *args)
@@ -240,6 +248,9 @@ class Iter(object):
         return self._add_op('slice', args, lambda it, scope: islice(it, *args))
 
     def limit(self, count):
+        """A convenient alias for :meth:`~Iter.slice`, which takes a single
+        argument, *count*, the max number of items to yield.
+        """
         return self._add_op('limit', (count,), lambda it, scope: islice(it, count))
 
     def takewhile(self, subspec):
@@ -259,9 +270,26 @@ class Iter(object):
     # Terminal methods follow
 
     def all(self):
+        """A convenience method for turning an iterable into a list. Note that
+        this always consumes the whole iterable, and as such, does
+        *not* return a new Iter() instance.
+        """
         return (self, list)
 
     def first(self, spec=T, default=None):
+        """A convenience method for lazily yielding a single truthy item from
+        an iterable. As this spec yields at most one item, and not an
+        iterable, the return value of this method is not a new Iter()
+        instance.
+
+        >>> target = [False, 1, 2, 3]
+        >>> glom(target, Iter().first())
+        1
+
+        """
+        # TODO: the spec part of first could be implemented with
+        # self.filter?  and key may need to revert to being a plain
+        # callable in order to support doing non-truthy returns
         return (self, First(spec=spec, default=default))
 
 
