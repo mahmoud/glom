@@ -121,22 +121,6 @@ def test_slice():
     assert list(out) == [0, 1, 2, 3, 4]
 
 
-def test_zip():
-    out = glom(range(3), Iter().zip())
-    assert list(out) == [(0, 0), (1, 1), (2, 2)]
-
-    out = glom(range(3), Iter().zip().chain())
-    assert list(out) == [0, 0, 1, 1, 2, 2]
-
-    out = glom(range(5), Iter().zip().map(lambda x: (x[0], x[1].bit_length())))
-    assert list(out) == [(0, 0), (1, 1), (2, 2), (3, 2), (4, 3)]
-
-    target = [1, 2, 3]
-    spec = Iter().zip(otherspec=Spec((reversed, list, T[:2])), fill=None)
-    out = glom(target, spec)
-    assert list(out) == [(1, 3), (2, 2), (3, None)]
-
-
 def test_while():
     cnt = count()
     out = glom(cnt, Iter().takewhile(lambda x: x < 3))

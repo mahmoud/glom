@@ -6,7 +6,7 @@ from a file) without excessive memory usage.
 """
 from __future__ import unicode_literals
 
-from itertools import islice, dropwhile, takewhile
+from itertools import islice, dropwhile, takewhile, chain
 import inspect
 from functools import partial, wraps
 try:
@@ -23,8 +23,6 @@ from .core import glom, T, STOP, SKIP, Check, _MISSING, Path, TargetRegistry, Ca
 from .reduction import Flatten
 
 """
-itertools to add:
-
 (Iter(T.items)
  .filter(T.is_activated)
  .map(fetch_from_db))
@@ -53,8 +51,6 @@ class Iter(object):
 
     >>> glom(['1', '2', '1', '3'], (Iter(int), set, tuple))
     (1, 2, 3)
-
-
     """
     def __init__(self, subspec=T, **kwargs):
         self.subspec = subspec
@@ -188,22 +184,22 @@ class Iter(object):
             _unique_iter = Call(unique_iter, args=(T, spec_glom))
         return Iter(spec_stack=[self, _unique_iter])
 
+    '''
+
     def split(self, sep=None, maxsplit=None):
-        _split_iter = Call(split_iter, args=(T,), kwargs={'sep': sep, 'maxsplit': maxsplit})
-        return Iter(spec_stack=[_split_iter, self])
+        return self._add_op(
+            'split',
+            (sep, maxsplit),
+            lambda it, scope: split_iter(it, sep=sep, maxsplit=maxsplit))
 
     def chain(self):
         # like sum but lazy, target presumed to be an iterable of iterables
-        return Iter(spec_stack=[self, Flatten(init='lazy')])
+        return self._add_op(
+            'chain',
+            (),
+            lambda it, scope: chain.from_iterable(it))
 
-    def zip(self, spec=T, otherspec=T, fill=_MISSING):
-        _zip, kw = izip, {}
-        if fill is not _MISSING:
-            _zip = izip_longest
-            kw['fillvalue'] = fill
-        _zip_iter = Call(_zip, args=(spec, otherspec), kwargs=kw)
-        return Iter(spec_stack=[_zip_iter, self])
-    '''
+        return Iter(spec_stack=[self, Flatten(init='lazy')])
 
     def slice(self, *a):
         # TODO: make a kwarg-compatible version of this (islice takes no kwargs)
@@ -214,7 +210,7 @@ class Iter(object):
         return self._add_op('slice', a, lambda it, scope: islice(it, *a))
 
     def limit(self, count):
-        return self.slice(count)
+        return self._add_op('limit', (count,), lambda it, scope: islice(it, count))
 
     def takewhile(self, subspec):
         return self._add_op(
