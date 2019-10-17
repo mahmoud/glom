@@ -127,8 +127,6 @@ glom's shortest-named feature may be its most powerful.
 
 .. autodata:: glom.T
 
-.. _exceptions:
-
 .. _check-specifier:
 
 Validation with Check
@@ -140,6 +138,8 @@ step, you can do these checks inline with your glom spec, using
 ``Check``.
 
 .. autoclass:: glom.Check
+
+.. _exceptions:
 
 Exceptions
 ----------

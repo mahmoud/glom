@@ -118,10 +118,15 @@ class Iter(object):
         """Return a new :class:`Iter()` spec which will apply the provided
         subspec to each element of the iterable.
 
-        Because a spec can be a callable, this functions as the
-        equivalent of the built-in :func:`map` in Python 3, but with
-        the full power of glom specs.
+        >>> glom(range(5), Iter().map(lambda x: x * 2).all())
+        [0, 2, 4, 6, 8]
 
+        Because a spec can be a callable, :meth:`Iter.map()` does
+        everything the built-in :func:`map` does, but with the full
+        power of glom specs.
+
+        >>> glom(['a', 'B', 'C'], Iter().map(T.islower()).all())
+        [True, False, False]
         """
         # whatever validation you want goes here
         # TODO: DRY the self._add_op with a decorator?
@@ -131,13 +136,25 @@ class Iter(object):
             lambda iterable, scope: imap(
                 lambda t: scope[glom](t, subspec, scope), iterable))
 
-    def filter(self, subspec, **kwargs):
+    def filter(self, subspec=T, **kwargs):
         """Return a new :class:`Iter()` spec which will include only elements matching the
         given subspec.
 
-        Because a spec can be a callable, this functions as the
-        equivalent of the built-in :func:`filter` in Python 3, but with
-        the full power of glom specs.
+        >>> glom(range(6), Iter().filter(lambda x: x % 2).all())
+        [1, 3, 5]
+
+        Because a spec can be a callable, :meth:`Iter.filter()` does
+        everything the built-in :func:`filter` does, but with the full
+        power of glom specs. On top of this, :meth:`Iter.filter()`
+        accepts all the same keyword arguments as :class:`Check()`, so
+        check :ref:`that documentation <check-specifier>` for more
+        options.
+
+        # Python's built-in integers know how many binary digits they
+        # require, using the bit_length method
+        >>> glom(range(9), Iter().filter(T.bit_length(), one_of=(2, 4)).all())
+        [2, 3, 8]
+
         """
         kwargs['default'] = SKIP
         check_spec = Check(subspec, **kwargs)
