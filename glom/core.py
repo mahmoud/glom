@@ -42,8 +42,6 @@ else:
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
     from collections import ChainMap
 
-import glom.mutation
-
 
 _type_type = type
 
@@ -846,14 +844,6 @@ class TType(object):
             _T_PATHS[t] = _T_PATHS[self][:-2]
             return t
         return _t_child(self, '[', item)
-
-    '''  DOH! needs walrus operator
-    def __setitem__(self, name, spec):
-        return glom.mutation.Assign(self[name], spec)
-
-    def __setattr__(self, name, spec):
-        return glom.mutation.Assign(getattr(self, name), spec)
-    '''
 
     def __call__(self, *args, **kwargs):
         return _t_child(self, '(', (args, kwargs))
