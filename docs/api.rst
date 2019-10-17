@@ -70,7 +70,6 @@ Stream processing iterables with Iter()
    .. automethod:: all
    .. automethod:: first
 
-
 Target mutation with Assign
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

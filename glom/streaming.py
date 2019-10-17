@@ -103,8 +103,7 @@ class Iter(object):
 
         for i, t in enumerate(iterator):
             yld = (t if self.subspec is T
-                   else scope[glom](t, self.subspec,
-                                    scope.new_child({Path: scope[Path] + [i]})))
+                   else scope[glom](t, self.subspec, scope.new_child({Path: scope[Path] + [i]})))
             if yld is SKIP:
                 continue
             elif yld is self.sentinel or yld is STOP:
@@ -116,12 +115,13 @@ class Iter(object):
         return type(self)(subspec=self.subspec, _iter_stack=[(opname, args, callback)] + self._iter_stack)
 
     def map(self, subspec):
-        """Return a new Iter() spec which will apply the provided subspec to
-        each element of the iterable.
+        """Return a new :class:`Iter()` spec which will apply the provided
+        subspec to each element of the iterable.
 
         Because a spec can be a callable, this functions as the
         equivalent of the built-in :func:`map` in Python 3, but with
         the full power of glom specs.
+
         """
         # whatever validation you want goes here
         # TODO: DRY the self._add_op with a decorator?
@@ -131,23 +131,24 @@ class Iter(object):
             lambda iterable, scope: imap(
                 lambda t: scope[glom](t, subspec, scope), iterable))
 
-    def filter(self, subspec):
-        """Return a new Iter() spec which will include only elements matching the
+    def filter(self, subspec, **kwargs):
+        """Return a new :class:`Iter()` spec which will include only elements matching the
         given subspec.
 
         Because a spec can be a callable, this functions as the
         equivalent of the built-in :func:`filter` in Python 3, but with
         the full power of glom specs.
         """
-        # TODO: invert kwarg for itertools.filterfalse
+        kwargs['default'] = SKIP
+        check_spec = Check(subspec, **kwargs)
         return self._add_op(
             'filter',
             (subspec,),
             lambda iterable, scope: ifilter(
-                lambda t: scope[glom](t, Check(subspec, default=SKIP), scope), iterable))
+                lambda t: scope[glom](t, check_spec, scope) is not SKIP, iterable))
 
     def chunked(self, size, fill=_MISSING):
-        """Return a new Iter() spec which groups elements in the iterable
+        """Return a new :class:`Iter()` spec which groups elements in the iterable
         into lists of length *size*.
 
         If the optional *fill* argument is provided, iterables not
@@ -168,7 +169,7 @@ class Iter(object):
             'chunked', args, lambda it, scope: chunked_iter(it, **kw))
 
     def windowed(self, size):
-        """Return a new Iter() spec which will yield a sliding window of
+        """Return a new :class:`Iter()` spec which will yield a sliding window of
         adjacent elements in the iterable. Each tuple yielded will be
         of length *size*.
 
@@ -180,23 +181,8 @@ class Iter(object):
         return self._add_op(
             'windowed', (size,), lambda it, scope: windowed_iter(it, size))
 
-    def unique(self, subspec=T):
-        """Return a new Iter() spec which lazily filters out duplicate
-        values, i.e., only the first appearance of a value in a stream will
-        be yielded.
-
-        >>> target = list('gloMolIcious')
-        >>> out = list(glom(target, Iter().unique(T.lower())))
-        >>> print(''.join(out))
-        gloMIcus
-        """
-        return self._add_op(
-            'unique',
-            (subspec,),
-            lambda it, scope: unique_iter(it, key=lambda t: scope[glom](t, subspec, scope)))
-
     def split(self, sep=None, maxsplit=None):
-        """Return a new Iter() spec which will lazily split an iterable based
+        """Return a new :class:`Iter()` spec which will lazily split an iterable based
         on a separator (or list of separators), *sep*. Like
         :meth:`str.split()`, but for all iterables.
 
@@ -227,7 +213,7 @@ class Iter(object):
             lambda it, scope: split_iter(it, sep=sep, maxsplit=maxsplit))
 
     def flatten(self):
-        """Returns a new Iter() instance which combines iterables into a
+        """Returns a new :class:`Iter()` instance which combines iterables into a
         single iterable.
 
         >>> target = [[1, 2], [3, 4], [5]]
@@ -239,9 +225,25 @@ class Iter(object):
             (),
             lambda it, scope: chain.from_iterable(it))
 
+    def unique(self, subspec=T):
+        """Return a new :class:`Iter()` spec which lazily filters out duplicate
+        values, i.e., only the first appearance of a value in a stream will
+        be yielded.
+
+        >>> target = list('gloMolIcious')
+        >>> out = list(glom(target, Iter().unique(T.lower())))
+        >>> print(''.join(out))
+        gloMIcus
+        """
+        return self._add_op(
+            'unique',
+            (subspec,),
+            lambda it, scope: unique_iter(it, key=lambda t: scope[glom](t, subspec, scope)))
+
+
     def slice(self, *args):
         """
-        Returns a new Iter() spec which trims iterables.
+        Returns a new :class:`Iter()` spec which trims iterables.
 
         >>> target = [0, 1, 2, 3, 4, 5]
         >>> glom(target, Iter().slice(3).all())
@@ -283,11 +285,11 @@ class Iter(object):
     def all(self):
         """A convenience method for turning an iterable into a list. Note that
         this always consumes the whole iterable, and as such, does
-        *not* return a new Iter() instance.
+        *not* return a new :class:`Iter()` instance.
         """
         return (self, list)
 
-    def first(self, spec=T, default=None):
+    def first(self, key=T, default=None):
         """A convenience method for lazily yielding a single truthy item from
         an iterable. As this spec yields at most one item, and not an
         iterable, the return value of this method is not a new Iter()
@@ -298,20 +300,21 @@ class Iter(object):
         1
 
         """
-        # TODO: the spec part of first could be implemented with
-        # self.filter?  and key may need to revert to being a plain
-        # callable in order to support doing non-truthy returns
-        return (self, First(spec=spec, default=default))
+        return (self, First(key=key, default=default))
 
 
 class First(object):
+    # The impl of this ain't pretty and basically just exists for a
+    # nicer-looking repr. (Iter(), First()) is the equivalent of doing
+    # (Iter().filter(spec), Call(first, args=(T,), kwargs={'default':
+    # default}))
     __slots__ = ('_spec', '_default', '_first')
 
-    def __init__(self, spec=T, default=None):
-        self._spec = spec
+    def __init__(self, key=T, default=None):
+        self._spec = key
         self._default = default
 
-        spec_glom = Spec(Call(partial, args=(Spec(spec).glom,), kwargs={'scope': S}))
+        spec_glom = Spec(Call(partial, args=(Spec(self._spec).glom,), kwargs={'scope': S}))
         self._first = Call(first, args=(T,), kwargs={'default': default, 'key': spec_glom})
 
     def glomit(self, target, scope):

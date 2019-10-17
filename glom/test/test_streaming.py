@@ -28,18 +28,23 @@ def test_iter():
 
 def test_filter():
     is_odd = lambda x: x % 2
-    spec = Iter().filter(is_odd)
-    out = glom(RANGE_5, spec)
+    odd_spec = Iter().filter(is_odd)
+    out = glom(RANGE_5, odd_spec)
     assert list(out) == [1, 3]
 
     # let's just make sure we're actually streaming just in case
     counter = count()
-    out = glom(counter, spec)
+    out = glom(counter, odd_spec)
     assert next(out) == 1
     assert next(out) == 3
     assert next(counter) == 4
     assert next(counter) == 5
     assert next(out) == 7
+
+    imags = [0j, 1j, 2, 2j, 3j]
+    spec = Iter().filter(T.imag.real, type=float, one_of=(0, 2)).all()
+    out = glom(imags, spec)
+    assert out == [0j, 2j]
 
     assert repr(Iter().filter(T.a.b)).startswith('Iter().filter(T.a.b)')
 
