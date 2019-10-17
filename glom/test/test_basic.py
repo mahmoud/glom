@@ -205,7 +205,7 @@ def test_call_and_target():
     return
 
 
-def test():
+def test_partial():
     args = []
     def test(*a, **kw):
         args.append(a)
@@ -224,7 +224,9 @@ def test():
     assert args == [
         (1, 2, 3, 4, 5),
         {'a': 'a', 'b': 'b', 'c': 'C'}]
-
+    args = []
+    assert glom(test, Partial.specfunc(T)) == 'test'
+    assert args == [(), {}]
 
 
 def test_spec_and_recursion():

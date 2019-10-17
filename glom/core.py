@@ -760,8 +760,14 @@ class Partial(object):
     may be more easily integrated into streaming glom chains
     """
     def __init__(self, func):
-        self.func = func
+        self.func, self.subspec = func, None
         self.args = ()
+
+    @classmethod
+    def specfunc(cls, subspec):
+        self = cls(subspec)
+        self.func, self.subspec = self.subspec, self.func
+        return self
 
     def consts(self, *a, **kw):
         """pass *a and **kw to func"""
@@ -802,7 +808,10 @@ class Partial(object):
                     all_args.extend(recurse(args))
                 if kwargs is not None:
                     all_kwargs.update(recurse(kwargs))
-        return self.func(*all_args, **all_kwargs)
+        func = self.func or recurse(self.subspec)
+        return func(*all_args, **all_kwargs)
+
+    # TODO: __repr__()
 
 
 class TType(object):
