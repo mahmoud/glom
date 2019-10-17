@@ -57,6 +57,20 @@ Stream processing iterables with Iter()
 
 .. autoclass:: glom.Iter
 
+   .. automethod:: map
+   .. automethod:: filter
+   .. automethod:: chunked
+   .. automethod:: split
+   .. automethod:: flatten
+   .. automethod:: unique
+   .. automethod:: limit
+   .. automethod:: slice
+   .. automethod:: takewhile
+   .. automethod:: dropwhile
+   .. automethod:: all
+   .. automethod:: first
+
+
 Target mutation with Assign
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -82,7 +96,7 @@ There's nothing quite like inserting a quick lambda into a glom spec
 to get the job done. But once a spec works, how can it be cleaned up?
 
 .. autofunction:: glom.Call
-   :members:
+
 
 Combining iterables with Flatten and friends
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
