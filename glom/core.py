@@ -759,31 +759,49 @@ class Partial(object):
     glom specs more convenient, so that itertools, toolz, et al
     may be more easily integrated into streaming glom chains
     """
-    def __init__(self, func, *a, **kw):
+    def __init__(self, func):
         self.func = func
-        self.args = (a, kw)
+        self.args = ()
 
-    def __call__(self, *a, **kw):
+    def consts(self, *a, **kw):
+        """pass *a and **kw to func"""
         ret = Partial(self.func)
-        ret.args = self.args + (a, kw)
+        ret.args = self.args + ('C', a, kw)
+        return ret
+
+    def specs(self, *a, **kw):
+        """glom all of *a and **kw and pass to func"""
+        ret = Partial(self.func)
+        ret.args = self.args + ('S', a, kw)
+        return ret
+
+    def star(self, args=None, kwargs=None):
+        """
+        glom args and kwargs and pass to func as *a and **kw
+        """
+        assert args is not None or kwargs is not None
+        ret = Partial(self.func)
+        ret.args = self.args + ('*', args, kwargs)
         return ret
 
     def glomit(self, target, scope):
         all_args = []
         all_kwargs = {}
         recurse = lambda spec: scope[glom](target, spec, scope)
-        for i in range(len(self.args) // 2):
-            args = self.args[i * 2]
-            kwargs = self.args[i * 2 + 1]
-            if i % 2:
-                # odd arg-sets are literals
+        for i in range(len(self.args) // 3):
+            op, args, kwargs = self.args[i * 3: i * 3 + 3]
+            if op == 'C':
                 all_args.extend(args)
                 all_kwargs.update(kwargs)
-            else:
-                # even arg-sets are specs
+            elif op == 'S':
                 all_args.extend([recurse(arg) for arg in args])
                 # TODO: detect "overwritten" kwargs and avoid computing
                 all_kwargs.update({k: recurse(v) for k, v in kwargs.items()})
+            elif op == '*':
+                if args is not None:
+                    all_args.extend(recurse(args))
+                if kwargs is not None:
+                    all_kwargs.update(recurse(kwargs))
         return self.func(*all_args, **all_kwargs)
 
 

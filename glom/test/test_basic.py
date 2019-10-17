@@ -205,11 +205,26 @@ def test_call_and_target():
     return
 
 
-def test_partial():
-    assert list(glom(range(10), Partial(dropwhile)(lambda x: x < 5)(T))) == (
-    [5, 6, 7, 8, 9])
+def test():
+    args = []
+    def test(*a, **kw):
+        args.append(a)
+        args.append(kw)
+        return 'test'
 
-    assert list(glom([1, 2], Partial(chain, T, T))) == [1, 2, 1, 2]
+    assert glom('a', Partial(len).specs(T)) == 1
+    assert glom({
+        'args': (1, 2),
+        'args2': (4, 5),
+        'kwargs': {'a': 'a'},
+        'c': 'C',
+        }, Partial(test).star(args='args'
+            ).consts(3, b='b').specs(c='c'
+            ).star(args='args2', kwargs='kwargs')) == 'test'
+    assert args == [
+        (1, 2, 3, 4, 5),
+        {'a': 'a', 'b': 'b', 'c': 'C'}]
+
 
 
 def test_spec_and_recursion():
