@@ -50,6 +50,13 @@ specifiers to declare away overly branchy procedural code.
 .. autodata:: glom.SKIP
 .. autodata:: glom.STOP
 
+Stream processing iterables with Iter()
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+*New in glom 19.2.0*
+
+.. autoclass:: glom.Iter
+
 Target mutation with Assign
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -75,6 +82,7 @@ There's nothing quite like inserting a quick lambda into a glom spec
 to get the job done. But once a spec works, how can it be cleaned up?
 
 .. autofunction:: glom.Call
+   :members:
 
 Combining iterables with Flatten and friends
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

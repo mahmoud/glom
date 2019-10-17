@@ -25,8 +25,19 @@ from .core import glom, T, STOP, SKIP, Check, _MISSING, Path, TargetRegistry, Ca
 class Iter(object):
     """``Iter()`` is glom's counterpart to the built-in :func:`iter()`
     function. Given an iterable target, yields the result of applying
-    the passed spec to each element of the target. Basically, a lazy
-    version of the default list-spec behavior.
+    the passed spec to each element of the target. The following turns
+    a list of strings into integers using Iter(), before deduplicating
+    and converting it to a tuple:
+
+    >>> glom(['1', '2', '1', '3'], (Iter(int), set, tuple))
+    (1, 2, 3)
+
+    ``Iter()`` also has many useful methods which can be chained to
+    compose a stream processing pipeline. The above can also be
+    written as:
+
+    >>> glom(['1', '2', '1', '3'], (Iter().map(int).unique(), tuple))
+    (1, 2, 3)
 
     ``Iter()`` also respects glom's :data:`~glom.SKIP` and
     :data:`~glom.STOP` singletons for filtering and breaking
@@ -39,8 +50,6 @@ class Iter(object):
          iterable stream, causes the iteration to stop. Same as with the
          built-in :func:`iter`.
 
-    >>> glom(['1', '2', '1', '3'], (Iter(int), set, tuple))
-    (1, 2, 3)
     """
     def __init__(self, subspec=T, **kwargs):
         self.subspec = subspec
@@ -92,11 +101,13 @@ class Iter(object):
             raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
                             % (target.__class__.__name__, Path(*scope[Path]), e))
 
-        for t in iterator:
-            yld = scope[glom](t, self.subspec, scope) if self.subspec is not T else t
+        for i, t in enumerate(iterator):
+            yld = (t if self.subspec is T
+                   else scope[glom](t, self.subspec,
+                                    scope.new_child({Path: scope[Path] + [i]})))
             if yld is SKIP:
                 continue
-            elif yld is STOP:
+            elif yld is self.sentinel or yld is STOP:
                 return
             yield yld
         return
