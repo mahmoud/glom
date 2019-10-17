@@ -179,6 +179,23 @@ class Assign(object):
         return target
 
 
+class Update(object):
+    """
+    Update a dict or set without otherwise modifying.
+    This allows dict creation to be broken into "chunks".
+
+    ({'a': 'a'}, [dict, Update({'b': 'b', 'c': 'c'})])
+    """
+    def __init__(self, subspec):
+        assert type(subspec) in (dict, set, frozenset)
+        self.subspec = subspec
+
+    def glomit(self, target, scope):
+        assert hasattr(target, 'update')
+        target.update(scope[glom](target, self.subspec, scope))
+        return target
+
+
 def assign(obj, path, val, missing=None):
     """The ``assign()`` function provides convenient "deep set"
     functionality, modifying nested data structures in-place::
