@@ -213,20 +213,27 @@ def test_partial():
         return 'test'
 
     assert glom('a', Partial(len).specs(T)) == 1
-    assert glom({
+    data = {
         'args': (1, 2),
         'args2': (4, 5),
         'kwargs': {'a': 'a'},
         'c': 'C',
-        }, Partial(test).star(args='args'
-            ).consts(3, b='b').specs(c='c'
-            ).star(args='args2', kwargs='kwargs')) == 'test'
+    }
+    spec = Partial(test).star(args='args'
+        ).consts(3, b='b').specs(c='c'
+        ).star(args='args2', kwargs='kwargs')
+    repr(spec)  # no exceptions
+    assert glom(data, spec) == 'test'
     assert args == [
         (1, 2, 3, 4, 5),
         {'a': 'a', 'b': 'b', 'c': 'C'}]
     args = []
     assert glom(test, Partial.specfunc(T)) == 'test'
     assert args == [(), {}]
+    repr_spec = Partial.specfunc(T).star(args='args'
+        ).consts(3, b='b').specs(c='c'
+        ).star(args='args2', kwargs='kwargs')
+    assert eval(repr(repr_spec), locals(), globals()) == repr_spec
 
 
 def test_spec_and_recursion():

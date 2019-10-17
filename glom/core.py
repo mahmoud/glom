@@ -759,25 +759,23 @@ class Partial(object):
     glom specs more convenient, so that itertools, toolz, et al
     may be more easily integrated into streaming glom chains
     """
-    def __init__(self, func):
-        self.func, self.subspec = func, None
+    def __init__(self, func, specfunc=None):
+        self.func, self.subspec = func, specfunc
         self.args = ()
 
     @classmethod
-    def specfunc(cls, subspec):
-        self = cls(subspec)
-        self.func, self.subspec = self.subspec, self.func
-        return self
+    def specfunc(cls, specfunc):
+        return cls(None, specfunc)
 
     def consts(self, *a, **kw):
         """pass *a and **kw to func"""
-        ret = Partial(self.func)
+        ret = Partial(self.func, self.subspec)
         ret.args = self.args + ('C', a, kw)
         return ret
 
     def specs(self, *a, **kw):
         """glom all of *a and **kw and pass to func"""
-        ret = Partial(self.func)
+        ret = Partial(self.func, self.subspec)
         ret.args = self.args + ('S', a, kw)
         return ret
 
@@ -786,9 +784,36 @@ class Partial(object):
         glom args and kwargs and pass to func as *a and **kw
         """
         assert args is not None or kwargs is not None
-        ret = Partial(self.func)
+        ret = Partial(self.func, self.subspec)
         ret.args = self.args + ('*', args, kwargs)
         return ret
+
+    def __repr__(self):
+        chunks = [self.__class__.__name__]
+        if self.func:
+            chunks.append('({!r})'.format(self.func))
+        else:
+            chunks.append('.specfunc({!r})'.format(self.subspec))
+        for i in range(len(self.args) // 3):
+            op, args, kwargs = self.args[i * 3: i * 3 + 3]
+            fname = {'C': 'consts', 'S': 'specs', '*': 'star'}[op]
+            chunks.append('.{}('.format(fname))
+            if op in 'CS':
+                chunks.append(', '.join(
+                    [repr(a) for a in args] +
+                    ['{}={!r}'.format(k, v) for k, v in kwargs.items()]))
+            else:
+                if args:
+                    chunks.append('args=' + repr(args))
+                if args and kwargs:
+                    chunks.append(", ")
+                if kwargs:
+                    chunks.append('kwargs=' + repr(kwargs))
+            chunks.append(')')
+        return ''.join(chunks)
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.__dict__ == other.__dict__
 
     def glomit(self, target, scope):
         all_args = []
@@ -810,8 +835,6 @@ class Partial(object):
                     all_kwargs.update(recurse(kwargs))
         func = self.func or recurse(self.subspec)
         return func(*all_args, **all_kwargs)
-
-    # TODO: __repr__()
 
 
 class TType(object):
