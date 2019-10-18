@@ -7,6 +7,8 @@ from glom.core import (glom,
                        OMIT,  # backwards compat
                        SKIP,
                        STOP,
+                       UP,
+                       ROOT,
                        Check,
                        Path,
                        Literal,
@@ -21,3 +23,4 @@ from glom.core import (glom,
 
 from glom.reduction import Sum, Fold, Flatten, flatten, FoldError, Merge, merge
 from glom.mutation import Assign, assign, PathAssignError
+from glom.var import Name, Globals

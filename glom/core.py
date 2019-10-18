@@ -827,13 +827,6 @@ class TType(object):
         return _t_child(self, '.', name)
 
     def __getitem__(self, item):
-        if item is UP:
-            newpath = _T_PATHS[self][:-2]
-            if not newpath:
-                return T
-            t = TType()
-            _T_PATHS[t] = _T_PATHS[self][:-2]
-            return t
         return _t_child(self, '[', item)
 
     def __call__(self, *args, **kwargs):
@@ -871,7 +864,7 @@ def _t_eval(target, _t, scope):
         raise ValueError('TType instance with invalid root object')
     while i < len(t_path):
         op, arg = t_path[i], t_path[i + 1]
-        if type(arg) in (Spec, TType):
+        if type(arg) in (Spec, TType, Literal):
             arg = scope[glom](target, arg, scope)
         if op == '.':
             try:
@@ -910,6 +903,7 @@ S = TType()  # like T, but means grab stuff from Scope, not Target
 _T_PATHS[T] = (T,)
 _T_PATHS[S] = (S,)
 UP = make_sentinel('UP')
+ROOT = make_sentinel('ROOT')
 
 
 def _format_t(path, root=T):
@@ -1443,6 +1437,9 @@ def glom(target, spec, **kwargs):
         Path: kwargs.pop('path', []),
         Inspect: kwargs.pop('inspector', None)
     })
+    scope[UP] = scope
+    scope[ROOT] = scope
+    scope[T] = target
     scope.update(kwargs.pop('scope', {}))
     if kwargs:
         raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
@@ -1456,9 +1453,10 @@ def glom(target, spec, **kwargs):
 
 
 def _glom(target, spec, scope):
-    scope = scope.new_child()
+    scope, parent = scope.new_child(), scope
     scope[T] = target
     scope[Spec] = spec
+    scope[UP] = parent
 
     if isinstance(spec, TType):  # must go first, due to callability
         return _t_eval(target, spec, scope)

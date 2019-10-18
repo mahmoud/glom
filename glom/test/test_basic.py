@@ -193,8 +193,8 @@ def test_call_and_target():
     assert glom([1], Call(F, args=T)).a == 1
     assert glom(F, T(T)).a == F
     assert glom([F, 1], T[0](T[1]).a) == 1
-    assert glom([[1]], T[0][0][0][UP]) == 1
-    assert glom([[1]], T[0][UP][UP][UP]) == [[1]]  # tops out at just T
+    assert glom([[1]], S[UP][Literal(T)][0][0]) == 1
+    assert glom([[1]], S[UP][UP][UP][Literal(T)]) == [[1]]  # tops out
 
     assert list(glom({'a': 'b'}, Call(T.values))) == ['b']
 
