@@ -24,10 +24,12 @@ from .core import glom, T, STOP, SKIP, Check, _MISSING, Path, TargetRegistry, Ca
 
 class Iter(object):
     """``Iter()`` is glom's counterpart to the built-in :func:`iter()`
-    function. Given an iterable target, yields the result of applying
-    the passed spec to each element of the target. The following turns
-    a list of strings into integers using Iter(), before deduplicating
-    and converting it to a tuple:
+    function. Given an iterable target, ``Iter()`` yields the result
+    of applying the passed spec to each element of the target, similar
+    to the built-in `[]` spec, but streaming.
+
+    The following turns a list of strings into integers using Iter(),
+    before deduplicating and converting it to a tuple:
 
     >>> glom(['1', '2', '1', '3'], (Iter(int), set, tuple))
     (1, 2, 3)
@@ -322,6 +324,9 @@ class Iter(object):
         """A convenience method for turning an iterable into a list. Note that
         this always consumes the whole iterable, and as such, does
         *not* return a new :class:`Iter()` instance.
+
+        >>> glom(range(5), Iter(lambda t: t * 2).all())
+        [0, 2, 4, 6, 8]
         """
         return (self, list)
 

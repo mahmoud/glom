@@ -50,8 +50,8 @@ specifiers to declare away overly branchy procedural code.
 .. autodata:: glom.SKIP
 .. autodata:: glom.STOP
 
-Stream processing iterables with Iter()
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Stream processing iterables with Iter
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 *New in glom 19.2.0*
 
