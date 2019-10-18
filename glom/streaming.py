@@ -136,7 +136,7 @@ class Iter(object):
             lambda iterable, scope: imap(
                 lambda t: scope[glom](t, subspec, scope), iterable))
 
-    def filter(self, subspec=T, **kwargs):
+    def filter(self, key=T):
         """Return a new :class:`Iter()` spec which will include only elements matching the
         given subspec.
 
@@ -145,22 +145,19 @@ class Iter(object):
 
         Because a spec can be a callable, :meth:`Iter.filter()` does
         everything the built-in :func:`filter` does, but with the full
-        power of glom specs. On top of this, :meth:`Iter.filter()`
-        accepts all the same keyword arguments as :class:`Check()`, so
-        check :ref:`that documentation <check-specifier>` for more
-        options.
+        power of glom specs. For even more power, combine,
+        :meth:`Iter.filter()` with :class:`Check()`.
 
         # Python's built-in integers know how many binary digits they
         # require, using the bit_length method
-        >>> glom(range(9), Iter().filter(T.bit_length(), one_of=(2, 4)).all())
+        >>> glom(range(9), Iter().filter(Check(T.bit_length(), one_of=(2, 4), default=SKIP)).all())
         [2, 3, 8]
 
         """
-        kwargs['default'] = SKIP
-        check_spec = Check(subspec, **kwargs)
+        check_spec = key if isinstance(key, Check) else Check(key, default=SKIP)
         return self._add_op(
             'filter',
-            (subspec,),
+            (key,),
             lambda iterable, scope: ifilter(
                 lambda t: scope[glom](t, check_spec, scope) is not SKIP, iterable))
 
@@ -242,7 +239,7 @@ class Iter(object):
             (),
             lambda it, scope: chain.from_iterable(it))
 
-    def unique(self, subspec=T):
+    def unique(self, key=T):
         """Return a new :class:`Iter()` spec which lazily filters out duplicate
         values, i.e., only the first appearance of a value in a stream will
         be yielded.
@@ -254,8 +251,8 @@ class Iter(object):
         """
         return self._add_op(
             'unique',
-            (subspec,),
-            lambda it, scope: unique_iter(it, key=lambda t: scope[glom](t, subspec, scope)))
+            (key,),
+            lambda it, scope: unique_iter(it, key=lambda t: scope[glom](t, key, scope)))
 
 
     def slice(self, *args):
@@ -283,19 +280,41 @@ class Iter(object):
         """
         return self._add_op('limit', (count,), lambda it, scope: islice(it, count))
 
-    def takewhile(self, subspec):
+    def takewhile(self, key=T):
+        """Returns a new :class:`Iter()` spec which stops the stream once
+        *key* becomes falsy.
+
+        >>> glom([3, 2, 0, 1], Iter().takewhile().all())
+        [3, 2]
+
+        :func:`itertools.takewhile` for more details.
+        """
         return self._add_op(
             'takewhile',
-            (subspec,),
+            (key,),
             lambda it, scope: takewhile(
-                lambda t: scope[glom](t, subspec, scope), it))
+                lambda t: scope[glom](t, key, scope), it))
 
-    def dropwhile(self, subspec):
+    def dropwhile(self, key=T):
+        """Returns a new :class:`Iter()` spec which drops stream items until
+        *key* becomes falsy.
+
+        >>> glom([0, 0, 3, 2, 0], Iter().dropwhile(lambda t: t < 1).all())
+        [3, 2, 0]
+
+        Note that while similar to :meth:`Iter.filter()`, the filter
+        only applies to the beginning of the stream. In a way,
+        :meth:`Iter.dropwhile` can be thought of as
+        :meth:`~str.lstrip()` for streams. See
+        :func:`itertools.dropwhile` for more details.
+
+        """
+
         return self._add_op(
             'dropwhile',
-            (subspec,),
+            (key,),
             lambda it, scope: dropwhile(
-                lambda t: scope[glom](t, subspec, scope), it))
+                lambda t: scope[glom](t, key, scope), it))
 
     # Terminal methods follow
 

@@ -4,7 +4,7 @@ import pytest
 from itertools import count, dropwhile, chain
 
 from glom import Iter
-from glom import glom, SKIP, STOP, T, Call, Spec, Glommer
+from glom import glom, SKIP, STOP, T, Call, Spec, Glommer, Check, SKIP
 
 
 RANGE_5 = list(range(5))
@@ -42,7 +42,7 @@ def test_filter():
     assert next(out) == 7
 
     imags = [0j, 1j, 2, 2j, 3j]
-    spec = Iter().filter(T.imag.real, type=float, one_of=(0, 2)).all()
+    spec = Iter().filter(Check(T.imag.real, type=float, one_of=(0, 2), default=SKIP)).all()
     out = glom(imags, spec)
     assert out == [0j, 2j]
 
