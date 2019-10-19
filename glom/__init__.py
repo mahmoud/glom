@@ -23,4 +23,4 @@ from glom.core import (glom,
 
 from glom.reduction import Sum, Fold, Flatten, flatten, FoldError, Merge, merge
 from glom.mutation import Assign, assign, PathAssignError
-from glom.var import Name, Globals
+from glom.var import Let
