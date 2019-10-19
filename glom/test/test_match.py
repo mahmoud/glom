@@ -68,13 +68,6 @@ def test_pattern_matching():
         )
     assert glom(1, pattern_matcher) == 'one'
     assert glom(1.1, pattern_matcher) == 'float'
-    pattern_matcher = (
-        M & Match({'one': 1, 'two': V(two=T) }) & V.two |
-        Literal("default"))
-    assert glom(
-        {'one': 1, 'two': [1, 2, 3]}, pattern_matcher) == [1, 2, 3]
-    assert glom('nomatch', pattern_matcher) == "default"
-    assert glom({'one': 1}, pattern_matcher) == "default"
 
     # obligatory fibonacci
 

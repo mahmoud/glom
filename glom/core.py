@@ -1135,43 +1135,6 @@ class Check(object):
         return ret
 
 
-class _Capture(object):
-    def __init__(self, kwargs):
-        self.kwargs = kwargs
-
-    def glomit(self, target, scope):
-        for key, subspec in self.kwargs.items():
-            setattr(scope[V], key, scope[glom](target, subspec, scope))
-        return target
-
-
-class _VType(object):
-    def __getattr__(self, name):
-        return getattr(S[V], name)
-
-    def __call__(self, **kwargs):
-        """
-        Capture the current target into a variable
-        for use later.
-
-        Variables have a global scope within a glom spec,
-        to avoid the problem of how to specify lifetime
-        of a captured variable for now
-        """
-        return _Capture(kwargs)
-
-
-V = _VType()
-
-
-class _CapturedVars(object):
-    """
-    instances of this hold onto captured variables
-    """
-    def __init__(self, init_vars):
-        self.__dict__ = init_vars
-
-
 class Build(object):
     """
     switch to builder mode (the default)
