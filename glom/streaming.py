@@ -10,14 +10,13 @@ from itertools import islice, dropwhile, takewhile, chain
 import inspect
 from functools import partial
 try:
-    from itertools import izip, izip_longest, imap, ifilter
+    from itertools import imap, ifilter
 except ImportError:
-    izip = zip  # py3
+    # py3
     imap = map
     ifilter = filter
-    from itertools import zip_longest as izip_longest
 
-from boltons.iterutils import split_iter, chunked_iter, windowed_iter, unique_iter, first, one
+from boltons.iterutils import split_iter, chunked_iter, windowed_iter, unique_iter, first
 
 from .core import glom, T, STOP, SKIP, Check, _MISSING, Path, TargetRegistry, Call, Spec, S
 
