@@ -109,6 +109,9 @@ class Iter(object):
             if yld is SKIP:
                 continue
             elif yld is self.sentinel or yld is STOP:
+                # NB: sentinel defaults to STOP so I was torn whether
+                # to also check for STOP, and landed on the side of
+                # never letting STOP through.
                 return
             yield yld
         return
@@ -156,6 +159,9 @@ class Iter(object):
         [2, 3, 8]
 
         """
+        # NB: Check's validate function defaults to bool, and
+        # *default* is returned on access errors as well validation
+        # errors, so the lambda passed to ifilter below works fine.
         check_spec = key if isinstance(key, Check) else Check(key, default=SKIP)
         return self._add_op(
             'filter',
@@ -345,6 +351,15 @@ class Iter(object):
 
 
 class First(object):
+    """Get the first element of an iterable which matches *key*, if there
+    is one, otherwise return *default* (``None`` if unset).
+
+    >>> is_odd = lambda x: x % 2
+    >>> glom([0, 1, 2, 3], First(is_odd))
+    1
+    >>> glom([0, 2, 4], First(is_odd, default=False))
+    False
+    """
     # The impl of this ain't pretty and basically just exists for a
     # nicer-looking repr. (Iter(), First()) is the equivalent of doing
     # (Iter().filter(spec), Call(first, args=(T,), kwargs={'default':

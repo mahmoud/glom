@@ -41,6 +41,11 @@ def test_filter():
     assert next(counter) == 5
     assert next(out) == 7
 
+    bools = [True, False, False, True, False]
+    spec = Iter().filter().all()
+    out = glom(bools, spec)
+    assert out == [True, True]
+
     imags = [0j, 1j, 2, 2j, 3j]
     spec = Iter().filter(Check(T.imag.real, type=float, one_of=(0, 2), default=SKIP)).all()
     out = glom(imags, spec)

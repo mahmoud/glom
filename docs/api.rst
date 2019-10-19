@@ -70,6 +70,30 @@ Stream processing iterables with Iter
    .. automethod:: all
    .. automethod:: first
 
+
+Combining iterables with Flatten and friends
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+*New in glom 19.1.0*
+
+Got lists of lists? Sets of tuples? A sequence of dicts (but only want
+one)? Do you find yourself reaching for Python's builtin :func:`sum`
+and :func:`reduce`? To handle these situations and more, glom has five
+specifier types and two convenience functions:
+
+.. autofunction:: glom.flatten
+
+.. autoclass:: glom.Flatten
+
+.. autofunction:: glom.merge
+
+.. autoclass:: glom.Merge
+
+.. autoclass:: glom.Sum
+
+.. autoclass:: glom.Fold
+
+
 Target mutation with Assign
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -95,29 +119,6 @@ There's nothing quite like inserting a quick lambda into a glom spec
 to get the job done. But once a spec works, how can it be cleaned up?
 
 .. autofunction:: glom.Call
-
-
-Combining iterables with Flatten and friends
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-*New in glom 19.1.0*
-
-Got lists of lists? Sets of tuples? A sequence of dicts (but only want
-one)? Do you find yourself reaching for Python's builtin :func:`sum`
-and :func:`reduce`? To handle these situations and more, glom has five
-specifier types and two convenience functions:
-
-.. autofunction:: glom.flatten
-
-.. autoclass:: glom.Flatten
-
-.. autofunction:: glom.merge
-
-.. autoclass:: glom.Merge
-
-.. autoclass:: glom.Sum
-
-.. autoclass:: glom.Fold
 
 
 Object-oriented access and method calls with ``T``
