@@ -1460,7 +1460,6 @@ def glom(target, spec, **kwargs):
     scope = _DEFAULT_SCOPE.new_child({
         Path: kwargs.pop('path', []),
         Inspect: kwargs.pop('inspector', None),
-        V: _CapturedVars(kwargs.get('vars', {})),
         MODE: _glom_build,
     })
     scope.update(kwargs.pop('scope', {}))

@@ -178,6 +178,48 @@ class MType(object):
 M = MType(None, None, None)
 
 
+_MISSING = make_sentinel('MISSING')
+
+
+class Optional(object):
+    """
+    mark a key as optional in a dictionary
+
+    by default all non-exact-match type keys are optional
+    """
+    __slots__ = ('key',)
+
+    def __init__(self, key):
+        assert _precedence(key) == 0, "key must be == match"
+        self.key = key
+
+    def glomit(self, target, scope):
+        if target != self.key:
+            raise GlomMatchError("target {} != spec {}", target, self.key)
+
+    def __repr__(self):
+        return 'Optional({!r})'.format(self.key)
+
+
+class Required(object):
+    """
+    mark a key as required in a dictionary
+
+    by default, only exact-match type keys are required
+    """
+    __slots__ = ('key',)
+
+    def __init__(self, key):
+        assert _precedence(key) != 0, "== match keys are already required"
+        self.key = key
+
+    def glomit(self, target, scope):
+        return scope[glom](target, self.key, scope)
+
+    def __repr__(self):
+        return 'Required({!r})'.format(self.key)
+
+
 def _precedence(match):
     """
     in a dict spec, target-keys may match many
@@ -205,6 +247,7 @@ def _handle_dict(target, spec, scope):
     if sys.version_info < (3, 6):
         # apply a deterministic precedence if the python version itself does not guarantee ordering
         spec_keys = sorted(spec_keys, key=_precedence)
+    required = {key for key in spec_keys if _precedence(key) == 0 or type(key) is Required}
     for key, val in target.items():
         for spec_key in spec_keys:
             try:
@@ -213,9 +256,12 @@ def _handle_dict(target, spec, scope):
                 pass
             else:
                 scope[glom](val, spec[spec_key], scope)
+                required -= {spec_key}
                 break
         else:
             raise GlomMatchError("key {!r} didn't match any of {!r}", key, spec_keys)
+    if required:
+        raise GlomMatchError("missing keys {} from value {}", required, target)
     return target
 
 

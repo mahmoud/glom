@@ -3,8 +3,8 @@ import json
 import pytest
 
 from glom import glom, S, Literal, T
-from glom.matching import Match, M, GlomMatchError, And, Or, DEFAULT
-from glom.core import Build, V, SKIP
+from glom.matching import Match, M, GlomMatchError, And, Or, DEFAULT, Optional, Required
+from glom.core import Build, SKIP
 
 
 def _chk(spec, good_target, bad_target):
@@ -76,10 +76,6 @@ def test_pattern_matching():
     assert glom(5, fib) == 8
 
 
-def test_capture():
-    assert glom('a', (V(a=T), V.a)) == 'a'
-
-
 def test_examples():
     assert glom(8, (M > 7) & Literal(7)) == 7
     assert glom(range(10), [(M > 7) & Literal(7) | T]) == [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]
@@ -90,3 +86,54 @@ def test_reprs():
     repr(M == 1)
     repr(M | M == 1)
     repr(M & M == 1)
+
+
+def test_sample():
+    """
+    test meant to cover a more realistic use
+    """
+    import datetime
+
+    data = {
+        'name': 'item',
+        'date_added': datetime.datetime.now(),
+        'desc': 'a data item',
+        'tags': ['data', 'new'],
+    }
+
+    spec = Match({
+        'name': str,
+        Optional('date_added'): datetime.datetime,
+        'desc': str,
+        'tags': [str,]})
+
+    def good():
+        glom(data, spec)
+    def bad():
+        with pytest.raises(GlomMatchError):
+            glom(data, spec)
+
+    good()  # should match
+    del data['date_added']
+    good()  # should still match w/out optional
+    del data['desc']
+    bad()
+    data['desc'] = 'a data item'
+    data['extra'] = 'will fail on extra'
+    bad()
+    spec.spec[str] = str  # now extra str-key/str-val are okay
+    good()
+    data['extra2'] = 2  # but extra str-key/non-str-val are bad
+    bad()
+    # reset data
+    data = {
+        'name': 'item',
+        'date_added': datetime.datetime.now(),
+        'desc': 'a data item',
+        'tags': ['data', 'new'],
+    }
+    del spec.spec[str]
+    spec.spec[Required(str)] = str  # now there MUST be at least one str
+    bad()
+    data['extra'] = 'extra'
+    good()
