@@ -17,6 +17,7 @@ except ImportError:
     ifilter = filter
 
 from boltons.iterutils import split_iter, chunked_iter, windowed_iter, unique_iter, first
+from boltons.funcutils import FunctionBuilder
 
 from .core import glom, T, STOP, SKIP, Check, _MISSING, Path, TargetRegistry, Call, Spec, S
 
@@ -69,8 +70,9 @@ class Iter(object):
             chunks.append('()')
         for fname, args, _ in reversed(self._iter_stack):
             meth = getattr(self, fname)
-            arg_names, _, _, _ = inspect.getargspec(meth)
-            arg_names = arg_names[1:]  # get rid of self
+            fb = FunctionBuilder.from_func(meth)
+            fb.args = fb.args[1:]  # drop self
+            arg_names = fb.get_arg_names()
             # TODO: something fancier with defaults:
             chunks.append("." + fname)
             if len(args) == 0:

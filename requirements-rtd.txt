@@ -3,7 +3,7 @@ argh==0.26.2
 attrs==17.4.0
 Babel==2.5.3
 backports-abc==0.5
-boltons==17.2.0
+boltons==19.2.0
 certifi==2018.11.29
 chardet==3.0.4
 coverage==4.5.1
