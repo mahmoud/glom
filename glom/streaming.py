@@ -326,12 +326,14 @@ class Iter(object):
     # Terminal methods follow
 
     def all(self):
-        """A convenience method for turning an iterable into a list. Note that
-        this always consumes the whole iterable, and as such, does
-        *not* return a new :class:`Iter()` instance.
+        """A convenience method which returns a new spec which turns an
+        iterable into a list.
 
         >>> glom(range(5), Iter(lambda t: t * 2).all())
         [0, 2, 4, 6, 8]
+
+        Note that this spec will always consume the whole iterable, and as
+        such, the spec returned is *not* an :class:`Iter()` instance.
         """
         return (self, list)
 
@@ -348,7 +350,7 @@ class Iter(object):
         condition.
 
         As this spec yields at most one item, and not an iterable, the
-        return value of this method is not a new Iter() instance.
+        spec returned from this method is not an :class:`Iter()` instance.
         """
         return (self, First(key=key, default=default))
 
