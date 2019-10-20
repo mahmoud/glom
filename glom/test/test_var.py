@@ -1,4 +1,4 @@
-from glom import Name, Globals, glom, T, ROOT, S, Literal
+from glom import glom, T, ROOT, S, Literal, Let
 
 
 def test_var():

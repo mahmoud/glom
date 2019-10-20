@@ -39,9 +39,9 @@ class _LetOver(object):
 
     def glomit(self, target, scope):
         self.let._write_to(target, scope)
-        if type(self.binding) is str:
-            scope[self.binding] = target
+        if type(self.let.binding) is str:
+            scope[self.let.binding] = target
         else:
             scope.update({
-                k: scope[glom](target, v, scope) for k, v in self.binding.items()})
+                k: scope[glom](target, v, scope) for k, v in self.let.binding.items()})
         return scope[glom](target, self.subspec, scope)
