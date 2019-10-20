@@ -1,9 +1,9 @@
 
 import pytest
 
-from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S
+from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S, Spec
 import glom.core as glom_core
-from glom.core import Spec, UP  # probationary
+from glom.core import UP, ROOT, Let
 
 from glom import OMIT  # backwards compat
 
@@ -321,3 +321,11 @@ def test_inspect():
 
     assert glom(target, spec, default='default') == 'default'
     assert len(tracker) == 1
+
+
+def test_let():
+
+    data = {'a': 1, 'b': [{'c': 2}, {'c': 3}]}
+    output = [{'a': 1, 'c': 2}, {'a': 1, 'c': 3}]
+    assert glom(data, Let(a='a').over(('b', [{'a': S['a'], 'c': 'c'}]))) == output
+    assert glom(data, ('b', [{'a': S[ROOT][Literal(T)]['a'], 'c': 'c'}])) == output
