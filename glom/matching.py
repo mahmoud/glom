@@ -71,9 +71,15 @@ class _Bool(object):
     abstract class for binary operations
     """
     def __and__(self, other):
+        # avoid creating more layers than necessary to
+        # save on glomit loopback calls
+        if type(self) is And:
+            return And(*(self.children + (other,)))
         return And(self, other)
 
     def __or__(self, other):
+        if type(self) is Or:
+            return Or(*(self.children + (other,)))
         return Or(self, other)
 
 
