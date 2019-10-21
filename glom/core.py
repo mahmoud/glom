@@ -1147,7 +1147,7 @@ class Build(object):
         self.spec = spec
 
     def glomit(self, target, scope):
-        scope[glom] = _glom_build
+        scope[MODE] = _glom_build
         return scope[glom](target, self.spec, scope)
 
 

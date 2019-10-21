@@ -84,8 +84,8 @@ class And(_Bool):
     def glomit(self, target, scope):
         # all children must match without exception
         for child in self.children:
-            target = scope[glom](target, child, scope)
-        return target
+            result = scope[glom](target, child, scope)
+        return result
 
     def __repr__(self):
         return "(" + ") & (".join([repr(c) for c in self.children]) + ")"

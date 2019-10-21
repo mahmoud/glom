@@ -49,14 +49,14 @@ def test():
 
 def test_cruddy_json():
     _chk(
-        Match({'int_id?': M & Build(int) & (M > 0)}),
+        Match({'int_id?': Build((int, M > 0))}),
         {'int_id?': '1'},
         {'int_id?': '-1'})
     # embed a build
     squished_json = Match({
-        'smooshed_json': M & Build(json.loads) & {
-            'sub': M & Build(json.loads) & 1 }
-        })
+        'smooshed_json': Build((json.loads,
+            Match({'sub':
+                Build((json.loads, Match(1)))})))})
     glom({'smooshed_json': json.dumps({'sub': json.dumps(1)})}, squished_json)
 
 
