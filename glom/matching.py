@@ -66,40 +66,34 @@ in a dict in match mode
 DEFAULT.glomit = lambda target, scope: target
 
 
-class _Bool(object):
-    """
-    abstract class for binary operations
-    """
-    __slots__ = ('children',)
+class And(object):
+    __slots__ = ('children', 'chain')
 
-    def __and__(self, other):
-        # avoid creating more layers than necessary to
-        # save on glomit loopback calls
-        if type(self) is And:
-            return And(*(self.children + (other,)))
-        return And(self, other)
-
-    def __or__(self, other):
-        if type(self) is Or:
-            return Or(*(self.children + (other,)))
-        return Or(self, other)
-
-
-class And(_Bool):
-    def __init__(self, *children):
-        self.children = children
+    def __init__(self, *children, chain=False):
+        self.children, self.chain = children, chain
 
     def glomit(self, target, scope):
         # all children must match without exception
         for child in self.children:
             result = scope[glom](target, child, scope)
+            if self.chain:
+                target = result
         return result
+
+    def __and__(self, other):
+        # reduce number of layers of spec
+        return And(*(self.children + (other,)), chain=self.chain)
+
+    def __or__(self, other):
+        return Or(self, other)
 
     def __repr__(self):
         return "(" + ") & (".join([repr(c) for c in self.children]) + ")"
 
 
-class Or(_Bool):
+class Or(object):
+    __slots__ = ('children',)
+
     def __init__(self, *children):
         self.children = children
 
@@ -110,6 +104,13 @@ class Or(_Bool):
             except GlomError:
                 pass
         return scope[glom](target, self.children[-1], scope)
+
+    def __and__(self, other):
+        return And(self, other)
+
+    def __or__(self, other):
+        # reduce number of layers of spec
+        return Or(*(self.children + (other,)))
 
     def __repr__(self):
         return "(" + ") | (".join([repr(c) for c in self.children]) + ")"
@@ -148,8 +149,8 @@ class MType(object):
 
     def __and__(self, other):
         if self is M:
-            return And(other)
-        return And(self, other)
+            return And(other, chain=True)
+        return And(self, other, chain=True)
 
     __rand__ = __and__
 
