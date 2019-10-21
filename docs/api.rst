@@ -169,7 +169,7 @@ other standard Python exceptions as appropriate.
 Debugging
 ---------
 
-Even the most carefully-constructed specfications eventually need
+Even the most carefully-constructed specifications eventually need
 debugging. If the error message isn't enough to fix your glom issues,
 that's where **Inspect** comes in.
 
