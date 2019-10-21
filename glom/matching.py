@@ -70,6 +70,8 @@ class _Bool(object):
     """
     abstract class for binary operations
     """
+    __slots__ = ('children',)
+
     def __and__(self, other):
         # avoid creating more layers than necessary to
         # save on glomit loopback calls
