@@ -36,7 +36,7 @@ Making a Specifier Type
 -----------------------
 
 Any object instance with a ``glomit`` method can participate in a glom
-call. By way of example, here is a programming cliche implemented as a
+call. By way of example, here is a programming cliché implemented as a
 glom extension type, with comments referencing notes below.
 
 .. code::
