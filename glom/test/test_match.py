@@ -137,3 +137,35 @@ def test_sample():
     bad()
     data['extra'] = 'extra'
     good()
+
+
+def test_ternary():
+    assert glom('abc', Match(Or(None, 'abc'))) == 'abc'
+
+
+def test_sky():
+    """test adapted from github.com/shopkick/opensky"""
+
+    def as_type(sub_schema, typ):
+        'after checking sub_schema, pass the result to typ()'
+        return And(sub_schema, Build(typ))
+
+    assert glom('abc', as_type(M == 'abc', list)) == list('abc')
+
+    def none_or(sub_schema):
+        'allow None or sub_schema'
+        return Match(Or(None, sub_schema))
+
+    assert glom(None, none_or('abc')) == None
+    assert glom('abc', none_or('abc')) == 'abc'
+    with pytest.raises(GlomMatchError):
+        glom(123, none_or('abc'))
+
+    def in_range(sub_schema, _min, _max):
+        'check that sub_schema is between _min and _max'
+        return Match(And(sub_schema, _min < M, M < _max))
+        # TODO: make _min < M < _max work
+
+    assert glom(1, in_range(int, 0, 2))
+    with pytest.raises(GlomMatchError):
+        glom(-1, in_range(int, 0, 2))

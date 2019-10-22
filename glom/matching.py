@@ -36,7 +36,7 @@ from .core import GlomError, glom, T, Spec, MODE
 # to the next and take the first one that works)
 class GlomMatchError(GlomError):
     def __init__(self, fmt, *args):
-        super(GlomMatchError, self).__init__(fmt, args)
+        super(GlomMatchError, self).__init__(fmt, *args)
 
     def __repr__(self):
         fmt, args = self.args
@@ -57,6 +57,9 @@ class Match(object):
         scope[MODE] = _glom_match
         return scope[glom](target, self.spec, scope)
 
+    def __repr__(self):
+        return 'Match({!r})'.format(self.spec)
+
 
 DEFAULT = make_sentinel("DEFAULT")
 DEFAULT.__doc__ = """
@@ -69,8 +72,8 @@ DEFAULT.glomit = lambda target, scope: target
 class And(object):
     __slots__ = ('children', 'chain')
 
-    def __init__(self, *children, chain=False):
-        self.children, self.chain = children, chain
+    def __init__(self, *children):
+        self.children, self.chain = children, False
 
     def glomit(self, target, scope):
         # all children must match without exception
@@ -82,7 +85,9 @@ class And(object):
 
     def __and__(self, other):
         # reduce number of layers of spec
-        return And(*(self.children + (other,)), chain=self.chain)
+        and_ = And(*(self.children + (other,)))
+        and_.chain = self.chain
+        return and_
 
     def __or__(self, other):
         return Or(self, other)
@@ -149,8 +154,11 @@ class MType(object):
 
     def __and__(self, other):
         if self is M:
-            return And(other, chain=True)
-        return And(self, other, chain=True)
+            and_ = And(other)
+        else:
+            and_ = And(self, other)
+        and_.chain = True
+        return and_
 
     __rand__ = __and__
 
@@ -236,6 +244,8 @@ def _precedence(match):
     therefore we need a precedence for which order to try
     keys in; higher = later
     """
+    if type(match) in (Required, Optional):
+        match = match.key
     if match is DEFAULT:
         return 5
     if type(match) in (list, tuple, set, frozenset, dict):
@@ -256,7 +266,10 @@ def _handle_dict(target, spec, scope):
     if sys.version_info < (3, 6):
         # apply a deterministic precedence if the python version itself does not guarantee ordering
         spec_keys = sorted(spec_keys, key=_precedence)
-    required = {key for key in spec_keys if _precedence(key) == 0 or type(key) is Required}
+    required = {
+        key for key in spec_keys
+        if _precedence(key) == 0 and type(key) != Optional
+        or type(key) == Required}
     for key, val in target.items():
         for spec_key in spec_keys:
             try:
@@ -265,13 +278,12 @@ def _handle_dict(target, spec, scope):
                 pass
             else:
                 scope[glom](val, spec[spec_key], scope)
-                required -= {spec_key}
+                required.discard(spec_key)
                 break
         else:
             raise GlomMatchError("key {!r} didn't match any of {!r}", key, spec_keys)
     if required:
         raise GlomMatchError("missing keys {} from value {}", required, target)
-    return target
 
 
 def _glom_match(target, spec, scope):
@@ -279,7 +291,7 @@ def _glom_match(target, spec, scope):
         if not isinstance(target, spec):
             raise GlomTypeMatchError(type(target), spec)
     elif isinstance(spec, dict):
-        return _handle_dict(target, spec, scope)
+        _handle_dict(target, spec, scope)
     elif isinstance(spec, (list, set, frozenset)):
         if not isinstance(target, type(spec)):
             raise GlomTypeMatchError(type(target), type(spec))
@@ -297,7 +309,6 @@ def _glom_match(target, spec, scope):
                 # NOTE: unless error happens above, break will skip else branch
                 # so last_error will have been assigned
                 raise last_error
-        return target
     elif isinstance(spec, tuple):
         if not isinstance(target, tuple):
             raise GlomTypeMatchError(type(target), tuple)
@@ -305,12 +316,9 @@ def _glom_match(target, spec, scope):
             raise GlomMatchError("{!r} does not match {!r}", target, spec)
         for sub_target, sub_spec in zip(target, spec):
             scope[glom](sub_target, sub_spec, scope)
-        return target
-    if isinstance(spec, type):
+    elif isinstance(spec, type):
         if not isinstance(target, spec):
             raise GlomTypeMatchError(type(target), spec)
-        return target
-
-    if target != spec:
+    elif target != spec:
         raise GlomMatchError("{!r} does not match {!r}", target, spec)
-
+    return target
