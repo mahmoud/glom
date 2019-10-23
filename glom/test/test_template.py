@@ -5,4 +5,5 @@ def test():
     assert glom('123', Template({T[0], frozenset([T[1], T[2]])})) == {'1', frozenset(['2', '3'])}
     assert glom('xyz', Template([T[0], T[1], T[2]]))
     assert glom('abc', Template(lambda t: t.upper())) == 'ABC'
-    assert glom('a', 1) == 1
+    assert glom('a', Template(1)) == 1
+    assert Template((T, T, T)).fill(1) == (1, 1, 1)

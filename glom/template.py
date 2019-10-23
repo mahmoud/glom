@@ -13,6 +13,9 @@ class Template(object):
         scope[MODE] = _template
         return scope[glom](target, self.spec, scope)
 
+    def fill(self, target):
+        return glom(target, self)
+
 
 def _template(target, spec, scope):
     recurse = lambda val: scope[glom](target, val, scope)
