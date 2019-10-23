@@ -57,6 +57,9 @@ class Match(object):
         scope[MODE] = _glom_match
         return scope[glom](target, self.spec, scope)
 
+    def verify(self, target):
+        return glom(target, self)
+
     def __repr__(self):
         return 'Match({!r})'.format(self.spec)
 

@@ -45,6 +45,7 @@ def test():
         glom({1: 2}, Match({(): int}))
     with pytest.raises(GlomMatchError):
         glom(1, Match({}))
+    Match(M > 0).verify(1.0)
 
 
 def test_cruddy_json():
