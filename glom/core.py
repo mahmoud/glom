@@ -80,6 +80,8 @@ execution of a tuple of subspecs.
 [0, 1, 2, 3, 4]
 """
 
+MODE =  make_sentinel('MODE')
+
 
 class GlomError(Exception):
     """The base exception for all the errors that might be raised from
@@ -1134,6 +1136,22 @@ class Check(object):
         return ret
 
 
+class Build(object):
+    """
+    switch to builder mode (the default)
+
+    TODO: this seems like it should be a sub-class of class Spec() --
+    if Spec() could help define the interface for new "modes" or dialects
+    that would also help make match mode feel less duct-taped on
+    """
+    def __init__(self, spec):
+        self.spec = spec
+
+    def glomit(self, target, scope):
+        scope[MODE] = _glom_build
+        return scope[glom](target, self.spec, scope)
+
+
 class _AbstractIterable(_AbstractIterableBase):
     __metaclass__ = ABCMeta
     @classmethod
@@ -1442,7 +1460,8 @@ def glom(target, spec, **kwargs):
     skip_exc = kwargs.pop('skip_exc', () if default is _MISSING else GlomError)
     scope = _DEFAULT_SCOPE.new_child({
         Path: kwargs.pop('path', []),
-        Inspect: kwargs.pop('inspector', None)
+        Inspect: kwargs.pop('inspector', None),
+        MODE: _glom_build,
     })
     scope.update(kwargs.pop('scope', {}))
     if kwargs:
@@ -1465,7 +1484,12 @@ def _glom(target, spec, scope):
         return _t_eval(target, spec, scope)
     elif callable(getattr(spec, 'glomit', None)):
         return spec.glomit(target, scope)
-    elif isinstance(spec, dict):
+
+    return scope[MODE](target, spec, scope)
+
+
+def _glom_build(target, spec, scope):
+    if isinstance(spec, dict):
         return _handle_dict(target, spec, scope)
     elif isinstance(spec, list):
         return _handle_list(target, spec, scope)
