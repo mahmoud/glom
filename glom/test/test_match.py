@@ -171,6 +171,21 @@ def test_sky():
     with pytest.raises(GlomMatchError):
         glom(-1, in_range(int, 0, 2))
 
+    def default_if_none(sub_schema, default_factory):
+        return Or(
+            And(M == None, Build(lambda t: default_factory())), sub_schema)
+
+    assert glom(1, default_if_none(T, list)) == 1
+    assert glom(None, default_if_none(T, list)) == []
+
+    def nullable_list_of(*items):
+        return default_if_none(Match(list(items)), list)
+
+    assert glom(None, nullable_list_of(str)) == []
+    assert glom(['a'], nullable_list_of(str)) == ['a']
+    with pytest.raises(GlomMatchError):
+        glom([1], nullable_list_of(str))
+
 
 def test_clamp():
     assert glom(range(10), [(M < 7) | Literal(7)]) == [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]
