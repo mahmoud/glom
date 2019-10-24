@@ -1617,62 +1617,48 @@ class Glommer(object):
         return glom(target, spec, scope=self.scope, **kwargs)
 
 
+class Fill(object):
+    """A specifier type which switches to glom into "fill-mode". For the
+    spec contained within the Fill, glom will only interpret explicit
+    specifier types (including T objects). Whereas the default mode
+    has special interpretations for each of these builtins, fill-mode
+    takes a lighter touch, making Fill great for "filling out" Python
+    literals, like tuples, dicts, sets, and lists.
+
+    >>> target = {'data': [0, 2, 4]}
+    >>> spec = Fill((T['data'][2], T['data'][0]))
+    >>> glom(target, spec)
+    (4, 0)
+
+    As you can see, glom's usual built-in tuple item chaining behavior
+    has switched into a simple tuple constructor.
+
+    (Sidenote for Lisp fans: Fill is like glom's quasi-quoting.)
+
+    """
+    def __init__(self, spec):
+        self.spec = spec
+
+    def glomit(self, target, scope):
+        scope[MODE] = _fill
+        return scope[glom](target, self.spec, scope)
+
+    def fill(self, target):
+        return glom(target, self)
 
 
-"""TODO:
-* "Restructuring Data" / "Restructured Data"
-
-* More subspecs
-  * Inspect - mostly done, but performance checking
-  * Specifier types for all the shorthands (e.g., Assign() for {},
-    Iterate() for []), allows adding more options in situations that
-    need them.
-(Call and Target have better aesthetics and repr compared to lambdas, but are otherwise no more capable)
-* Call
-  * If callable is not intrinsically sufficient for good error
-    reporting, make whatever method it has compatible with the _glom()
-    signature
-  * skip_exc and default arguments to Call, like glom(), for easy try/except
-* Target
-  * Effectively a path, but with an unambiguous
-    getitem/getattr. (should Path and Target merge??)
-* Path note: path is ambiguous wrt what access is performed (getitem
-  or getattr), should this be rectified, or is it ok to have TARGET be
-  a more powerful alternative?
-* More supported target types
-  * Django and SQLAlchemy Models and QuerySets
-  * API for (bypassing) registering known 3rd party integrations like the above
-* Top-level option to collect all the errors instead of just the first.
-  * This will probably require another context object in addition to
-    inspector and path.
-* check_spec / audit_spec
-  * Forward check all types (remap?)
-  * Call(func) <- func must take exactly one argument and have the rest fulfilled by args/kwargs
-  * lambdas must also take one argument
-  * empty coalesces?
-  * stray Inspect objects
-* testing todo: properties that raise exception, other operators that
-  raise exceptions.
-* Inspect stuff should come out on stderr
-
-## Django models registration:
-glom.register(django.db.models.Manager, iterate=lambda m: m.all())
-glom.register(django.db.models.QuerySet, iterate=lambda qs: qs.all())
-
-* Support unregistering target types
-* Eventually: Support registering handlers for new spec types in the
-  main glom function. allows users to handle types beyond the glom
-  builtins. Will require really defining the function interface for
-  what a glom takes; currently: target, spec, _path, _inspect.
-* What to do with empty list and empty tuple (in spec)?
-* Flag (and exception type) to gather all errors, instead of raising
-  the first
-* Contact example
-glom(contact, {
-    'name': 'name',  # simple get-attr
-    'primary_email': 'primary_email.email',  # multi-level get-attr
-    'emails': ('email_set', ['email']),  # get-attr + sequence unpack + fetch one attr
-    'roles': ('vendor_roles', [{'role': 'role'}]),  # get-attr + sequence unpack + sub-glom
-})
-
-"""
+def _fill(target, spec, scope):
+    # TODO: register an operator or two for the following to allow
+    # extension. This operator can probably be shared with the
+    # upcoming traversal/remap feature.
+    recurse = lambda val: scope[glom](target, val, scope)
+    if type(spec) is dict:
+        return {recurse(key): recurse(val) for key, val in spec.items()}
+    if type(spec) in (list, tuple, set, frozenset):
+        result = [recurse(val) for val in spec]
+        if type(spec) is list:
+            return result
+        return type(spec)(result)
+    if callable(spec):
+        return spec(target)
+    return spec
