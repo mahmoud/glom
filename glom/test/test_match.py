@@ -170,3 +170,8 @@ def test_sky():
     assert glom(1, in_range(int, 0, 2))
     with pytest.raises(GlomMatchError):
         glom(-1, in_range(int, 0, 2))
+
+
+def test_clamp():
+    assert glom(range(10), [(M < 7) | Literal(7)]) == [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]
+    assert glom(range(10), [(M < 7) | Literal(SKIP)]) == [0, 1, 2, 3, 4, 5, 6]
