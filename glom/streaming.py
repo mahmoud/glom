@@ -7,7 +7,6 @@ from a file) without excessive memory usage.
 from __future__ import unicode_literals
 
 from itertools import islice, dropwhile, takewhile, chain
-import inspect
 from functools import partial
 try:
     from itertools import imap, ifilter
@@ -122,7 +121,7 @@ class Iter(object):
 
     def map(self, subspec):
         """Return a new :class:`Iter()` spec which will apply the provided
-        subspec to each element of the iterable.
+        *subspec* to each element of the iterable.
 
         >>> glom(range(5), Iter().map(lambda x: x * 2).all())
         [0, 2, 4, 6, 8]
@@ -144,7 +143,7 @@ class Iter(object):
 
     def filter(self, key=T):
         """Return a new :class:`Iter()` spec which will include only elements matching the
-        given subspec.
+        given *key*.
 
         >>> glom(range(6), Iter().filter(lambda x: x % 2).all())
         [1, 3, 5]
@@ -154,8 +153,7 @@ class Iter(object):
         power of glom specs. For even more power, combine,
         :meth:`Iter.filter()` with :class:`Check()`.
 
-        # Python's built-in integers know how many binary digits they
-        # require, using the bit_length method
+        >>> # PROTIP: Python's ints know how many binary digits they require, using the bit_length method
         >>> glom(range(9), Iter().filter(Check(T.bit_length(), one_of=(2, 4), default=SKIP)).all())
         [2, 3, 8]
 
@@ -265,8 +263,8 @@ class Iter(object):
 
 
     def slice(self, *args):
-        """
-        Returns a new :class:`Iter()` spec which trims iterables.
+        """Returns a new :class:`Iter()` spec which trims iterables in the
+        same manner as :func:`itertools.islice`.
 
         >>> target = [0, 1, 2, 3, 4, 5]
         >>> glom(target, Iter().slice(3).all())
@@ -274,7 +272,7 @@ class Iter(object):
         >>> glom(target, Iter().slice(2, 4).all())
         [2, 3]
 
-        For more info, see :func:`itertools.islice`.
+        This method accepts only positional arguments.
         """
         # TODO: make a kwarg-compatible version of this (islice takes no kwargs)
         try:
@@ -328,25 +326,31 @@ class Iter(object):
     # Terminal methods follow
 
     def all(self):
-        """A convenience method for turning an iterable into a list. Note that
-        this always consumes the whole iterable, and as such, does
-        *not* return a new :class:`Iter()` instance.
+        """A convenience method which returns a new spec which turns an
+        iterable into a list.
 
         >>> glom(range(5), Iter(lambda t: t * 2).all())
         [0, 2, 4, 6, 8]
+
+        Note that this spec will always consume the whole iterable, and as
+        such, the spec returned is *not* an :class:`Iter()` instance.
         """
         return (self, list)
 
     def first(self, key=T, default=None):
         """A convenience method for lazily yielding a single truthy item from
-        an iterable. As this spec yields at most one item, and not an
-        iterable, the return value of this method is not a new Iter()
-        instance.
+        an iterable.
 
         >>> target = [False, 1, 2, 3]
         >>> glom(target, Iter().first())
         1
 
+        This method takes a condition, *key*, which can also be a
+        glomspec, as well as a *default*, in case nothing matches the
+        condition.
+
+        As this spec yields at most one item, and not an iterable, the
+        spec returned from this method is not an :class:`Iter()` instance.
         """
         return (self, First(key=key, default=default))
 
