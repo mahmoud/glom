@@ -1497,11 +1497,16 @@ def glom(target, spec, **kwargs):
     if kwargs:
         raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
     try:
-        ret = _glom(target, spec, scope)
-    except skip_exc:
-        if default is _MISSING:
-            raise
-        ret = default
+        try:
+            ret = _glom(target, spec, scope)
+        except skip_exc:
+            if default is _MISSING:
+                raise
+            ret = default
+    except GlomError as ge:
+        # TODO: what about non-GlomErrors (e.g., those raised by
+        # callables, like glom('a', int) )
+        raise ge
     return ret
 
 
