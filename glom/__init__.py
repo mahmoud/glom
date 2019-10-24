@@ -9,6 +9,8 @@ from glom.core import (glom,
                        OMIT,  # backwards compat
                        SKIP,
                        STOP,
+                       UP,
+                       ROOT,
                        MODE,
                        Check,
                        Path,
