@@ -1198,9 +1198,11 @@ def _handle_tuple(target, spec, scope):
         if nxt is STOP:
             break
         res = nxt
+        # this makes it so that specs in a tuple effectively nest.
         scope = scope[LAST_CHILD_SCOPE]
-        # TODO: with scope-chaining, is this path munging still needed
-        # or can that responsibility belong to the child scopes?
+        # TODO: with scope-chaining, path munging should become part
+        # of the constituent specs. This should be addressed when
+        # Paths go toward being segments/breadcrumbs.
         if not isinstance(subspec, list):
             scope[Path] += [getattr(subspec, '__name__', subspec)]
     return res
