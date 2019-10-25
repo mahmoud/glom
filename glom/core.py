@@ -688,7 +688,7 @@ class Inspect(object):
         if self.breakpoint:
             self.breakpoint()
         try:
-            ret = scope[Inspect](target, self.wrapped, scope)
+            ret = scope[Inspect](target, spec, scope)
         except Exception:
             if self.post_mortem:
                 self.post_mortem()
