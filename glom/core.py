@@ -97,7 +97,23 @@ class GlomError(Exception):
     (e.g., ``len``, ``sum``, any ``lambda``) will not be wrapped in a
     GlomError.
     """
-    pass
+    @classmethod
+    def from_scope(cls, scope):
+        # TODO: this could maybe be the __init__
+        ret = cls()
+        ret.scope = scope
+        return ret
+
+    def finalize(self):
+        # ... walk up scope chain map
+        # then:
+        del self.scope
+
+    def __repr__(self):
+        pass
+
+    def __str__(self):
+        pass
 
 
 class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
