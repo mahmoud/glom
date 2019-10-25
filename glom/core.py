@@ -941,6 +941,15 @@ class Let(object):
         scope.update({
             k: scope[glom](target, v, scope) for k, v in self._binding.items()})
 
+    def glomit(self, target, scope):
+        scope.update({
+            k: scope[glom](target, v, scope) for k, v in self._binding.items()})
+        return target
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(**%r)' % (cn, self._binding)
+
 
 class _LetOver(object):
     def __init__(self, let, subspec):
