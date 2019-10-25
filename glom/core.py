@@ -42,6 +42,7 @@ else:
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
     from collections import ChainMap
 
+
 _type_type = type
 
 _MISSING = make_sentinel('_MISSING')
@@ -80,7 +81,15 @@ execution of a tuple of subspecs.
 [0, 1, 2, 3, 4]
 """
 
+LAST_CHILD_SCOPE = make_sentinel('LAST_CHILD_SCOPE')
+LAST_CHILD_SCOPE.__doc__ = """
+Marker that can be used by parents to keep track of the last child
+scope executed.  Useful for "lifting" results out of child scopes
+for scopes that want to chain the scopes of their children together
+similar to tuple.
+"""
 MODE =  make_sentinel('MODE')
+
 
 
 class GlomError(Exception):
@@ -1235,6 +1244,8 @@ def _handle_tuple(target, spec, scope):
         if nxt is STOP:
             break
         res = nxt
+        # this makes it so that specs in a tuple effectively nest.
+        scope = scope[LAST_CHILD_SCOPE]
         if not isinstance(subspec, list):
             scope[Path] += [getattr(subspec, '__name__', subspec)]
     return res
@@ -1506,7 +1517,8 @@ def glom(target, spec, **kwargs):
 
 
 def _glom(target, spec, scope):
-    scope, parent = scope.new_child(), scope
+    parent = scope
+    scope = scope[LAST_CHILD_SCOPE] = scope.new_child()
     scope[T] = target
     scope[Spec] = spec
     scope[UP] = parent
