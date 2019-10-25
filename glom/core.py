@@ -1518,7 +1518,8 @@ def glom(target, spec, **kwargs):
 
 def _glom(target, spec, scope):
     parent = scope
-    scope = scope[LAST_CHILD_SCOPE] = scope.new_child()
+    scope = scope.new_child()
+    parent[LAST_CHILD_SCOPE] = scope
     scope[T] = target
     scope[Spec] = spec
     scope[UP] = parent
