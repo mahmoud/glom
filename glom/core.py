@@ -918,28 +918,37 @@ UP = make_sentinel('UP')
 ROOT = make_sentinel('ROOT')
 
 
+def _format_invocation(name='', args=(), kwargs=None):  # pragma: no cover
+    # TODO: add to boltons
+    kwargs = kwargs or {}
+    a_text = ', '.join([repr(a) for a in args])
+    if isinstance(kwargs, dict):
+        kwarg_items = kwargs.items()
+    else:
+        kwarg_items = kwargs
+    kw_text = ', '.join(['%s=%r' % (k, v) for k, v in kwarg_items])
+
+    star_args_text = a_text
+    if star_args_text and kw_text:
+        star_args_text += ', '
+    star_args_text += kw_text
+
+    return '%s(%s)' % (name, star_args_text)
+
+
 class Let(object):
     """
     This specifier type assigns variables to the scope.
 
     >>> target = {'data': {'val': 9}}
-    >>> spec = Let(value=T['data']['val']).over({'val': S['value']})
+    >>> spec = (Let(value=T['data']['val']), {'val': S['value']})
     >>> glom(target, spec)
     {'val': 9}
-
-    Other form is Let(foo=spec1, bar=spec2).over(subspec)
     """
     def __init__(self, **kw):
         if not kw:
             raise TypeError('expected at least one keyword argument')
         self._binding = kw
-
-    def over(self, subspec):
-        return _LetOver(self, subspec)
-
-    def _write_to(self, target, scope):
-        scope.update({
-            k: scope[glom](target, v, scope) for k, v in self._binding.items()})
 
     def glomit(self, target, scope):
         scope.update({
@@ -948,16 +957,7 @@ class Let(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(**%r)' % (cn, self._binding)
-
-
-class _LetOver(object):
-    def __init__(self, let, subspec):
-        self.let, self.subspec = let, subspec
-
-    def glomit(self, target, scope):
-        self.let._write_to(target, scope)
-        return scope[glom](target, self.subspec, scope)
+        return _format_invocation(cn, kwargs=self._binding)
 
 
 def _format_t(path, root=T):

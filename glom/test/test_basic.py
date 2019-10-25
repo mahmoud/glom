@@ -333,3 +333,5 @@ def test_let():
         Let('posarg')
     with pytest.raises(TypeError):
         Let()
+
+    assert repr(Let(a=T.a.b)) == 'Let(a=T.a.b)'
