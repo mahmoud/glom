@@ -104,8 +104,8 @@ class Iter(object):
                             % (target.__class__.__name__, Path(*scope[Path]), e))
 
         for i, t in enumerate(iterator):
-            yld = (t if self.subspec is T
-                   else scope[glom](t, self.subspec, scope.new_child({Path: scope[Path] + [i]})))
+            scope[Path] += [i]
+            yld = (t if self.subspec is T else scope[glom](t, self.subspec, scope))
             if yld is SKIP:
                 continue
             elif yld is self.sentinel or yld is STOP:
@@ -275,6 +275,7 @@ class Iter(object):
         This method accepts only positional arguments.
         """
         # TODO: make a kwarg-compatible version of this (islice takes no kwargs)
+        # TODO: also support slice syntax Iter()[::]
         try:
             islice([], *args)
         except TypeError:
