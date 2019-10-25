@@ -82,6 +82,12 @@ execution of a tuple of subspecs.
 
 MODE =  make_sentinel('MODE')
 
+ERROR_SCOPE = make_sentinel('ERROR_SCOPE')
+ERROR_SCOPE.__doct__ = """
+``ERROR_SCOPE`` is used by glom internals to store the scope
+from which an exception was raised when processing fails.
+"""
+
 
 class GlomError(Exception):
     """The base exception for all the errors that might be raised from
@@ -1516,12 +1522,16 @@ def _glom(target, spec, scope):
     scope[Spec] = spec
     scope[UP] = parent
 
-    if isinstance(spec, TType):  # must go first, due to callability
-        return _t_eval(target, spec, scope)
-    elif callable(getattr(spec, 'glomit', None)):
-        return spec.glomit(target, scope)
+    try:
+        if isinstance(spec, TType):  # must go first, due to callability
+            return _t_eval(target, spec, scope)
+        elif callable(getattr(spec, 'glomit', None)):
+            return spec.glomit(target, scope)
 
-    return scope[MODE](target, spec, scope)
+        return scope[MODE](target, spec, scope)
+    except Exception:
+        scope[ROOT].setdefault(ERROR_SCOPE, scope)
+        raise
 
 
 def _glom_build(target, spec, scope):
