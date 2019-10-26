@@ -103,8 +103,9 @@ class Iter(object):
             raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
                             % (target.__class__.__name__, Path(*scope[Path]), e))
 
+        base_path = scope[Path]
         for i, t in enumerate(iterator):
-            scope[Path] += [i]
+            scope[Path] = base_path + [i]
             yld = (t if self.subspec is T else scope[glom](t, self.subspec, scope))
             if yld is SKIP:
                 continue

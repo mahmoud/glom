@@ -1234,8 +1234,10 @@ def _handle_list(target, spec, scope):
         raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
                         % (target.__class__.__name__, Path(*scope[Path]), e))
     ret = []
+    base_path = scope[Path]
     for i, t in enumerate(iterator):
-        val = scope[glom](t, subspec, scope.new_child({Path: scope[Path] + [i]}))
+        scope[Path] = base_path + [i]
+        val = scope[glom](t, subspec, scope)
         if val is SKIP:
             continue
         if val is STOP:
