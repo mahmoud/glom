@@ -1181,9 +1181,9 @@ class Check(object):
         return ret
 
 
-class Build(object):
+class Auto(object):
     """
-    switch to builder mode (the default)
+    Switch to Auto mode (the default)
 
     TODO: this seems like it should be a sub-class of class Spec() --
     if Spec() could help define the interface for new "modes" or dialects
@@ -1193,7 +1193,7 @@ class Build(object):
         self.spec = spec
 
     def glomit(self, target, scope):
-        scope[MODE] = _glom_build
+        scope[MODE] = _glom_auto
         return scope[glom](target, self.spec, scope)
 
 
@@ -1510,7 +1510,7 @@ def glom(target, spec, **kwargs):
     scope = _DEFAULT_SCOPE.new_child({
         Path: kwargs.pop('path', []),
         Inspect: kwargs.pop('inspector', None),
-        MODE: _glom_build,
+        MODE: _glom_auto,
     })
     scope[UP] = scope
     scope[ROOT] = scope
@@ -1543,7 +1543,7 @@ def _glom(target, spec, scope):
     return scope[MODE](target, spec, scope)
 
 
-def _glom_build(target, spec, scope):
+def _glom_auto(target, spec, scope):
     if isinstance(spec, dict):
         return _handle_dict(target, spec, scope)
     elif isinstance(spec, list):

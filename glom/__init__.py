@@ -1,7 +1,7 @@
 
 from glom.core import (glom,
                        Fill,
-                       Build,
+                       Auto,
                        register,
                        Glommer,
                        Call,
