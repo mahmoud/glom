@@ -233,7 +233,7 @@ def test_invoke():
     repr_spec = Invoke.specfunc(T).star(args='args'
         ).consts(3, b='b').specs(c='c'
         ).star(args='args2', kwargs='kwargs')
-    assert eval(repr(repr_spec), locals(), globals()) == repr_spec
+    assert repr(eval(repr(repr_spec), locals(), globals())) == repr(repr_spec)
 
 
 def test_spec_and_recursion():

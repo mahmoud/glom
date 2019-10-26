@@ -757,23 +757,23 @@ class Invoke(object):
     """
     Easily invoke callables from glom.
     """
-    def __init__(self, func, specfunc=None):
-        self.func, self.subspec = func, specfunc
+    def __init__(self, func):
+        self.func = func
         self.args = ()
 
     @classmethod
     def specfunc(cls, specfunc):
-        return cls(None, specfunc)
+        return cls(Spec(specfunc))
 
     def consts(self, *a, **kw):
         """pass *a and **kw to func"""
-        ret = Invoke(self.func, self.subspec)
+        ret = Invoke(self.func)
         ret.args = self.args + ('C', a, kw)
         return ret
 
     def specs(self, *a, **kw):
         """glom all of *a and **kw and pass to func"""
-        ret = Invoke(self.func, self.subspec)
+        ret = Invoke(self.func)
         ret.args = self.args + ('S', a, kw)
         return ret
 
@@ -782,16 +782,16 @@ class Invoke(object):
         glom args and kwargs and pass to func as *a and **kw
         """
         assert args is not None or kwargs is not None
-        ret = Invoke(self.func, self.subspec)
+        ret = Invoke(self.func)
         ret.args = self.args + ('*', args, kwargs)
         return ret
 
     def __repr__(self):
         chunks = [self.__class__.__name__]
-        if self.func:
-            chunks.append('({!r})'.format(self.func))
+        if type(self.func) is Spec:
+            chunks.append('.specfunc({!r})'.format(self.func.spec))
         else:
-            chunks.append('.specfunc({!r})'.format(self.subspec))
+            chunks.append('({!r})'.format(self.func))
         for i in range(len(self.args) // 3):
             op, args, kwargs = self.args[i * 3: i * 3 + 3]
             fname = {'C': 'consts', 'S': 'specs', '*': 'star'}[op]
@@ -809,9 +809,6 @@ class Invoke(object):
                     chunks.append('kwargs=' + repr(kwargs))
             chunks.append(')')
         return ''.join(chunks)
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.__dict__ == other.__dict__
 
     def glomit(self, target, scope):
         all_args = []
@@ -831,7 +828,7 @@ class Invoke(object):
                     all_args.extend(recurse(args))
                 if kwargs is not None:
                     all_kwargs.update(recurse(kwargs))
-        func = self.func or recurse(self.subspec)
+        func = recurse(self.func) if type(self.func) is Spec else self.func
         return func(*all_args, **all_kwargs)
 
 
