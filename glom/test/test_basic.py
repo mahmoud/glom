@@ -3,7 +3,7 @@ import pytest
 
 from itertools import chain, dropwhile
 
-from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S, Partial
+from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S, Invoke
 import glom.core as glom_core
 from glom.core import Spec, UP  # probationary
 
@@ -205,21 +205,21 @@ def test_call_and_target():
     return
 
 
-def test_partial():
+def test_invoke():
     args = []
     def test(*a, **kw):
         args.append(a)
         args.append(kw)
         return 'test'
 
-    assert glom('a', Partial(len).specs(T)) == 1
+    assert glom('a', Invoke(len).specs(T)) == 1
     data = {
         'args': (1, 2),
         'args2': (4, 5),
         'kwargs': {'a': 'a'},
         'c': 'C',
     }
-    spec = Partial(test).star(args='args'
+    spec = Invoke(test).star(args='args'
         ).consts(3, b='b').specs(c='c'
         ).star(args='args2', kwargs='kwargs')
     repr(spec)  # no exceptions
@@ -228,9 +228,9 @@ def test_partial():
         (1, 2, 3, 4, 5),
         {'a': 'a', 'b': 'b', 'c': 'C'}]
     args = []
-    assert glom(test, Partial.specfunc(T)) == 'test'
+    assert glom(test, Invoke.specfunc(T)) == 'test'
     assert args == [(), {}]
-    repr_spec = Partial.specfunc(T).star(args='args'
+    repr_spec = Invoke.specfunc(T).star(args='args'
         ).consts(3, b='b').specs(c='c'
         ).star(args='args2', kwargs='kwargs')
     assert eval(repr(repr_spec), locals(), globals()) == repr_spec

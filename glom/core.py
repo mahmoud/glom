@@ -753,11 +753,9 @@ class Call(object):
         return '%s(%r, args=%r, kwargs=%r)' % (cn, self.func, self.args, self.kwargs)
 
 
-class Partial(object):
+class Invoke(object):
     """
-    makes "upgrading" arbitrary python functions into
-    glom specs more convenient, so that itertools, toolz, et al
-    may be more easily integrated into streaming glom chains
+    Easily invoke callables from glom.
     """
     def __init__(self, func, specfunc=None):
         self.func, self.subspec = func, specfunc
@@ -769,13 +767,13 @@ class Partial(object):
 
     def consts(self, *a, **kw):
         """pass *a and **kw to func"""
-        ret = Partial(self.func, self.subspec)
+        ret = Invoke(self.func, self.subspec)
         ret.args = self.args + ('C', a, kw)
         return ret
 
     def specs(self, *a, **kw):
         """glom all of *a and **kw and pass to func"""
-        ret = Partial(self.func, self.subspec)
+        ret = Invoke(self.func, self.subspec)
         ret.args = self.args + ('S', a, kw)
         return ret
 
@@ -784,7 +782,7 @@ class Partial(object):
         glom args and kwargs and pass to func as *a and **kw
         """
         assert args is not None or kwargs is not None
-        ret = Partial(self.func, self.subspec)
+        ret = Invoke(self.func, self.subspec)
         ret.args = self.args + ('*', args, kwargs)
         return ret
 
