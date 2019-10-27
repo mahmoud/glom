@@ -235,6 +235,9 @@ def test_invoke():
         ).star(args='args2', kwargs='kwargs')
     assert repr(eval(repr(repr_spec), locals(), globals())) == repr(repr_spec)
 
+    with pytest.raises(TypeError, match='expected func to be a callable or Spec instance'):
+        Invoke(object())
+
 
 def test_spec_and_recursion():
     assert repr(Spec('a.b.c')) == "Spec('a.b.c')"

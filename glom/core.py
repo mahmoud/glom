@@ -753,17 +753,30 @@ class Call(object):
         return '%s(%r, args=%r, kwargs=%r)' % (cn, self.func, self.args, self.kwargs)
 
 
+def _is_spec(obj, strict=False):
+    # a little util for codifying the spec type checking in glom
+    if isinstance(obj, TType):
+        return True
+    if strict:
+        return type(obj) is Spec
+    # TODO: revisit line below
+    return callable(getattr(obj, 'glomit', None)) and not isinstance(obj, type)  # pragma: no cover
+
+
 class Invoke(object):
     """
     Easily invoke callables from glom.
     """
     def __init__(self, func):
+        if not callable(func) and not _is_spec(func, strict=True):
+            raise TypeError('expected func to be a callable or Spec instance,'
+                            ' not: %r' % (func,))
         self.func = func
         self.args = ()
 
     @classmethod
-    def specfunc(cls, specfunc):
-        return cls(Spec(specfunc))
+    def specfunc(cls, spec):
+        return cls(Spec(spec))
 
     def consts(self, *a, **kw):
         """pass *a and **kw to func"""
