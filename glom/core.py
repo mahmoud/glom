@@ -792,13 +792,13 @@ class Invoke(object):
 
     def consts(self, *a, **kw):
         """pass *a and **kw to func"""
-        ret = Invoke(self.func)
+        ret = self.__class__(self.func)
         ret.args = self.args + ('C', a, kw)
         return ret
 
     def specs(self, *a, **kw):
         """glom all of *a and **kw and pass to func"""
-        ret = Invoke(self.func)
+        ret = self.__class__(self.func)
         ret.args = self.args + ('S', a, kw)
         return ret
 
@@ -807,7 +807,7 @@ class Invoke(object):
         glom args and kwargs and pass to func as *a and **kw
         """
         assert args is not None or kwargs is not None
-        ret = Invoke(self.func)
+        ret = self.__class__(self.func)
         ret.args = self.args + ('*', args, kwargs)
         return ret
 
