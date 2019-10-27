@@ -190,4 +190,4 @@ def test_s_assign():
     '''
     check that assign works when storing things into S
     '''
-    glom({}, (Assign(S['foo'], 'bar'), S['foo']))
+    glom({}, (Assign(S['foo'], 'bar'), S['foo'])) == 'bar'

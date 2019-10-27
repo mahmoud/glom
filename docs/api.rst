@@ -50,6 +50,50 @@ specifiers to declare away overly branchy procedural code.
 .. autodata:: glom.SKIP
 .. autodata:: glom.STOP
 
+Stream processing iterables with Iter
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+*New in glom 19.2.0*
+
+.. autoclass:: glom.Iter
+
+   .. automethod:: map
+   .. automethod:: filter
+   .. automethod:: chunked
+   .. automethod:: split
+   .. automethod:: flatten
+   .. automethod:: unique
+   .. automethod:: limit
+   .. automethod:: slice
+   .. automethod:: takewhile
+   .. automethod:: dropwhile
+   .. automethod:: all
+   .. automethod:: first
+
+
+Combining iterables with Flatten and friends
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+*New in glom 19.1.0*
+
+Got lists of lists? Sets of tuples? A sequence of dicts (but only want
+one)? Do you find yourself reaching for Python's builtin :func:`sum`
+and :func:`reduce`? To handle these situations and more, glom has five
+specifier types and two convenience functions:
+
+.. autofunction:: glom.flatten
+
+.. autoclass:: glom.Flatten
+
+.. autofunction:: glom.merge
+
+.. autoclass:: glom.Merge
+
+.. autoclass:: glom.Sum
+
+.. autoclass:: glom.Fold
+
+
 Target mutation with Assign
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -76,28 +120,6 @@ to get the job done. But once a spec works, how can it be cleaned up?
 
 .. autofunction:: glom.Call
 
-Combining iterables with Flatten and friends
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-*New in glom 19.1.0*
-
-Got lists of lists? Sets of tuples? A sequence of dicts (but only want
-one)? Do you find yourself reaching for Python's builtin :func:`sum`
-and :func:`reduce`? To handle these situations and more, glom has five
-specifier types and two convenience functions:
-
-.. autofunction:: glom.flatten
-
-.. autoclass:: glom.Flatten
-
-.. autofunction:: glom.merge
-
-.. autoclass:: glom.Merge
-
-.. autoclass:: glom.Sum
-
-.. autoclass:: glom.Fold
-
 
 Object-oriented access and method calls with ``T``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -105,8 +127,6 @@ Object-oriented access and method calls with ``T``
 glom's shortest-named feature may be its most powerful.
 
 .. autodata:: glom.T
-
-.. _exceptions:
 
 .. _check-specifier:
 
@@ -119,6 +139,8 @@ step, you can do these checks inline with your glom spec, using
 ``Check``.
 
 .. autoclass:: glom.Check
+
+.. _exceptions:
 
 Exceptions
 ----------
@@ -147,7 +169,7 @@ other standard Python exceptions as appropriate.
 Debugging
 ---------
 
-Even the most carefully-constructed specfications eventually need
+Even the most carefully-constructed specifications eventually need
 debugging. If the error message isn't enough to fix your glom issues,
 that's where **Inspect** comes in.
 

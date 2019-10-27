@@ -42,6 +42,7 @@ else:
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
     from collections import ChainMap
 
+
 _type_type = type
 
 _MISSING = make_sentinel('_MISSING')
@@ -79,6 +80,16 @@ execution of a tuple of subspecs.
 >>> glom(target, spec)
 [0, 1, 2, 3, 4]
 """
+
+LAST_CHILD_SCOPE = make_sentinel('LAST_CHILD_SCOPE')
+LAST_CHILD_SCOPE.__doc__ = """
+Marker that can be used by parents to keep track of the last child
+scope executed.  Useful for "lifting" results out of child scopes
+for scopes that want to chain the scopes of their children together
+similar to tuple.
+"""
+MODE =  make_sentinel('MODE')
+
 
 
 class GlomError(Exception):
@@ -475,8 +486,9 @@ class Spec(object):
     def glom(self, target, **kw):
         scope = dict(self.scope)
         scope.update(kw.get('scope', {}))
-        kw['scope'] = scope
-        return glom(target, self.spec, **kw)
+        kw['scope'] = ChainMap(scope)
+        glom_ = scope.get(glom, glom)
+        return glom_(target, self.spec, **kw)
 
     def glomit(self, target, scope):
         scope.update(self.scope)
@@ -676,7 +688,7 @@ class Inspect(object):
         if self.breakpoint:
             self.breakpoint()
         try:
-            ret = scope[Inspect](target, self.wrapped, scope)
+            ret = scope[Inspect](target, spec, scope)
         except Exception:
             if self.post_mortem:
                 self.post_mortem()
@@ -919,13 +931,6 @@ class TType(object):
         return _t_child(self, '.', name)
 
     def __getitem__(self, item):
-        if item is UP:
-            newpath = _T_PATHS[self][:-2]
-            if not newpath:
-                return T
-            t = TType()
-            _T_PATHS[t] = _T_PATHS[self][:-2]
-            return t
         return _t_child(self, '[', item)
 
     def __call__(self, *args, **kwargs):
@@ -963,7 +968,7 @@ def _t_eval(target, _t, scope):
         raise ValueError('TType instance with invalid root object')
     while i < len(t_path):
         op, arg = t_path[i], t_path[i + 1]
-        if type(arg) in (Spec, TType):
+        if type(arg) in (Spec, TType, Literal):
             arg = scope[glom](target, arg, scope)
         if op == '.':
             try:
@@ -1002,6 +1007,49 @@ S = TType()  # like T, but means grab stuff from Scope, not Target
 _T_PATHS[T] = (T,)
 _T_PATHS[S] = (S,)
 UP = make_sentinel('UP')
+ROOT = make_sentinel('ROOT')
+
+
+def _format_invocation(name='', args=(), kwargs=None):  # pragma: no cover
+    # TODO: add to boltons
+    kwargs = kwargs or {}
+    a_text = ', '.join([repr(a) for a in args])
+    if isinstance(kwargs, dict):
+        kwarg_items = kwargs.items()
+    else:
+        kwarg_items = kwargs
+    kw_text = ', '.join(['%s=%r' % (k, v) for k, v in kwarg_items])
+
+    star_args_text = a_text
+    if star_args_text and kw_text:
+        star_args_text += ', '
+    star_args_text += kw_text
+
+    return '%s(%s)' % (name, star_args_text)
+
+
+class Let(object):
+    """
+    This specifier type assigns variables to the scope.
+
+    >>> target = {'data': {'val': 9}}
+    >>> spec = (Let(value=T['data']['val']), {'val': S['value']})
+    >>> glom(target, spec)
+    {'val': 9}
+    """
+    def __init__(self, **kw):
+        if not kw:
+            raise TypeError('expected at least one keyword argument')
+        self._binding = kw
+
+    def glomit(self, target, scope):
+        scope.update({
+            k: scope[glom](target, v, scope) for k, v in self._binding.items()})
+        return target
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return _format_invocation(cn, kwargs=self._binding)
 
 
 def _format_t(path, root=T):
@@ -1225,6 +1273,22 @@ class Check(object):
         return ret
 
 
+class Auto(object):
+    """
+    Switch to Auto mode (the default)
+
+    TODO: this seems like it should be a sub-class of class Spec() --
+    if Spec() could help define the interface for new "modes" or dialects
+    that would also help make match mode feel less duct-taped on
+    """
+    def __init__(self, spec):
+        self.spec = spec
+
+    def glomit(self, target, scope):
+        scope[MODE] = _glom_auto
+        return scope[glom](target, self.spec, scope)
+
+
 class _AbstractIterable(_AbstractIterableBase):
     __metaclass__ = ABCMeta
     @classmethod
@@ -1262,8 +1326,10 @@ def _handle_list(target, spec, scope):
         raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
                         % (target.__class__.__name__, Path(*scope[Path]), e))
     ret = []
+    base_path = scope[Path]
     for i, t in enumerate(iterator):
-        val = scope[glom](t, subspec, scope.new_child({Path: scope[Path] + [i]}))
+        scope[Path] = base_path + [i]
+        val = scope[glom](t, subspec, scope)
         if val is SKIP:
             continue
         if val is STOP:
@@ -1281,6 +1347,8 @@ def _handle_tuple(target, spec, scope):
         if nxt is STOP:
             break
         res = nxt
+        # this makes it so that specs in a tuple effectively nest.
+        scope = scope[LAST_CHILD_SCOPE]
         if not isinstance(subspec, list):
             scope[Path] += [getattr(subspec, '__name__', subspec)]
     return res
@@ -1533,8 +1601,12 @@ def glom(target, spec, **kwargs):
     skip_exc = kwargs.pop('skip_exc', () if default is _MISSING else GlomError)
     scope = _DEFAULT_SCOPE.new_child({
         Path: kwargs.pop('path', []),
-        Inspect: kwargs.pop('inspector', None)
+        Inspect: kwargs.pop('inspector', None),
+        MODE: _glom_auto,
     })
+    scope[UP] = scope
+    scope[ROOT] = scope
+    scope[T] = target
     scope.update(kwargs.pop('scope', {}))
     if kwargs:
         raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
@@ -1548,15 +1620,23 @@ def glom(target, spec, **kwargs):
 
 
 def _glom(target, spec, scope):
+    parent = scope
     scope = scope.new_child()
+    parent[LAST_CHILD_SCOPE] = scope
     scope[T] = target
     scope[Spec] = spec
+    scope[UP] = parent
 
     if isinstance(spec, TType):  # must go first, due to callability
         return _t_eval(target, spec, scope)
     elif callable(getattr(spec, 'glomit', None)):
         return spec.glomit(target, scope)
-    elif isinstance(spec, dict):
+
+    return scope[MODE](target, spec, scope)
+
+
+def _glom_auto(target, spec, scope):
+    if isinstance(spec, dict):
         return _handle_dict(target, spec, scope)
     elif isinstance(spec, list):
         return _handle_list(target, spec, scope)
@@ -1684,62 +1764,48 @@ class Glommer(object):
         return glom(target, spec, scope=self.scope, **kwargs)
 
 
+class Fill(object):
+    """A specifier type which switches to glom into "fill-mode". For the
+    spec contained within the Fill, glom will only interpret explicit
+    specifier types (including T objects). Whereas the default mode
+    has special interpretations for each of these builtins, fill-mode
+    takes a lighter touch, making Fill great for "filling out" Python
+    literals, like tuples, dicts, sets, and lists.
+
+    >>> target = {'data': [0, 2, 4]}
+    >>> spec = Fill((T['data'][2], T['data'][0]))
+    >>> glom(target, spec)
+    (4, 0)
+
+    As you can see, glom's usual built-in tuple item chaining behavior
+    has switched into a simple tuple constructor.
+
+    (Sidenote for Lisp fans: Fill is like glom's quasi-quoting.)
+
+    """
+    def __init__(self, spec):
+        self.spec = spec
+
+    def glomit(self, target, scope):
+        scope[MODE] = _fill
+        return scope[glom](target, self.spec, scope)
+
+    def fill(self, target):
+        return glom(target, self)
 
 
-"""TODO:
-* "Restructuring Data" / "Restructured Data"
-
-* More subspecs
-  * Inspect - mostly done, but performance checking
-  * Specifier types for all the shorthands (e.g., Assign() for {},
-    Iterate() for []), allows adding more options in situations that
-    need them.
-(Call and Target have better aesthetics and repr compared to lambdas, but are otherwise no more capable)
-* Call
-  * If callable is not intrinsically sufficient for good error
-    reporting, make whatever method it has compatible with the _glom()
-    signature
-  * skip_exc and default arguments to Call, like glom(), for easy try/except
-* Target
-  * Effectively a path, but with an unambiguous
-    getitem/getattr. (should Path and Target merge??)
-* Path note: path is ambiguous wrt what access is performed (getitem
-  or getattr), should this be rectified, or is it ok to have TARGET be
-  a more powerful alternative?
-* More supported target types
-  * Django and SQLAlchemy Models and QuerySets
-  * API for (bypassing) registering known 3rd party integrations like the above
-* Top-level option to collect all the errors instead of just the first.
-  * This will probably require another context object in addition to
-    inspector and path.
-* check_spec / audit_spec
-  * Forward check all types (remap?)
-  * Call(func) <- func must take exactly one argument and have the rest fulfilled by args/kwargs
-  * lambdas must also take one argument
-  * empty coalesces?
-  * stray Inspect objects
-* testing todo: properties that raise exception, other operators that
-  raise exceptions.
-* Inspect stuff should come out on stderr
-
-## Django models registration:
-glom.register(django.db.models.Manager, iterate=lambda m: m.all())
-glom.register(django.db.models.QuerySet, iterate=lambda qs: qs.all())
-
-* Support unregistering target types
-* Eventually: Support registering handlers for new spec types in the
-  main glom function. allows users to handle types beyond the glom
-  builtins. Will require really defining the function interface for
-  what a glom takes; currently: target, spec, _path, _inspect.
-* What to do with empty list and empty tuple (in spec)?
-* Flag (and exception type) to gather all errors, instead of raising
-  the first
-* Contact example
-glom(contact, {
-    'name': 'name',  # simple get-attr
-    'primary_email': 'primary_email.email',  # multi-level get-attr
-    'emails': ('email_set', ['email']),  # get-attr + sequence unpack + fetch one attr
-    'roles': ('vendor_roles', [{'role': 'role'}]),  # get-attr + sequence unpack + sub-glom
-})
-
-"""
+def _fill(target, spec, scope):
+    # TODO: register an operator or two for the following to allow
+    # extension. This operator can probably be shared with the
+    # upcoming traversal/remap feature.
+    recurse = lambda val: scope[glom](target, val, scope)
+    if type(spec) is dict:
+        return {recurse(key): recurse(val) for key, val in spec.items()}
+    if type(spec) in (list, tuple, set, frozenset):
+        result = [recurse(val) for val in spec]
+        if type(spec) is list:
+            return result
+        return type(spec)(result)
+    if callable(spec):
+        return spec(target)
+    return spec

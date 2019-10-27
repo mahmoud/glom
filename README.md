@@ -55,6 +55,30 @@ Anything you can do at the command line readily translates to Python
 code, so you've always got a path forward when complexity starts to
 ramp up.
 
+
+## Examples
+#### Without glom
+```python
+>>> data = {'a': {'b': {'c': 'd'}}}
+>>> data['a']['b']['c']
+'d'
+>>> data2 = {'a': {'b': None}}
+>>> data2['a']['b']['c']
+Traceback (most recent call last):
+...
+TypeError: 'NoneType' object is not subscriptable
+```
+
+#### With glom
+```python
+>>> glom(data, 'a.b.c')
+'d'
+>>> glom(data2, 'a.b.c')
+Traceback (most recent call last):
+...
+PathAccessError: could not access 'c', index 2 in path Path('a', 'b', 'c'), got error: ...
+```
+
 ## Learn more
 
 <img width="30%" align="right" src="./docs/_static/comet_multi.png">
