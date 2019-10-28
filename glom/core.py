@@ -731,6 +731,10 @@ class Call(object):
        ``Call`` is mostly for functions. Use a :attr:`~glom.T` object
        if you need to call a method.
 
+    .. warning::
+
+       :class:`Call` has a successor with a fuller-featured API, new
+       in 19.3.0: the :class:`Invoke` specifier type.
     """
     def __init__(self, func=None, args=None, kwargs=None):
         if func is None:
@@ -763,6 +767,226 @@ class Call(object):
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r, args=%r, kwargs=%r)' % (cn, self.func, self.args, self.kwargs)
+
+
+def _is_spec(obj, strict=False):
+    # a little util for codifying the spec type checking in glom
+    if isinstance(obj, TType):
+        return True
+    if strict:
+        return type(obj) is Spec
+    # TODO: revisit line below
+    return callable(getattr(obj, 'glomit', None)) and not isinstance(obj, type)  # pragma: no cover
+
+
+class Invoke(object):
+    """Specifier type designed for easy invocation of callables from glom.
+
+    Args:
+      func (callable): A function or other callable object.
+
+    ``Invoke`` is similar to :func:`functools.partial`, but with the
+    ability to set up a "templated" call which interleaves constants and
+    glom specs.
+
+    For example, the following creates a spec which can be used to
+    check if targets are integers:
+
+    >>> is_int = Invoke(isinstance).specs(T).constants(int)
+    >>> glom(5, is_int)
+    True
+
+    And this composes like any other glom spec:
+
+    >>> target = [7, object(), 9]
+    >>> glom(target, [is_int])
+    [True, False, True]
+
+    Another example, mixing positional and keyword arguments:
+
+    >>> spec = Invoke(sorted).specs(T).constants(key=int, reverse=True)
+    >>> target = ['10', '5', '20', '1']
+    >>> glom(target, spec)
+    ['20', '10', '5', '1']
+
+    Invoke also helps with evaluating zero-argument functions:
+
+    >>> glom(target={}, spec=Invoke(int))
+    0
+
+    (A trivial example, but from timestamps to UUIDs, zero-arg calls do come up!)
+
+    .. note::
+
+       ``Invoke`` is mostly for functions, object construction, and callable
+       objects. For calling methods, consider the :attr:`~glom.T` object.
+
+    """
+    def __init__(self, func):
+        if not callable(func) and not _is_spec(func, strict=True):
+            raise TypeError('expected func to be a callable or Spec instance,'
+                            ' not: %r' % (func,))
+        self.func = func
+        self._args = ()
+        # a registry of every known kwarg to its freshest value as set
+        # by the methods below. the **kw dict is used as a unique marker.
+        self._cur_kwargs = {}
+
+    @classmethod
+    def specfunc(cls, spec):
+        """Creates an :class:`Invoke` instance where the function is
+        indicated by a spec.
+
+        >>> spec = Invoke.specfunc('func').constants(5)
+        >>> glom({'func': range}, (spec, list))
+        [0, 1, 2, 3, 4]
+
+        """
+        return cls(Spec(spec))
+
+    def constants(self, *a, **kw):
+        """Returns a new :class:`Invoke` spec, with the provided positional
+        and keyword argument values stored for passing to the
+        underlying function.
+
+        >>> spec = Invoke(T).constants(5)
+        >>> glom(range, (spec, list))
+        [0, 1, 2, 3, 4]
+
+        Subsequent positional arguments are appended:
+
+        >>> spec = Invoke(T).constants(2).constants(10, 2)
+        >>> glom(range, (spec, list))
+        [2, 4, 6, 8]
+
+        Keyword arguments also work as one might expect:
+
+        >>> round_2 = Invoke(round).constants(ndigits=2).specs(T)
+        >>> glom(3.14159, round_2)
+        3.14
+
+        :meth:`~Invoke.constants()` and other :class:`Invoke`
+        methods may be called multiple times, just remember that every
+        call returns a new spec.
+        """
+        ret = self.__class__(self.func)
+        ret._args = self._args + ('C', a, kw)
+        ret._cur_kwargs = dict(self._cur_kwargs)
+        ret._cur_kwargs.update({k: kw for k, _ in kw.items()})
+        return ret
+
+    def specs(self, *a, **kw):
+        """Returns a new :class:`Invoke` spec, with the provided positional
+        and keyword arguments stored to be interpreted as specs, with
+        the results passed to the underlying function.
+
+        >>> spec = Invoke(range).specs('value')
+        >>> glom({'value': 5}, (spec, list))
+        [0, 1, 2, 3, 4]
+
+        Subsequent positional arguments are appended:
+
+        >>> spec = Invoke(range).specs('start').specs('end', 'step')
+        >>> target = {'start': 2, 'end': 10, 'step': 2}
+        >>> glom(target, (spec, list))
+        [2, 4, 6, 8]
+
+        Keyword arguments also work as one might expect:
+
+        >>> multiply = lambda x, y: x * y
+        >>> times_3 = Invoke(multiply).constants(y=3).specs(x='value')
+        >>> glom({'value': 5}, times_3)
+        15
+
+        :meth:`~Invoke.specs()` and other :class:`Invoke`
+        methods may be called multiple times, just remember that every
+        call returns a new spec.
+        """
+        ret = self.__class__(self.func)
+        ret._args = self._args + ('S', a, kw)
+        ret._cur_kwargs = dict(self._cur_kwargs)
+        ret._cur_kwargs.update({k: kw for k, _ in kw.items()})
+        return ret
+
+    def star(self, args=None, kwargs=None):
+        """Returns a new :class:`Invoke` spec, with *args* and/or *kwargs*
+        specs set to be "starred" or "star-starred" (respectively)
+
+        >>> import os.path
+        >>> spec = Invoke(os.path.join).star(args='path')
+        >>> target = {'path': ['path', 'to', 'dir']}
+        >>> glom(target, spec)
+        'path/to/dir'
+
+        Args:
+           args (spec): A spec to be evaluated and "starred" into the
+              underlying function.
+           kwargs (spec): A spec to be evaluated and "star-starred" into
+              the underlying function.
+
+        One or both of the above arguments should be set.
+
+        The :meth:`~Invoke.star()`, like other :class:`Invoke`
+        methods, may be called multiple times. The *args* and *kwargs*
+        will be stacked in the order in which they are provided.
+        """
+        if args is None and kwargs is None:
+            raise TypeError('expected one or both of args/kwargs to be passed')
+        ret = self.__class__(self.func)
+        ret._args = self._args + ('*', args, kwargs)
+        ret._cur_kwargs = dict(self._cur_kwargs)
+        return ret
+
+    def __repr__(self):
+        chunks = [self.__class__.__name__]
+        fname_map = {'C': 'constants', 'S': 'specs', '*': 'star'}
+        if type(self.func) is Spec:
+            chunks.append('.specfunc({!r})'.format(self.func.spec))
+        else:
+            chunks.append('({!r})'.format(self.func))
+        for i in range(len(self._args) // 3):
+            op, args, kwargs = self._args[i * 3: i * 3 + 3]
+            fname = fname_map[op]
+            chunks.append('.{}('.format(fname))
+            if op in ('C', 'S'):
+                chunks.append(', '.join(
+                    [repr(a) for a in args] +
+                    ['{}={!r}'.format(k, v) for k, v in kwargs.items()
+                     if self._cur_kwargs[k] is kwargs]))
+            else:
+                if args:
+                    chunks.append('args=' + repr(args))
+                if args and kwargs:
+                    chunks.append(", ")
+                if kwargs:
+                    chunks.append('kwargs=' + repr(kwargs))
+            chunks.append(')')
+        return ''.join(chunks)
+
+    def glomit(self, target, scope):
+        all_args = []
+        all_kwargs = {}
+
+        recurse = lambda spec: scope[glom](target, spec, scope)
+        func = recurse(self.func) if _is_spec(self.func, strict=True) else self.func
+
+        for i in range(len(self._args) // 3):
+            op, args, kwargs = self._args[i * 3: i * 3 + 3]
+            if op == 'C':
+                all_args.extend(args)
+                all_kwargs.update({k: v for k, v in kwargs.items()
+                                   if self._cur_kwargs[k] is kwargs})
+            elif op == 'S':
+                all_args.extend([recurse(arg) for arg in args])
+                all_kwargs.update({k: recurse(v) for k, v in kwargs.items()
+                                   if self._cur_kwargs[k] is kwargs})
+            elif op == '*':
+                if args is not None:
+                    all_args.extend(recurse(args))
+                if kwargs is not None:
+                    all_kwargs.update(recurse(kwargs))
+
+        return func(*all_args, **all_kwargs)
 
 
 class TType(object):

@@ -5,6 +5,7 @@ from glom.core import (glom,
                        register,
                        Glommer,
                        Call,
+                       Invoke,
                        Spec,
                        OMIT,  # backwards compat
                        SKIP,

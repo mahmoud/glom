@@ -111,14 +111,38 @@ type.
 
 .. autoclass:: glom.Assign
 
+Wrapping callables with Invoke
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Reducing lambda usage with Call
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+*New in glom 19.3.0*
 
-There's nothing quite like inserting a quick lambda into a glom spec
-to get the job done. But once a spec works, how can it be cleaned up?
+From calling functions to constructing objects, it's hardly Python if
+you're not invoking callables. By default, single-argument functions
+work great on their own in glom specs. The function gets passed the
+target and it just works:
 
-.. autofunction:: glom.Call
+>>> glom(['1', '3', '5'], [int])
+[1, 3, 5]
+
+Zero-argument and multi-argument functions get a lot trickier,
+especially when more than one of those arguments comes from the
+target, thus the :class:`Invoke` spec.
+
+.. autoclass:: glom.Invoke
+   :members:
+
+Alternative approach to functions: Call
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An earlier, more primitive approach to callables in glom was the Call
+specifier type.
+
+.. note::
+
+   Given superiority of its successor, :class:`Invoke`,
+   the :class:`Call` type may be deprecated in a future release.
+
+.. autoclass:: glom.Call
 
 
 Object-oriented access and method calls with ``T``

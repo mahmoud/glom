@@ -1,7 +1,8 @@
 
 import pytest
 
-from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S, Spec
+from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S, Invoke, Spec
+
 import glom.core as glom_core
 from glom.core import UP, ROOT, Let
 
@@ -200,7 +201,71 @@ def test_call_and_target():
 
     with pytest.raises(TypeError, match='expected func to be a callable or T'):
         Call(func=object())
+
+    assert glom(lambda: 'hi', Call()) == 'hi'
     return
+
+
+def test_invoke():
+    args = []
+    def test(*a, **kw):
+        args.append(a)
+        args.append(kw)
+        return 'test'
+
+    assert glom('a', Invoke(len).specs(T)) == 1
+    data = {
+        'args': (1, 2),
+        'args2': (4, 5),
+        'kwargs': {'a': 'a'},
+        'c': 'C',
+    }
+    spec = Invoke(test).star(args='args'
+        ).constants(3, b='b').specs(c='c'
+        ).star(args='args2', kwargs='kwargs')
+    repr(spec)  # no exceptions
+    assert glom(data, spec) == 'test'
+    assert args == [
+        (1, 2, 3, 4, 5),
+        {'a': 'a', 'b': 'b', 'c': 'C'}]
+    args = []
+    assert glom(test, Invoke.specfunc(T)) == 'test'
+    assert args == [(), {}]
+    repr_spec = Invoke.specfunc(T).star(args='args'
+        ).constants(3, b='b').specs(c='c'
+        ).star(args='args2', kwargs='kwargs')
+    assert repr(eval(repr(repr_spec), locals(), globals())) == repr(repr_spec)
+
+    with pytest.raises(TypeError, match='expected func to be a callable or Spec instance'):
+        Invoke(object())
+    with pytest.raises(TypeError, match='expected one or both of args/kwargs'):
+        Invoke(T).star()
+
+    # test interleaved pos args
+    def ret_args(*a, **kw):
+        return a, kw
+
+    spec = Invoke(ret_args).constants(1).specs({}).constants(3)
+    assert glom({}, spec) == ((1, {}, 3), {})
+    # .endswith because ret_arg's repr includes a memory location
+    assert repr(spec).endswith(').constants(1).specs({}).constants(3)')
+
+    # test overridden kwargs
+    should_stay_empty = []
+    spec = Invoke(ret_args).constants(a=1).specs(a=should_stay_empty.append).constants(a=3)
+    assert glom({}, spec) == ((), {'a': 3})
+    assert len(should_stay_empty) == 0
+    assert repr(spec).endswith(').constants(a=3)')
+
+    # bit of coverage
+    target = (lambda: 'hi', {})
+    spec = Invoke(T[0])
+    assert glom(target, spec) == 'hi'
+    # and a bit more
+    spec = spec.star(kwargs=T[1])
+    assert repr(spec) == 'Invoke(T[0]).star(kwargs=T[1])'
+    assert glom(target, spec) == 'hi'
+
 
 
 def test_spec_and_recursion():
