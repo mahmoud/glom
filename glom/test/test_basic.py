@@ -201,6 +201,8 @@ def test_call_and_target():
 
     with pytest.raises(TypeError, match='expected func to be a callable or T'):
         Call(func=object())
+
+    assert glom(lambda: 'hi', Call()) == 'hi'
     return
 
 
@@ -237,7 +239,7 @@ def test_invoke():
     with pytest.raises(TypeError, match='expected func to be a callable or Spec instance'):
         Invoke(object())
     with pytest.raises(TypeError, match='expected one or both of args/kwargs'):
-        Invoke(lambda t: t).star()
+        Invoke(T).star()
 
     # test interleaved pos args
     def ret_args(*a, **kw):
@@ -253,6 +255,16 @@ def test_invoke():
     assert glom({}, spec) == ((), {'a': 3})
     assert len(should_stay_empty) == 0
     assert repr(spec).endswith(').consts(a=3)')
+
+    # bit of coverage
+    target = (lambda: 'hi', {})
+    spec = Invoke(T[0])
+    assert glom(target, spec) == 'hi'
+    # and a bit more
+    spec = spec.star(kwargs=T[1])
+    assert repr(spec) == 'Invoke(T[0]).star(kwargs=T[1])'
+    assert glom(target, spec) == 'hi'
+
 
 
 def test_spec_and_recursion():

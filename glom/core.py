@@ -848,7 +848,10 @@ class Invoke(object):
     def glomit(self, target, scope):
         all_args = []
         all_kwargs = {}
+
         recurse = lambda spec: scope[glom](target, spec, scope)
+        func = recurse(self.func) if _is_spec(self.func, strict=True) else self.func
+
         for i in range(len(self.args) // 3):
             op, args, kwargs = self.args[i * 3: i * 3 + 3]
             if op == 'C':
@@ -864,7 +867,7 @@ class Invoke(object):
                     all_args.extend(recurse(args))
                 if kwargs is not None:
                     all_kwargs.update(recurse(kwargs))
-        func = recurse(self.func) if type(self.func) is Spec else self.func
+
         return func(*all_args, **all_kwargs)
 
 
