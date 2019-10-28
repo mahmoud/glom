@@ -813,7 +813,8 @@ class Invoke(object):
         """
         glom args and kwargs and pass to func as *a and **kw
         """
-        assert args is not None or kwargs is not None
+        if args is None and kwargs is None:
+            raise TypeError('expected one or both of args/kwargs to be passed')
         ret = self.__class__(self.func)
         ret.args = self.args + ('*', args, kwargs)
         ret._cur_kwargs = dict(self._cur_kwargs)

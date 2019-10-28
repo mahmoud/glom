@@ -236,6 +236,8 @@ def test_invoke():
 
     with pytest.raises(TypeError, match='expected func to be a callable or Spec instance'):
         Invoke(object())
+    with pytest.raises(TypeError, match='expected one or both of args/kwargs'):
+        Invoke(lambda t: t).star()
 
     # test interleaved pos args
     def ret_args(*a, **kw):
