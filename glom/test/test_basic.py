@@ -237,6 +237,21 @@ def test_invoke():
     with pytest.raises(TypeError, match='expected func to be a callable or Spec instance'):
         Invoke(object())
 
+    # test interleaved pos args
+    def ret_args(*a, **kw):
+        return a, kw
+
+    spec = Invoke(ret_args).consts(1).specs({}).consts(3)
+    assert glom({}, spec) == ((1, {}, 3), {})
+    assert repr(spec).endswith('.consts(1).specs({}).consts(3)')
+
+    # test overridden kwargs
+    should_stay_empty = []
+    spec = Invoke(ret_args).consts(a=1).specs(a=should_stay_empty.append).consts(a=3)
+    assert glom({}, spec) == ((), {'a': 3})
+    assert len(should_stay_empty) == 0
+    assert repr(spec).endswith(').consts(a=3)')
+
 
 def test_spec_and_recursion():
     assert repr(Spec('a.b.c')) == "Spec('a.b.c')"

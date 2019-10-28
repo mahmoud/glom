@@ -785,6 +785,9 @@ class Invoke(object):
                             ' not: %r' % (func,))
         self.func = func
         self.args = ()
+        # a registry of every known kwarg to its freshest value as set
+        # by the methods below. the **kw dict is used as a unique marker.
+        self._cur_kwargs = {}
 
     @classmethod
     def specfunc(cls, spec):
@@ -794,12 +797,16 @@ class Invoke(object):
         """pass *a and **kw to func"""
         ret = self.__class__(self.func)
         ret.args = self.args + ('C', a, kw)
+        ret._cur_kwargs = dict(self._cur_kwargs)
+        ret._cur_kwargs.update({k: kw for k, _ in kw.items()})
         return ret
 
     def specs(self, *a, **kw):
         """glom all of *a and **kw and pass to func"""
         ret = self.__class__(self.func)
         ret.args = self.args + ('S', a, kw)
+        ret._cur_kwargs = dict(self._cur_kwargs)
+        ret._cur_kwargs.update({k: kw for k, _ in kw.items()})
         return ret
 
     def star(self, args=None, kwargs=None):
@@ -809,6 +816,7 @@ class Invoke(object):
         assert args is not None or kwargs is not None
         ret = self.__class__(self.func)
         ret.args = self.args + ('*', args, kwargs)
+        ret._cur_kwargs = dict(self._cur_kwargs)
         return ret
 
     def __repr__(self):
@@ -821,10 +829,11 @@ class Invoke(object):
             op, args, kwargs = self.args[i * 3: i * 3 + 3]
             fname = {'C': 'consts', 'S': 'specs', '*': 'star'}[op]
             chunks.append('.{}('.format(fname))
-            if op in 'CS':
+            if op in ('C', 'S'):
                 chunks.append(', '.join(
                     [repr(a) for a in args] +
-                    ['{}={!r}'.format(k, v) for k, v in kwargs.items()]))
+                    ['{}={!r}'.format(k, v) for k, v in kwargs.items()
+                     if self._cur_kwargs[k] is kwargs]))
             else:
                 if args:
                     chunks.append('args=' + repr(args))
@@ -843,11 +852,12 @@ class Invoke(object):
             op, args, kwargs = self.args[i * 3: i * 3 + 3]
             if op == 'C':
                 all_args.extend(args)
-                all_kwargs.update(kwargs)
+                all_kwargs.update({k: v for k, v in kwargs.items()
+                                   if self._cur_kwargs[k] is kwargs})
             elif op == 'S':
                 all_args.extend([recurse(arg) for arg in args])
-                # TODO: detect "overwritten" kwargs and avoid computing
-                all_kwargs.update({k: recurse(v) for k, v in kwargs.items()})
+                all_kwargs.update({k: recurse(v) for k, v in kwargs.items()
+                                   if self._cur_kwargs[k] is kwargs})
             elif op == '*':
                 if args is not None:
                     all_args.extend(recurse(args))
