@@ -859,7 +859,29 @@ class Invoke(object):
         return ret
 
     def specs(self, *a, **kw):
-        """glom all of *a and **kw and pass to func"""
+        """Returns a new Invoke() spec, with all positional and keyword
+        arguments stored to be interpreted as specs, with the results
+        passed to the underlying function.
+
+        >>> spec = Invoke(range).specs('value')
+        >>> glom({'value': 5}, (spec, list))
+        [0, 1, 2, 3, 4]
+
+        Subsequent positional arguments are appended:
+
+        >>> spec = Invoke(range).specs('start').specs('end', 'step')
+        >>> target = {'start': 2, 'end': 10, 'step': 2}
+        >>> glom(target, (spec, list))
+        [2, 4, 6, 8]
+
+        Keyword arguments also work as one might expect:
+
+        >>> multiply = lambda x, y: x * y
+        >>> times_3 = Invoke(multiply).constants(y=3).specs(x='value')
+        >>> glom({'value': 5}, times_3)
+        15
+
+        """
         ret = self.__class__(self.func)
         ret._args = self._args + ('S', a, kw)
         ret._cur_kwargs = dict(self._cur_kwargs)
