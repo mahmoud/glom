@@ -776,27 +776,84 @@ def _is_spec(obj, strict=False):
 
 
 class Invoke(object):
-    """
-    Easily invoke callables from glom.
+    """Easily invoke callables from glom.
+
+    By default, single-argument functions work great in glom
+    specs. The function gets passed the target and the rest is
+    history:
+
+    >>> glom(['1', '3', '5'], [int])
+    [1, 3, 5]
+
+    Multi-argument functions get a lot trickier, especially when one
+    or more of those arguments comes from the target.
+
+    ``Invoke`` is similar to :func:`functools.partial`, but with the
+    ability to set up a "templated" call, interleaving constants and
+    glom specs.
+
+    For example, the following creates a spec which can be used to
+    check if targets are integers:
+
+    >>> is_int = Invoke(isinstance).specs(T).constants(int)
+    >>> glom(5, is_int)
+    True
+
+    And this composes like any other glom spec:
+
+    >>> target = [7, object(), 9]
+    >>> glom(target, [is_int])
+    [True, False, True]
+
+    Args:
+      func (callable): A function or other callable object.
+
+
     """
     def __init__(self, func):
         if not callable(func) and not _is_spec(func, strict=True):
             raise TypeError('expected func to be a callable or Spec instance,'
                             ' not: %r' % (func,))
         self.func = func
-        self.args = ()
+        self._args = ()
         # a registry of every known kwarg to its freshest value as set
         # by the methods below. the **kw dict is used as a unique marker.
         self._cur_kwargs = {}
 
     @classmethod
     def specfunc(cls, spec):
+        """
+        Returns an Invoke where the function is indicated by a spec.
+
+        >>> spec = Invoke.specfunc('func').constants(5)
+        >>> glom({'func': range}, (spec, list))
+        [0, 1, 2, 3, 4]
+        """
         return cls(Spec(spec))
 
-    def consts(self, *a, **kw):
-        """pass *a and **kw to func"""
+    def constants(self, *a, **kw):
+        """Returns a new Invoke() spec, with all positional and keyword
+        argument values stored for passing to the underlying function.
+
+        >>> spec = Invoke(T).constants(5)
+        >>> glom(range, (spec, list))
+        [0, 1, 2, 3, 4]
+
+        Subsequent positional arguments are appended:
+
+        >>> spec = Invoke(T).constants(2).constants(10, 2)
+        >>> glom(range, (spec, list))
+        [2, 4, 6, 8]
+
+        Keyword arguments also work as one might expect:
+
+        >>> multiply = lambda x, y: x * y
+        >>> times_3 = Invoke(multiply).constants(x=3).specs(y=T)
+        >>> glom(5, times_3)
+        15
+        """
         ret = self.__class__(self.func)
-        ret.args = self.args + ('C', a, kw)
+        ret._args = self._args + ('C', a, kw)
         ret._cur_kwargs = dict(self._cur_kwargs)
         ret._cur_kwargs.update({k: kw for k, _ in kw.items()})
         return ret
@@ -804,7 +861,7 @@ class Invoke(object):
     def specs(self, *a, **kw):
         """glom all of *a and **kw and pass to func"""
         ret = self.__class__(self.func)
-        ret.args = self.args + ('S', a, kw)
+        ret._args = self._args + ('S', a, kw)
         ret._cur_kwargs = dict(self._cur_kwargs)
         ret._cur_kwargs.update({k: kw for k, _ in kw.items()})
         return ret
@@ -812,23 +869,31 @@ class Invoke(object):
     def star(self, args=None, kwargs=None):
         """
         glom args and kwargs and pass to func as *a and **kw
+
+        >>> import os.path
+        >>> spec = Invoke(os.path.join).star(args='path')
+        >>> target = {'path': ['path', 'to', 'dir']}
+        >>> glom(target, spec)
+        'path/to/dir'
+
         """
         if args is None and kwargs is None:
             raise TypeError('expected one or both of args/kwargs to be passed')
         ret = self.__class__(self.func)
-        ret.args = self.args + ('*', args, kwargs)
+        ret._args = self._args + ('*', args, kwargs)
         ret._cur_kwargs = dict(self._cur_kwargs)
         return ret
 
     def __repr__(self):
         chunks = [self.__class__.__name__]
+        fname_map = {'C': 'constants', 'S': 'specs', '*': 'star'}
         if type(self.func) is Spec:
             chunks.append('.specfunc({!r})'.format(self.func.spec))
         else:
             chunks.append('({!r})'.format(self.func))
-        for i in range(len(self.args) // 3):
-            op, args, kwargs = self.args[i * 3: i * 3 + 3]
-            fname = {'C': 'consts', 'S': 'specs', '*': 'star'}[op]
+        for i in range(len(self._args) // 3):
+            op, args, kwargs = self._args[i * 3: i * 3 + 3]
+            fname = fname_map[op]
             chunks.append('.{}('.format(fname))
             if op in ('C', 'S'):
                 chunks.append(', '.join(
@@ -852,8 +917,8 @@ class Invoke(object):
         recurse = lambda spec: scope[glom](target, spec, scope)
         func = recurse(self.func) if _is_spec(self.func, strict=True) else self.func
 
-        for i in range(len(self.args) // 3):
-            op, args, kwargs = self.args[i * 3: i * 3 + 3]
+        for i in range(len(self._args) // 3):
+            op, args, kwargs = self._args[i * 3: i * 3 + 3]
             if op == 'C':
                 all_args.extend(args)
                 all_kwargs.update({k: v for k, v in kwargs.items()

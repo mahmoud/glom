@@ -221,7 +221,7 @@ def test_invoke():
         'c': 'C',
     }
     spec = Invoke(test).star(args='args'
-        ).consts(3, b='b').specs(c='c'
+        ).constants(3, b='b').specs(c='c'
         ).star(args='args2', kwargs='kwargs')
     repr(spec)  # no exceptions
     assert glom(data, spec) == 'test'
@@ -232,7 +232,7 @@ def test_invoke():
     assert glom(test, Invoke.specfunc(T)) == 'test'
     assert args == [(), {}]
     repr_spec = Invoke.specfunc(T).star(args='args'
-        ).consts(3, b='b').specs(c='c'
+        ).constants(3, b='b').specs(c='c'
         ).star(args='args2', kwargs='kwargs')
     assert repr(eval(repr(repr_spec), locals(), globals())) == repr(repr_spec)
 
@@ -245,16 +245,17 @@ def test_invoke():
     def ret_args(*a, **kw):
         return a, kw
 
-    spec = Invoke(ret_args).consts(1).specs({}).consts(3)
+    spec = Invoke(ret_args).constants(1).specs({}).constants(3)
     assert glom({}, spec) == ((1, {}, 3), {})
-    assert repr(spec).endswith('.consts(1).specs({}).consts(3)')
+    # .endswith because ret_arg's repr includes a memory location
+    assert repr(spec).endswith(').constants(1).specs({}).constants(3)')
 
     # test overridden kwargs
     should_stay_empty = []
-    spec = Invoke(ret_args).consts(a=1).specs(a=should_stay_empty.append).consts(a=3)
+    spec = Invoke(ret_args).constants(a=1).specs(a=should_stay_empty.append).constants(a=3)
     assert glom({}, spec) == ((), {'a': 3})
     assert len(should_stay_empty) == 0
-    assert repr(spec).endswith(').consts(a=3)')
+    assert repr(spec).endswith(').constants(a=3)')
 
     # bit of coverage
     target = (lambda: 'hi', {})
