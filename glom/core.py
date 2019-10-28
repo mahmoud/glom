@@ -731,6 +731,10 @@ class Call(object):
        ``Call`` is mostly for functions. Use a :attr:`~glom.T` object
        if you need to call a method.
 
+    .. warning::
+
+       :class:`Call` has a successor with a fuller-featured API, new
+       in 19.3.0: the :class:`Invoke` specifier type.
     """
     def __init__(self, func=None, args=None, kwargs=None):
         if func is None:
@@ -776,20 +780,13 @@ def _is_spec(obj, strict=False):
 
 
 class Invoke(object):
-    """Easily invoke callables from glom.
+    """Specifier type designed for easy invocation of callables from glom.
 
-    By default, single-argument functions work great in glom
-    specs. The function gets passed the target and the rest is
-    history:
-
-    >>> glom(['1', '3', '5'], [int])
-    [1, 3, 5]
-
-    Multi-argument functions get a lot trickier, especially when one
-    or more of those arguments comes from the target.
+    Args:
+      func (callable): A function or other callable object.
 
     ``Invoke`` is similar to :func:`functools.partial`, but with the
-    ability to set up a "templated" call, interleaving constants and
+    ability to set up a "templated" call which interleaves constants and
     glom specs.
 
     For example, the following creates a spec which can be used to
@@ -805,9 +802,24 @@ class Invoke(object):
     >>> glom(target, [is_int])
     [True, False, True]
 
-    Args:
-      func (callable): A function or other callable object.
+    Another example, mixing positional and keyword arguments:
 
+    >>> spec = Invoke(sorted).specs(T).constants(key=int, reverse=True)
+    >>> target = ['10', '5', '20', '1']
+    >>> glom(target, spec)
+    ['20', '10', '5', '1']
+
+    Invoke also helps with evaluating zero-argument functions:
+
+    >>> glom(target={}, spec=Invoke(int))
+    0
+
+    (A trivial example, but from timestamps to UUIDs, zero-arg calls do come up!)
+
+    .. note::
+
+       ``Invoke`` is mostly for functions, object construction, and callable
+       objects. For calling methods, consider the :attr:`~glom.T` object.
 
     """
     def __init__(self, func):
@@ -822,18 +834,20 @@ class Invoke(object):
 
     @classmethod
     def specfunc(cls, spec):
-        """
-        Returns an Invoke where the function is indicated by a spec.
+        """Creates an :class:`Invoke` instance where the function is
+        indicated by a spec.
 
         >>> spec = Invoke.specfunc('func').constants(5)
         >>> glom({'func': range}, (spec, list))
         [0, 1, 2, 3, 4]
+
         """
         return cls(Spec(spec))
 
     def constants(self, *a, **kw):
-        """Returns a new Invoke() spec, with all positional and keyword
-        argument values stored for passing to the underlying function.
+        """Returns a new :class:`Invoke` spec, with the provided positional
+        and keyword argument values stored for passing to the
+        underlying function.
 
         >>> spec = Invoke(T).constants(5)
         >>> glom(range, (spec, list))
@@ -847,10 +861,13 @@ class Invoke(object):
 
         Keyword arguments also work as one might expect:
 
-        >>> multiply = lambda x, y: x * y
-        >>> times_3 = Invoke(multiply).constants(x=3).specs(y=T)
-        >>> glom(5, times_3)
-        15
+        >>> round_2 = Invoke(round).constants(ndigits=2).specs(T)
+        >>> glom(3.14159, round_2)
+        3.14
+
+        :meth:`~Invoke.constants()` and other :class:`Invoke`
+        methods may be called multiple times, just remember that every
+        call returns a new spec.
         """
         ret = self.__class__(self.func)
         ret._args = self._args + ('C', a, kw)
@@ -859,9 +876,9 @@ class Invoke(object):
         return ret
 
     def specs(self, *a, **kw):
-        """Returns a new Invoke() spec, with all positional and keyword
-        arguments stored to be interpreted as specs, with the results
-        passed to the underlying function.
+        """Returns a new :class:`Invoke` spec, with the provided positional
+        and keyword arguments stored to be interpreted as specs, with
+        the results passed to the underlying function.
 
         >>> spec = Invoke(range).specs('value')
         >>> glom({'value': 5}, (spec, list))
@@ -881,6 +898,9 @@ class Invoke(object):
         >>> glom({'value': 5}, times_3)
         15
 
+        :meth:`~Invoke.specs()` and other :class:`Invoke`
+        methods may be called multiple times, just remember that every
+        call returns a new spec.
         """
         ret = self.__class__(self.func)
         ret._args = self._args + ('S', a, kw)
@@ -889,8 +909,8 @@ class Invoke(object):
         return ret
 
     def star(self, args=None, kwargs=None):
-        """
-        glom args and kwargs and pass to func as *a and **kw
+        """Returns a new :class:`Invoke` spec, with *args* and/or *kwargs*
+        specs set to be "starred" or "star-starred" (respectively)
 
         >>> import os.path
         >>> spec = Invoke(os.path.join).star(args='path')
@@ -898,6 +918,17 @@ class Invoke(object):
         >>> glom(target, spec)
         'path/to/dir'
 
+        Args:
+           args (spec): A spec to be evaluated and "starred" into the
+              underlying function.
+           kwargs (spec): A spec to be evaluated and "star-starred" into
+              the underlying function.
+
+        One or both of the above arguments should be set.
+
+        The :meth:`~Invoke.star()`, like other :class:`Invoke`
+        methods, may be called multiple times. The *args* and *kwargs*
+        will be stacked in the order in which they are provided.
         """
         if args is None and kwargs is None:
             raise TypeError('expected one or both of args/kwargs to be passed')
