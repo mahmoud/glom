@@ -419,5 +419,4 @@ def test_api_repr():
         if v.__repr__ is object.__repr__:
             spec_types_wo_reprs.append(k)
 
-    # TODO: this should be empty
-    assert set(spec_types_wo_reprs) == set(['Check'])
+    assert set(spec_types_wo_reprs) == set([])

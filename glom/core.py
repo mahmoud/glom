@@ -1298,6 +1298,7 @@ class Check(object):
     # raising the unified CheckError.
     def __init__(self, spec=T, **kwargs):
         self.spec = spec
+        self._orig_kwargs = dict(kwargs)
         self.default = kwargs.pop('default', RAISE)
 
         def _get_arg_val(name, cond, func, val, can_be_empty=True):
@@ -1409,6 +1410,11 @@ class Check(object):
             # (e.g., 'a.b' and ['a', 'b'])
             raise CheckError(errs, self, scope[Path])
         return ret
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        posargs = (self.spec,) if self.spec is not T else ()
+        return format_invocation(cn, posargs, self._orig_kwargs)
 
 
 class Auto(object):

@@ -21,6 +21,10 @@ def test_check_basic():
     assert glom('hello', spec) == 'h'
     assert glom('', spec) == ''  # would fail with IndexError if STOP didn't work
 
+    assert repr(Check()) == 'Check()'
+    assert repr(Check(T.a)) == 'Check(T.a)'
+    assert repr(Check(equal_to=1)) == 'Check(equal_to=1)'
+
     target = [1, 'a']
     assert glom(target, [Check(type=str, default=SKIP)]) == ['a']
     assert glom(target, [Check(type=(str, int))]) == [1, 'a']
