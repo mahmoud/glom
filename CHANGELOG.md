@@ -22,6 +22,7 @@ summarized and well-linked.
 * Add Fill ([#110][i110]) - Also adds Auto for the default mode. (soft-launch, docs TBA)
 * Add Let for variable capture ([#108][i108]) (soft-launch, docs TBA)
 * Steps in the tuple now nest scopes ([#97][i97])
+* All public specifier types now have reasonable reprs (notably, Coalesce, Check, and Assign)
 
 [iter]: https://glom.readthedocs.io/en/latest/api.html#glom.Iter
 [invoke]: https://glom.readthedocs.io/en/latest/api.html#glom.Invoke
