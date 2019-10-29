@@ -18,7 +18,7 @@ from setuptools import setup
 
 
 __author__ = 'Mahmoud Hashemi and Kurt Rose'
-__version__ = '19.10.0'
+__version__ = '19.10.1dev'
 __contact__ = 'mahmoud@hatnote.com'
 __url__ = 'https://github.com/mahmoud/glom'
 __license__ = 'BSD'
