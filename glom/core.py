@@ -1416,14 +1416,15 @@ class Auto(object):
     def __init__(self, spec=None):
         self.spec = spec
 
+    def glomit(self, target, scope):
+        scope[MODE] = _glom_auto
+        return scope[glom](target, self.spec, scope)
+
     def __repr__(self):
         cn = self.__class__.__name__
         rpr = '' if self.spec is None else repr(self.spec)
         return '%s(%s)' % (cn, rpr)
 
-    def glomit(self, target, scope):
-        scope[MODE] = _glom_auto
-        return scope[glom](target, self.spec, scope)
 
 
 class _AbstractIterable(_AbstractIterableBase):

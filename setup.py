@@ -32,7 +32,7 @@ setup(name='glom',
       author_email=__contact__,
       url=__url__,
       packages=['glom', 'glom.test'],
-      install_requires=['boltons', 'attrs', 'face'],
+      install_requires=['boltons>=19.3.0', 'attrs', 'face'],
       extras_require = {
         'yaml':  ['PyYAML'],
         },
