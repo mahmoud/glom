@@ -4,7 +4,7 @@ This module contains Specs that perform mutations.
 import operator
 from pprint import pprint
 
-from .core import Path, T, S, Spec, glom, UnregisteredTarget, GlomError, PathAccessError
+from .core import Path, T, S, Spec, glom, UnregisteredTarget, GlomError, PathAccessError, UP
 from .core import TType, register_op, TargetRegistry
 
 try:
@@ -146,7 +146,7 @@ class Assign(object):
 
         op, arg, path = self.op, self.arg, self.path
         if self.path.startswith(S):
-            dest_target = scope.parents
+            dest_target = scope[UP]
             dest_path = self.path.from_t()
         else:
             dest_target = target
