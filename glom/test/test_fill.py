@@ -10,3 +10,6 @@ def test():
 
     target = {'data': [0, 2, 4]}
     assert glom(target, Fill((T['data'][-1], Auto('data.-2')))) == (4, 2)
+
+    assert repr(Auto()) == 'Auto()'
+    assert repr(Auto(T)) == 'Auto(T)'

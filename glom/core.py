@@ -1413,8 +1413,13 @@ class Auto(object):
     if Spec() could help define the interface for new "modes" or dialects
     that would also help make match mode feel less duct-taped on
     """
-    def __init__(self, spec):
+    def __init__(self, spec=None):
         self.spec = spec
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        rpr = '' if self.spec is None else repr(self.spec)
+        return '%s(%s)' % (cn, rpr)
 
     def glomit(self, target, scope):
         scope[MODE] = _glom_auto

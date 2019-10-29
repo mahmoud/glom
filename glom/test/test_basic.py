@@ -1,4 +1,6 @@
 
+import sys
+
 import pytest
 
 from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S, Invoke, Spec
@@ -402,7 +404,8 @@ def test_let():
     assert repr(Let(a=T.a.b)) == 'Let(a=T.a.b)'
 
 
-@pytest.mark.xfail
+_IS_PYPY = '__pypy__' in sys.builtin_module_names
+@pytest.mark.skipif(_IS_PYPY, reason='pypy othertype.__repr__ is never object.__repr__')
 def test_api_repr():
     import glom
 
@@ -413,4 +416,5 @@ def test_api_repr():
         if v.__repr__ is object.__repr__:
             spec_types_wo_reprs.append(k)
 
-    assert spec_types_wo_reprs == []
+    # TODO: this should be empty
+    assert set(spec_types_wo_reprs) == set(['Coalesce', 'Fill', 'Check', 'Assign'])
