@@ -417,4 +417,4 @@ def test_api_repr():
             spec_types_wo_reprs.append(k)
 
     # TODO: this should be empty
-    assert set(spec_types_wo_reprs) == set(['Coalesce', 'Check', 'Assign'])
+    assert set(spec_types_wo_reprs) == set(['Coalesce', 'Check'])

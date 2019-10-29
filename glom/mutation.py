@@ -178,6 +178,12 @@ class Assign(object):
 
         return target
 
+    def __repr__(self):
+        cn = self.__class__.__name__
+        if self.missing is None:
+            return '%s(%r, %r)' % (cn, self._orig_path, self.val)
+        return '%s(%r, %r, missing=%r)' % (cn, self._orig_path, self.val, self.missing)
+
 
 def assign(obj, path, val, missing=None):
     """The ``assign()`` function provides convenient "deep set"
