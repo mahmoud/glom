@@ -1921,7 +1921,7 @@ class Fill(object):
     (Sidenote for Lisp fans: Fill is like glom's quasi-quoting.)
 
     """
-    def __init__(self, spec):
+    def __init__(self, spec=None):
         self.spec = spec
 
     def glomit(self, target, scope):
@@ -1930,6 +1930,11 @@ class Fill(object):
 
     def fill(self, target):
         return glom(target, self)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        rpr = '' if self.spec is None else repr(self.spec)
+        return '%s(%s)' % (cn, rpr)
 
 
 def _fill(target, spec, scope):

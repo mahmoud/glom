@@ -13,3 +13,6 @@ def test():
 
     assert repr(Auto()) == 'Auto()'
     assert repr(Auto(T)) == 'Auto(T)'
+
+    assert repr(Fill()) == 'Fill()'
+    assert repr(Fill(T)) == 'Fill(T)'
