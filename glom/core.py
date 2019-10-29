@@ -32,6 +32,7 @@ from collections import OrderedDict
 
 from boltons.typeutils import make_sentinel
 from boltons.iterutils import is_iterable
+from boltons.funcutils import format_invocation
 
 PY2 = (sys.version_info[0] == 2)
 if PY2:
@@ -566,6 +567,7 @@ class Coalesce(object):
     """
     def __init__(self, *subspecs, **kwargs):
         self.subspecs = subspecs
+        self._orig_kwargs = dict(kwargs)
         self.default = kwargs.pop('default', _MISSING)
         self.default_factory = kwargs.pop('default_factory', _MISSING)
         if self.default and self.default_factory:
@@ -602,6 +604,10 @@ class Coalesce(object):
             else:
                 raise CoalesceError(self, skipped, scope[Path])
         return ret
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return format_invocation(cn, self.subspecs, self._orig_kwargs)
 
 
 class Inspect(object):

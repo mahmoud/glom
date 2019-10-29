@@ -80,7 +80,9 @@ def test_coalesce():
     assert expected.replace(',', '') in received.replace(',', '')  # normalize commas for py3.7+ repr change
 
     # check that defaulting works
-    assert glom(val, Coalesce('xxx', 'yyy', default='zzz')) == 'zzz'
+    spec = Coalesce('xxx', 'yyy', default='zzz')
+    assert glom(val, spec) == 'zzz'
+    assert repr(spec) == "Coalesce('xxx', 'yyy', default='zzz')"
 
     # check that default_factory works
     sentinel_list = []
@@ -95,6 +97,7 @@ def test_coalesce():
 
     # check that arbitrary exceptions can be ignored
     assert glom(val, Coalesce(lambda x: 1/0, 'a.b', skip_exc=ZeroDivisionError)) == 'c'
+
 
 
 def test_skip():
@@ -417,4 +420,4 @@ def test_api_repr():
             spec_types_wo_reprs.append(k)
 
     # TODO: this should be empty
-    assert set(spec_types_wo_reprs) == set(['Coalesce', 'Check'])
+    assert set(spec_types_wo_reprs) == set(['Check'])
