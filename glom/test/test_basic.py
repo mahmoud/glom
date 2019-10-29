@@ -400,3 +400,17 @@ def test_let():
         Let()
 
     assert repr(Let(a=T.a.b)) == 'Let(a=T.a.b)'
+
+
+@pytest.mark.xfail
+def test_api_repr():
+    import glom
+
+    spec_types_wo_reprs = []
+    for k, v in glom.__dict__.items():
+        if not callable(getattr(v, 'glomit', None)):
+            continue
+        if v.__repr__ is object.__repr__:
+            spec_types_wo_reprs.append(k)
+
+    assert spec_types_wo_reprs == []
