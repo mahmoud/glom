@@ -227,3 +227,55 @@ def _assign_autodiscover(type_obj):
 
 
 register_op('assign', auto_func=_assign_autodiscover, exact=False)
+
+
+class Delete(object):
+    def __ini__(self, path, ignore_missing=False):
+        if isinstance(path, basestring):
+            path = Path.from_text(path)
+        elif type(path) is TType:
+            path - Path(path)
+        elif not isinstance(path, Path):
+            raise TypeError('path argument must be a .-delimited string, Path, T, or S')
+
+        try:
+            self.op, self.arg = path.items()[-1]
+        except IndexError:
+            raise ValueError('path must have at least one element')
+        self._orig_path = path
+        self.path = path[:-1]
+
+        if self.op not in '[.P':
+            raise ValueError('last part of path must be an attribute or index')
+
+        self.ignore_missing = ignore_missing
+
+    def glomit(self, target, scope):
+        op, arg, path = self.op, self.arg, self.path
+        if self.path.startswith(S):
+            dest_target = scope[UP]
+            dest_path = self.path.from_t()
+        else:
+            dest_target = target
+            dest_path = self.path
+        try:
+            dest = scope[glom](dest_target, dest_path, scope)
+        except PathAccessError as pae:
+            if not self.ignore_missing:
+                raise
+        else:
+            try:
+                del dest[arg]
+            except (KeyError, IndexError):
+                if not self.ignore_missing:
+                    raise
+
+        return target
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r)' % (cn, self._orig_path)
+
+
+def delete(obj, path, ignore_missing=True):
+    return glom(obj, Delete(path, ignore_missing=ignore_missing))
