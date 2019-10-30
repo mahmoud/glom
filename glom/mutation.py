@@ -49,6 +49,13 @@ class PathAssignError(GlomError):
                 % (self.dest_name, self.path, self.exc))
 
 
+class PathDeleteError(PathAssignError):
+    def __str__(self):
+        return ('could not delete %r on object at %r, got error: %r'
+                % (self.dest_name, self.path, self.exc))
+
+
+
 class Assign(object):
     """The ``Assign`` specifier type enables glom to modify the target,
     performing a "deep-set" to mirror glom's original deep-get use
@@ -230,11 +237,11 @@ register_op('assign', auto_func=_assign_autodiscover, exact=False)
 
 
 class Delete(object):
-    def __ini__(self, path, ignore_missing=False):
+    def __init__(self, path, ignore_missing=False):
         if isinstance(path, basestring):
             path = Path.from_text(path)
         elif type(path) is TType:
-            path - Path(path)
+            path = Path(path)
         elif not isinstance(path, Path):
             raise TypeError('path argument must be a .-delimited string, Path, T, or S')
 
@@ -264,11 +271,25 @@ class Delete(object):
             if not self.ignore_missing:
                 raise
         else:
-            try:
-                del dest[arg]
-            except (KeyError, IndexError):
-                if not self.ignore_missing:
-                    raise
+            if op == '[':
+                try:
+                    del dest[arg]
+                except IndexError as e:
+                    if not self.ignore_missing:
+                        raise PathDeleteError(e, path, arg)
+            elif op == '.':
+                try:
+                    delattr(dest, arg)
+                except AttributeError as e:
+                    if not self.ignore_missing:
+                        raise PathDeleteError(e, path, arg)
+            elif op == 'P':
+                _delete = scope[TargetRegistry].get_handler('delete', dest)
+                try:
+                    _delete(dest, arg)
+                except Exception as e:
+                    if not self.ignore_missing:
+                        raise PathDeleteError(e, path, arg)
 
         return target
 
@@ -277,5 +298,23 @@ class Delete(object):
         return '%s(%r)' % (cn, self._orig_path)
 
 
-def delete(obj, path, ignore_missing=True):
+def delete(obj, path, ignore_missing=False):
     return glom(obj, Delete(path, ignore_missing=ignore_missing))
+
+
+def _del_sequence_item(target, idx):
+    del target[int(idx)]
+
+
+def _delete_autodiscover(type_obj):
+    if issubclass(type_obj, _UNASSIGNABLE_BASE_TYPES):
+        return False
+
+    if callable(getattr(type_obj, '__delitem__', None)):
+        if callable(getattr(type_obj, 'index', None)):
+            return _del_sequence_item
+        return operator.delitem
+    return delattr
+
+
+register_op('delete', auto_func=_delete_autodiscover, exact=False)

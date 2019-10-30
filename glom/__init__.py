@@ -26,7 +26,7 @@ from glom.core import (glom,
                        T, S)
 
 from glom.reduction import Sum, Fold, Flatten, flatten, FoldError, Merge, merge
-from glom.mutation import Assign, assign, PathAssignError
+from glom.mutation import Assign, Delete, assign, delete, PathAssignError, PathDeleteError
 
 # there's no -ion word that really fits what "streaming" means.
 # generation, production, iteration, all have more relevant meanings
