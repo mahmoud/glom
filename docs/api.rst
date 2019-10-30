@@ -53,7 +53,7 @@ specifiers to declare away overly branchy procedural code.
 Stream processing iterables with Iter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-*New in glom 19.2.0*
+*New in glom 19.10.0*
 
 .. autoclass:: glom.Iter
 
@@ -114,7 +114,7 @@ type.
 Wrapping callables with Invoke
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-*New in glom 19.3.0*
+*New in glom 19.10.0*
 
 From calling functions to constructing objects, it's hardly Python if
 you're not invoking callables. By default, single-argument functions

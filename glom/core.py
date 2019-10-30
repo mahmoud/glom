@@ -740,7 +740,7 @@ class Call(object):
     .. warning::
 
        :class:`Call` has a successor with a fuller-featured API, new
-       in 19.3.0: the :class:`Invoke` specifier type.
+       in 19.10.0: the :class:`Invoke` specifier type.
     """
     def __init__(self, func=None, args=None, kwargs=None):
         if func is None:
