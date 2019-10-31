@@ -8,6 +8,7 @@ case study below takes a wider look at day-to-day data and object
 manipulation, helping you develop an eye for writing robust,
 declarative data transformations.
 
+
 .. contents:: Contents
    :local:
 
