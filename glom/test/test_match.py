@@ -2,8 +2,9 @@ import json
 
 import pytest
 
-from glom import glom, S, Literal, T
-from glom.matching import Match, M, GlomMatchError, And, Or, DEFAULT, Optional, Required
+from glom import glom, S, Literal, T, Merge, Fill
+from glom.matching import (
+    Match, M, GlomMatchError, And, Or, DEFAULT, Optional, Required, Regex)
 from glom.core import Auto, SKIP
 
 
@@ -190,3 +191,45 @@ def test_sky():
 def test_clamp():
     assert glom(range(10), [(M < 7) | Literal(7)]) == [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]
     assert glom(range(10), [(M < 7) | Literal(SKIP)]) == [0, 1, 2, 3, 4, 5, 6]
+
+
+def test_nested_struct():
+    """adapted from use case"""
+    import json
+
+    _json = lambda spec: Auto((json.loads, Match(spec)))
+
+    _defaults = lambda **kw: Merge(Fill([T]), init=lambda: dict(kw))
+
+    rule_spec = (
+        _defaults(save_as_new=False),
+        Match({
+            'rule_id': Or('', Regex(r'\d+')),
+            'rule_name': basestring,
+            'effect': Or('approve', 'custom_approvers'),
+            'rule_approvers': _json([{'pk': int, 'level': int}]),
+            'rule_data': _json([  # list of condition-objects
+                Auto((
+                    _defaults(value='null'),
+                    Match({  
+                        'value': _json(
+                            Or(None, int, float, basestring, [int, float, basestring])),
+                        'field': Auto(int),  # id of row from FilterField
+                        'operator': basestring,  # corresponds to FilterOperator.display_name
+                    })))]),
+            'save_as_new': Or(basestring, bool),
+        }))
+
+    rule = dict(
+        rule_id='1',
+        rule_name='test rule',
+        effect='approve',
+        rule_approvers=json.dumps([{'pk': 2, 'level': 1}]),
+        rule_data=json.dumps([
+            {'value': json.dumps([1, 2]), 'field': 2, 'operator': '>'},
+            {'field': 2, 'operator': '=='}])
+    )
+
+    glom(rule, rule_spec)
+    rule['save_as_new'] = 'true'
+    glom(rule, rule_spec)

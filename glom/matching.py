@@ -23,6 +23,7 @@ M & int & (M > 0)
 """
 from __future__ import unicode_literals
 
+import re
 import sys
 
 from boltons.typeutils import make_sentinel
@@ -62,6 +63,42 @@ class Match(object):
 
     def __repr__(self):
         return 'Match({!r})'.format(self.spec)
+
+
+_RE_FULLMATCH = getattr(re, "fullmatch", None)
+_RE_VALID_FUNCS = set((_RE_FULLMATCH, None, re.search, re.match))
+_RE_FUNC_ERROR = ValueError("'func' must be one of %s" % (", ".join(
+    sorted(e and e.__name__ or "None" for e in _RE_VALID_FUNCS))))
+
+
+class Regex(object):
+    """
+    checks that target is a string which matches the passed regex pattern
+
+    raises GlomMatchError if there isn't a match; returns Target if match
+    """
+    def __init__(self, pattern, flags=0, func=None):
+        if func not in _RE_VALID_FUNCS:
+            raise _RE_FUNC_ERROR
+        regex = re.compile(pattern, flags)
+        if func is re.match:
+            match_func = regex.match
+        elif func is re.search:
+            match_func = regex.search
+        else:
+            if _RE_FULLMATCH:
+                match_func = regex.fullmatch
+            else:
+                regex = re.compile(r"(?:{})\Z".format(pattern), flags)
+                match_func = regex.match
+        self.match_func, self.pattern = match_func, pattern
+
+    def glomit(self, target, scope):
+        if type(target) is not str:
+            raise GlomMatchError("target not a string")
+        if not self.match_func(target):
+            raise GlomMatchError("target did not match pattern", target, self.pattern)
+        return target
 
 
 DEFAULT = make_sentinel("DEFAULT")
