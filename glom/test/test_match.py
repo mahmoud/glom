@@ -4,7 +4,7 @@ import pytest
 
 from glom import glom, S, Literal, T
 from glom.matching import Match, M, GlomMatchError, And, Or, DEFAULT, Optional, Required
-from glom.core import Build, SKIP
+from glom.core import Auto, SKIP
 
 
 def _chk(spec, good_target, bad_target):
@@ -50,13 +50,13 @@ def test():
 
 def test_cruddy_json():
     _chk(
-        Match({'int_id?': M & Build(int) & (M > 0)}),
+        Match({'int_id?': M & Auto(int) & (M > 0)}),
         {'int_id?': '1'},
         {'int_id?': '-1'})
     # embed a build
     squished_json = Match({
-        'smooshed_json': M & Build(json.loads) & {
-            'sub': M & Build(json.loads) & 1 }
+        'smooshed_json': M & Auto(json.loads) & {
+            'sub': M & Auto(json.loads) & 1 }
         })
     glom({'smooshed_json': json.dumps({'sub': json.dumps(1)})}, squished_json)
 
@@ -149,7 +149,7 @@ def test_sky():
 
     def as_type(sub_schema, typ):
         'after checking sub_schema, pass the result to typ()'
-        return And(sub_schema, Build(typ))
+        return And(sub_schema, Auto(typ))
 
     assert glom('abc', as_type(M == 'abc', list)) == list('abc')
 
@@ -173,7 +173,7 @@ def test_sky():
 
     def default_if_none(sub_schema, default_factory):
         return Or(
-            And(M == None, Build(lambda t: default_factory())), sub_schema)
+            And(M == None, Auto(lambda t: default_factory())), sub_schema)
 
     assert glom(1, default_if_none(T, list)) == 1
     assert glom(None, default_if_none(T, list)) == []

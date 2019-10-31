@@ -29,6 +29,9 @@ def test_assign():
     with pytest.raises(ValueError, match='path must have at least one element'):
         Assign(T, 1)
 
+    assert repr(Assign(T.a, 1)) == 'Assign(T.a, 1)'
+    assert repr(Assign(T.a, 1, missing=dict)).startswith('Assign(T.a, 1, missing=<')
+
 
 def test_assign_spec_val():
     output = glom({'b': 'c'}, Assign('a', Spec('b')))
@@ -190,4 +193,4 @@ def test_s_assign():
     '''
     check that assign works when storing things into S
     '''
-    glom({}, (Assign(S['foo'], 'bar'), S['foo']))
+    glom({}, (Assign(S['foo'], 'bar'), S['foo'])) == 'bar'

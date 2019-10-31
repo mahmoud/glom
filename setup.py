@@ -18,7 +18,7 @@ from setuptools import setup
 
 
 __author__ = 'Mahmoud Hashemi and Kurt Rose'
-__version__ = '19.2.1dev'
+__version__ = '19.10.1dev'
 __contact__ = 'mahmoud@hatnote.com'
 __url__ = 'https://github.com/mahmoud/glom'
 __license__ = 'BSD'
@@ -32,7 +32,7 @@ setup(name='glom',
       author_email=__contact__,
       url=__url__,
       packages=['glom', 'glom.test'],
-      install_requires=['boltons', 'attrs', 'face'],
+      install_requires=['boltons>=19.3.0', 'attrs', 'face'],
       extras_require = {
         'yaml':  ['PyYAML'],
         },
