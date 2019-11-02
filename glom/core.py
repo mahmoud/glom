@@ -248,6 +248,28 @@ class UnregisteredTarget(GlomError):
         return msg
 
 
+if getattr(__builtins__, '__dict__', None):
+    # pypy's __builtins__ is a module, as is CPython's REPL, but at
+    # normal execution time it's a dict?
+    __builtins__ = __builtins__.__dict__
+    tmpl = '__builtins__.%s'
+else:
+    tmpl = "__builtins__['%s']"
+
+
+_BUILTIN_ID_NAME_MAP = dict([(id(v), tmpl % k)
+                             for k, v in __builtins__.items()])
+
+def _bbrepr(obj):
+    """A better repr for builtins, when the built-in repr isn't
+    roundtrippable.
+    """
+    ret = repr(obj)
+    if not ret.startswith('<'):
+        return ret
+    return _BUILTIN_ID_NAME_MAP.get(id(obj), ret)
+
+
 class Path(object):
     """Path objects specify explicit paths when the default
     ``'a.b.c'``-style general access syntax won't work or isn't

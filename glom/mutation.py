@@ -5,7 +5,7 @@ import operator
 from pprint import pprint
 
 from .core import Path, T, S, Spec, glom, UnregisteredTarget, GlomError, PathAccessError, UP
-from .core import TType, register_op, TargetRegistry
+from .core import TType, register_op, TargetRegistry, _bbrepr
 
 try:
     basestring
@@ -189,7 +189,7 @@ class Assign(object):
         cn = self.__class__.__name__
         if self.missing is None:
             return '%s(%r, %r)' % (cn, self._orig_path, self.val)
-        return '%s(%r, %r, missing=%r)' % (cn, self._orig_path, self.val, self.missing)
+        return '%s(%r, %r, missing=%s)' % (cn, self._orig_path, self.val, _bbrepr(self.missing))
 
 
 def assign(obj, path, val, missing=None):

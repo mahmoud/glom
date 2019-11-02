@@ -30,7 +30,9 @@ def test_assign():
         Assign(T, 1)
 
     assert repr(Assign(T.a, 1)) == 'Assign(T.a, 1)'
-    assert repr(Assign(T.a, 1, missing=dict)).startswith('Assign(T.a, 1, missing=<')
+    assign_spec = Assign(T.a, 1, missing=dict)
+    # assert repr(assign_spec) == "Assign(T.a, 1, missing=__builtins__['dict'])"
+    assert repr(assign_spec) == repr(eval(repr(assign_spec)))
 
 
 def test_assign_spec_val():
