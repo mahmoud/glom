@@ -1,7 +1,7 @@
 import pytest
 
 from glom import glom, Path, T, S, Spec, Glommer, PathAssignError, PathAccessError
-from glom import assign, Assign, PathAssignError
+from glom import assign, Assign, delete, Delete, PathAssignError, PathDeleteError
 from glom.core import UnregisteredTarget
 
 
@@ -194,3 +194,91 @@ def test_s_assign():
     check that assign works when storing things into S
     '''
     glom({}, (Assign(S['foo'], 'bar'), S['foo'])) == 'bar'
+
+
+def test_delete():
+    class Foo(object):
+        def __init__(self, d=None):
+            for k, v in d.items():
+                setattr(self, k, v)
+
+    assert glom({'a': 1}, Delete(T['a'])) == {}
+    assert glom({'a': {'a': 1}}, Delete(T['a']['a'])) == {'a': {}}
+    assert glom({'a': {'a': 1}}, Delete('a.a')) == {'a': {}}
+    assert not hasattr(glom(Foo({'a': 1}), Delete(T.a)), 'a')
+    assert glom({'a': 1}, Delete('a')) == {}
+    assert not hasattr(glom(Foo({'a': 1}), Delete('a')), 'a')
+    assert not hasattr(glom({'a': Foo({'a': 1})}, Delete('a.a'))['a'], 'a')
+
+    def r():
+        r = {}
+        r['r'] = r
+        return r
+
+    assert glom(r(), Delete('r.r.r.r.r.r.r.r.r')) == {}
+    assert glom(r(), Delete(T['r']['r']['r']['r'])) == {}
+    assert glom(r(), Delete(Path('r', 'r', T['r']))) == {}
+    assert delete(r(), Path('r', 'r', T['r'])) == {}
+    with pytest.raises(TypeError, match='path argument must be'):
+        Delete(1, 'a')
+    with pytest.raises(ValueError, match='path must have at least one element'):
+        Delete(T, 1)
+
+    assert repr(Delete(T.a)) == 'Delete(T.a)'
+
+
+def test_unregistered_delete():
+    glommer = Glommer(register_default_types=False)
+
+    with pytest.raises(UnregisteredTarget, match='delete'):
+        glommer.glom({'a': 1}, Delete('a'))
+
+    with pytest.raises(UnregisteredTarget, match='delete'):
+        glom({'a': (1,)}, Delete('a.0'))
+
+
+def test_bad_delete_target():
+    class BadTarget(object):
+        def __delattr__(self, name):
+            raise Excetpion("and you trusted me?")
+
+    spec = Delete('a')
+    ok_target = lambda: None
+    ok_target.a = 1
+    glom(ok_target, spec)
+    assert not hasattr(ok_target, 'a')
+
+    with pytest.raises(PathDeleteError, match='could not delete'):
+        glom(BadTarget(), spec)
+
+    with pytest.raises(PathDeleteError, match='could not delete'):
+        delete({}, 'a')
+    return
+
+
+def test_sequence_delete():
+    target = {'alist': [0, 1, 2]}
+    delete(target, 'alist.1')
+    assert target['alist'] == [0, 2]
+
+    with pytest.raises(PathDeleteError, match='could not delete') as exc_info:
+        delete(target, 'alist.2')
+
+    exc_repr = repr(exc_info.value)
+    assert exc_repr.startswith('PathDeleteError(')
+    assert exc_repr.endswith("'2')")
+    return
+
+
+def test_invalid_delete_op_target():
+    target = {'afunc': lambda x: 'hi %s' % x}
+    spec = T['afunc'](x=1)
+
+    with pytest.raises(ValueError):
+        delete(target, spec, None)
+    return
+
+
+def test_delete_ignore_missing():
+    assert delete({}, 'a', ignore_missing=True) == {}
+    assert delete({}, 'a.b', ignore_missing=True) == {}
