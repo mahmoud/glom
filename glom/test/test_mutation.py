@@ -1,8 +1,8 @@
 import pytest
 
 from glom import glom, Path, T, S, Spec, Glommer, PathAssignError, PathAccessError
-from glom import assign, Assign, delete, Delete, PathAssignError, PathDeleteError
-from glom.core import UnregisteredTarget
+from glom import assign, Assign, delete, Delete, PathDeleteError
+from glom.core import UnregisteredTarget, Let
 
 
 def test_assign():
@@ -226,6 +226,27 @@ def test_delete():
 
     assert repr(Delete(T.a)) == 'Delete(T.a)'
 
+    # test delete from scope
+    assert glom(1, (Let(x=T), S['x'])) == 1
+    with pytest.raises(PathAccessError):
+        glom(1, (Let(x=T), Delete(S['x']), S['x']))
+
+    # test raising on missing parent
+    with pytest.raises(PathAccessError):
+        glom({}, Delete(T['a']['b']))
+
+    # test raising on missing index
+    with pytest.raises(PathDeleteError):
+        glom([], Delete(T[0]))
+    target = []
+    assert glom(target, Delete(T[0], ignore_missing=True)) is target
+
+    # test raising on missing attr
+    with pytest.raises(PathDeleteError):
+        glom(object(), Delete(T.does_not_exist))
+    target = object()
+    assert glom(target, Delete(T.does_not_exist, ignore_missing=True)) is target
+
 
 def test_unregistered_delete():
     glommer = Glommer(register_default_types=False)
@@ -240,7 +261,7 @@ def test_unregistered_delete():
 def test_bad_delete_target():
     class BadTarget(object):
         def __delattr__(self, name):
-            raise Excetpion("and you trusted me?")
+            raise Exception("and you trusted me?")
 
     spec = Delete('a')
     ok_target = lambda: None
