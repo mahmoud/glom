@@ -356,9 +356,6 @@ def _glom_match(target, spec, scope):
             raise GlomMatchError("{!r} does not match {!r}", target, spec)
         for sub_target, sub_spec in zip(target, spec):
             scope[glom](sub_target, sub_spec, scope)
-    elif isinstance(spec, type):
-        if not isinstance(target, spec):
-            raise GlomTypeMatchError(type(target), spec)
     elif target != spec:
         raise GlomMatchError("{!r} does not match {!r}", target, spec)
     return target
