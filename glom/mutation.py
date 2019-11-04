@@ -72,7 +72,9 @@ class PathDeleteError(PathAssignError):
 
 
 class Assign(object):
-    """The ``Assign`` specifier type enables glom to modify the target,
+    """*New in glom 18.3.0*
+
+    The ``Assign`` specifier type enables glom to modify the target,
     performing a "deep-set" to mirror glom's original deep-get use
     case.
 
@@ -208,7 +210,9 @@ class Assign(object):
 
 
 def assign(obj, path, val, missing=None):
-    """The ``assign()`` function provides convenient "deep set"
+    """*New in glom 18.3.0*
+
+    The ``assign()`` function provides convenient "deep set"
     functionality, modifying nested data structures in-place::
 
       >>> target = {'a': [{'b': 'c'}, {'d': None}]}
@@ -252,7 +256,9 @@ register_op('assign', auto_func=_assign_autodiscover, exact=False)
 
 
 class Delete(object):
-    """In addition to glom's core "deep-get" and ``Assign``'s "deep-set",
+    """*New in glom 19.11.0*
+
+    In addition to glom's core "deep-get" and ``Assign``'s "deep-set",
     the ``Delete`` specifier type performs a "deep-del", which can
     remove items from larger data structures by key, attribute, and
     index.
@@ -263,7 +269,7 @@ class Delete(object):
     >>> glom(target, Delete('dict.x'))
     {'dict': {}}
 
-    If a target path is missing, a ``PathDeleteError`` will be
+    If a target path is missing, a :exc:`PathDeleteError` will be
     raised. To ignore missing targets, use the ``ignore_missing``
     flag:
 
@@ -338,15 +344,17 @@ class Delete(object):
 
 
 def delete(obj, path, ignore_missing=False):
-    """The ``delete()`` function provides convenient "deep del"
-    functionality, modifying nested data structures in-place::
+    """*New in glom 19.11.0*
+
+    The ``delete()`` function provides "deep del" functionality,
+    modifying nested data structures in-place::
 
       >>> target = {'a': [{'b': 'c'}, {'d': None}]}
       >>> delete(target, 'a.0.b')
       {'a': [{}, {'d': None}]}
 
     Attempting to delete missing keys, attributes, and indexes will
-    raise a ``PathDeleteError``. To ignore these errors, use the
+    raise a :exc:`PathDeleteError`. To ignore these errors, use the
     *ignore_missing* argument::
 
       >>> delete(target, 'does_not_exist', ignore_missing=True)
