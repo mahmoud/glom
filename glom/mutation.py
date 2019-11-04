@@ -50,6 +50,21 @@ class PathAssignError(GlomError):
 
 
 class PathDeleteError(PathAssignError):
+    """This :exc:`GlomError` subtype is raised when an assignment fails,
+    stemming from an :func:`~glom.delete` call or other
+    :class:`~glom.Delete` usage.
+
+    One example would be deleting an out-of-range position in a list::
+
+      >>> delete(["short", "list"], Path(5))
+      Traceback (most recent call last):
+      ...
+      PathDeleteError: could not delete 5 on object at Path(), got error: IndexError(...
+
+    Other assignment failures could be due to deleting a read-only
+    ``@property`` or exception being raised inside a ``__delattr__()``.
+
+    """
     def __str__(self):
         return ('could not delete %r on object at %r, got error: %r'
                 % (self.dest_name, self.path, self.exc))
@@ -237,6 +252,30 @@ register_op('assign', auto_func=_assign_autodiscover, exact=False)
 
 
 class Delete(object):
+    """In addition to glom's core "deep-get" and ``Assign``'s "deep-set",
+    the ``Delete`` specifier type performs a "deep-del", which can
+    remove items from larger data structures by key, attribute, and
+    index.
+
+    >>> target = {'dict': {'x': [5, 6, 7]}}
+    >>> glom(target, Delete('dict.x.1'))
+    {'dict': {'x': [5, 7]}}
+    >>> glom(target, Delete('dict.x'))
+    {'dict': {}}
+
+    If a target path is missing, a ``PathDeleteError`` will be
+    raised. To ignore missing targets, use the ``ignore_missing``
+    flag:
+
+    >>> glom(target, Delete('does_not_exist', ignore_missing=True))
+    {'dict': {}}
+
+    ``Delete`` has built-in support for deleting attributes of
+    objects, keys of dicts, and indexes of sequences
+    (like lists). Additional types can be registered through
+    :func:`~glom.register()` using the ``"delete"`` operation name.
+
+    """
     def __init__(self, path, ignore_missing=False):
         if isinstance(path, basestring):
             path = Path.from_text(path)
@@ -299,6 +338,24 @@ class Delete(object):
 
 
 def delete(obj, path, ignore_missing=False):
+    """The ``delete()`` function provides convenient "deep del"
+    functionality, modifying nested data structures in-place::
+
+      >>> target = {'a': [{'b': 'c'}, {'d': None}]}
+      >>> delete(target, 'a.0.b')
+      {'a': [{}, {'d': None}]}
+
+    Attempting to delete missing keys, attributes, and indexes will
+    raise a ``PathDeleteError``. To ignore these errors, use the
+    *ignore_missing* argument::
+
+      >>> delete(target, 'does_not_exist', ignore_missing=True)
+      {'a': [{}, {'d': None}]}
+
+    For more information and examples, see the :class:`~glom.Delete`
+    specifier type, which this convenience function wraps.
+
+    """
     return glom(obj, Delete(path, ignore_missing=ignore_missing))
 
 
