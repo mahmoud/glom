@@ -1001,7 +1001,7 @@ class Ref(object):
 
     def glomit(self, target, scope):
         subspec = self.subspec
-        scope_key = (Ref, name)
+        scope_key = (Ref, self.name)
         if subspec is _MISSING:
             subspec = scope[scope_key]
         else:
