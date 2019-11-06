@@ -408,7 +408,9 @@ def test_let():
 
 
 def test_ref():
-    assert glom([1, [2, [3, []]]], Ref('item', (T[1], [Ref('item')]))) == []
+    assert glom([[[]]], Ref('item', [Ref('item')])) == [[[]]]
+    with pytest.raises(Exception):  # check that it recurses downards and dies on int iteration
+        glom([[[1]]], Ref('item', [Ref('item')]))
     assert repr(Ref('item', (T[1], Ref('item')))) == "Ref('item', (T[1], Ref('item')))"
 
 
