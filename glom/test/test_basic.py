@@ -3,7 +3,7 @@ import sys
 
 import pytest
 
-from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S, Invoke, Spec
+from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S, Invoke, Spec, Ref
 
 import glom.core as glom_core
 from glom.core import UP, ROOT, Let
@@ -405,6 +405,11 @@ def test_let():
         Let()
 
     assert repr(Let(a=T.a.b)) == 'Let(a=T.a.b)'
+
+
+def test_ref():
+    assert glom([1, 2, 3], Ref('item', (T[1:], Ref('item')))) == []
+    assert repr(Ref('item', (T[1:], Ref('item')))) == "Ref('item', (T[1:], Ref('item')))"
 
 
 _IS_PYPY = '__pypy__' in sys.builtin_module_names
