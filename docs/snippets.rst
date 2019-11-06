@@ -231,3 +231,18 @@ with a dict:
 .. code-block:: python
 
     glom('1', ({1: float, 2: int}, T.values()))
+
+
+Transform Tree
+--------------
+
+With an arbitrary depth tree, :data:`~glom.Ref` can be used to
+express a recursive spec.
+
+For example, this `etree2dicts` spec will recursively walk an `ElementTree`
+instance and transform it from nested objects to nested dicts.
+
+.. code-block:: python
+
+    etree2dicts = Ref('ElementTree',
+        {"tag": "tag", "text": "text", "attrib": "attrib", [(iter, Ref('ElementTree'))]}
