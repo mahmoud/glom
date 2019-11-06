@@ -61,6 +61,13 @@ class Match(object):
     def verify(self, target):
         return glom(target, self)
 
+    def matches(self, target):
+        try:
+            glom(target, self)
+        except GlomMatchError:
+            return False
+        return True
+
     def __repr__(self):
         return 'Match({!r})'.format(self.spec)
 
