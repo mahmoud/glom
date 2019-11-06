@@ -408,8 +408,8 @@ def test_let():
 
 
 def test_ref():
-    assert glom([1, 2, 3], Ref('item', (T[1:], Ref('item')))) == []
-    assert repr(Ref('item', (T[1:], Ref('item')))) == "Ref('item', (T[1:], Ref('item')))"
+    assert glom([1, [2, [3, []]]], Ref('item', (T[1], [Ref('item')]))) == []
+    assert repr(Ref('item', (T[1], Ref('item')))) == "Ref('item', (T[1], Ref('item')))"
 
 
 _IS_PYPY = '__pypy__' in sys.builtin_module_names
