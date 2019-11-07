@@ -124,6 +124,7 @@ class And(object):
 
     def glomit(self, target, scope):
         # all children must match without exception
+        result = target  # so that And() == True, similar to all([]) == True
         for child in self.children:
             result = scope[glom](target, child, scope)
             if self.chain:
@@ -155,6 +156,8 @@ class Or(object):
         self.children = children
 
     def glomit(self, target, scope):
+        if not self.children:  # so Or() == False, similar to any([]) == False
+            raise GlomMatchError("Or() always false")
         for child in self.children[:-1]:
             try:  # one child must match without exception
                 return scope[glom](target, child, scope)
