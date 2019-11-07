@@ -245,4 +245,34 @@ instance and transform it from nested objects to nested dicts.
 .. code-block:: python
 
     etree2dicts = Ref('ElementTree',
-        {"tag": "tag", "text": "text", "attrib": "attrib", [(iter, Ref('ElementTree'))]}
+        {"tag": "tag", "text": "text", "attrib": "attrib", "children": (iter, [Ref('ElementTree')])})
+
+
+Alternatively, say we only wanted to generate tuples of tag and children:
+
+.. code-block:: python
+
+    etree2tuples = Fill(Ref('ElementTree', (T.tag, Iter(Ref('ElementTree')).all())))
+
+
+(Note also the use of :data:`~glom.Fill` mode to easily construct a tuple.)
+
+.. code-block:: html
+
+    <html>
+      <head>
+        <title>the title</title>
+      </head>
+      <body id="the-body">
+        <p>A paragraph</p>
+      </body>
+    </html>
+
+
+Will translate to the following tuples:
+
+.. code-block:: python
+
+    >>> etree = ElementTree.fromstring(html_text)
+    >>> glom(etree, etree2tuples)
+    ('html', [('head', [('title', [])]), ('body', [('p', [])])])
