@@ -116,7 +116,35 @@ in a dict in match mode
 DEFAULT.glomit = lambda target, scope: target
 
 
-class And(object):
+class _Bool(object):
+    def __and__(self, other):
+        return And(self, other)
+
+    def __or__(self, other):
+        return Or(self, other)
+
+    def __invert__(self):
+        return Not(self)
+
+    def _m_repr(self):
+        """should this Or() repr as M |?"""
+        if not self.children:
+            return False
+        if isinstance(self.children[0], MType):
+            return True
+        if type(self.children[0]) in (And, Or, Not):
+            return self.children[0]._m_repr()
+        return False
+
+    def __repr__(self):
+        child_reprs = [repr(c) for c in self.children]
+        if self._m_repr():
+            return "(" + (") {} (".format(self.OP)).join(child_reprs) + ")"
+        return self.__class__.__name__ + "(" + ", ".join(child_reprs) + ")"
+
+
+class And(_Bool):
+    OP = "&"
     __slots__ = ('children', 'chain')
 
     def __init__(self, *children):
@@ -137,19 +165,9 @@ class And(object):
         and_.chain = self.chain
         return and_
 
-    def __or__(self, other):
-        return Or(self, other)
 
-    def __invert__(self):
-        return Not(self)
-
-    def __repr__(self):
-        if False:  # is in M repr
-            return "(" + ") & (".join([repr(c) for c in self.children]) + ")"
-        return "And(" + ", ".join(repr(c) for c in self.children) + ")"
-
-
-class Or(object):
+class Or(_Bool):
+    OP = "|"
     __slots__ = ('children',)
 
     def __init__(self, *children):
@@ -165,23 +183,12 @@ class Or(object):
                 pass
         return scope[glom](target, self.children[-1], scope)
 
-    def __and__(self, other):
-        return And(self, other)
-
     def __or__(self, other):
         # reduce number of layers of spec
         return Or(*(self.children + (other,)))
 
-    def __invert__(self):
-        return Not(self)
 
-    def __repr__(self):
-        if False:  # is in M repr
-            return "(" + ") | (".join([repr(c) for c in self.children]) + ")"
-        return "Or(" + ", ".join([repr(c) for c in self.children]) + ")"
-
-
-class Not(object):
+class Not(_Bool):
     __slots__ = ('child',)
 
     def __init__(self, child):
@@ -189,17 +196,21 @@ class Not(object):
 
     def glomit(self, target, scope):
         try:  # one child must match without exception
-            return scope[glom](target, self.child, scope)
+            scope[glom](target, self.child, scope)
         except GlomError:
-            pass
+            return target
         else:
             raise GlomMatchError("child shouldn't have passed", self.child)
 
-    def __invert__(self):
-        return Not(self)
+    def _m_repr(self):
+        if isinstance(self.child, MType):
+            return True
+        if type(self.child) not in (And, Or, Not):
+            return False
+        return self.child._m_repr()
 
     def __repr__(self):
-        if False:  # is in M repr
+        if self._m_repr():  # is in M repr
             return "~(" + repr(self.child) + ")"
         return "Not(" + repr(self.child) + ")"
 

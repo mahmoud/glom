@@ -88,6 +88,19 @@ def test_reprs():
     repr(M | M == 1)
     repr(M & M == 1)
     repr(~M)
+    repr(And(1, 2))
+    repr(Or(1, 2))
+    repr(Not(1))
+
+
+def test_shortcircuit():
+    assert glom(False, Fill(M | "default")) == "default"
+    assert glom(True, Fill(M | "default")) == True
+    assert glom(True, Fill(M & "default")) == "default"
+    with pytest.raises(GlomMatchError):
+        glom(False, Fill(M & "default"))
+    assert glom(False, Not(M)) == False
+    assert glom(True, Fill(Not(M) | "default")) == "default"
 
 
 def test_sample():
