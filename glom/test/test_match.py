@@ -32,14 +32,12 @@ def test():
     glom(1.0, M != None)
     glom(1.0, (M > 0) & float)
     glom(1.0, (M > 100) | float)
-    glom(1.0, M & (M > 0) & float)
-    glom(1.0, M | (M > 100) | float)
     # test idiom for enum
     with pytest.raises(GlomMatchError):
         glom("c", Match("a"))
     with pytest.raises(GlomMatchError):
         glom("c", Match(Or("a", "b")))
-    _chk(Match(M | "a" | "b"), "a", "c")
+    _chk(Match(Or("a", "b")), "a", "c")
     glom({None: 1}, Match({DEFAULT: object}))
     _chk(Match((int, str)), (1, "cat"), (1, 2))
     with pytest.raises(GlomMatchError):
@@ -63,10 +61,10 @@ def test_cruddy_json():
 
 
 def test_pattern_matching():
-    pattern_matcher = (
-        M & Match(1) & Literal('one') |
-        M & Match(2) & Literal('two') |
-        M & Match(float) & Literal('float')
+    pattern_matcher = Or(
+        And(Match(1), Literal('one')),
+        And(Match(2), Literal('two')),
+        And(Match(float), Literal('float'))
         )
     assert glom(1, pattern_matcher) == 'one'
     assert glom(1.1, pattern_matcher) == 'float'

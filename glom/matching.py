@@ -140,7 +140,9 @@ class And(object):
         return Or(self, other)
 
     def __repr__(self):
-        return "(" + ") & (".join([repr(c) for c in self.children]) + ")"
+        if False:  # is in M repr
+            return "(" + ") & (".join([repr(c) for c in self.children]) + ")"
+        return "And(" + ", ".join(repr(c) for c in self.children) + ")"
 
 
 class Or(object):
@@ -165,7 +167,29 @@ class Or(object):
         return Or(*(self.children + (other,)))
 
     def __repr__(self):
-        return "(" + ") | (".join([repr(c) for c in self.children]) + ")"
+        if False:  # is in M repr
+            return "(" + ") | (".join([repr(c) for c in self.children]) + ")"
+        return "Or(" + ", ".join([repr(c) for c in self.children]) + ")"
+
+
+class Not(object):
+    __slots__ = ('child',)
+
+    def __init__(self, child):
+        self.child = child
+
+    def glomit(self, target, scope):
+        try:  # one child must match without exception
+            return scope[glom](target, child, scope)
+        except GlomError:
+            pass
+        else:
+            raise GlomMatchError("child shouldn't have passed", self.child)
+
+    def __repr__(self):
+        if False:  # is in M repr
+            return "~(" + repr(self.child) + ")"
+        return "Not(" + repr(self.child) + ")"
 
 
 _M_OP_MAP = {'=': '==', '!': '!=', 'g': '>=', 'l': '<='}
@@ -200,19 +224,17 @@ class MType(object):
         return MType(self, 'l', other)
 
     def __and__(self, other):
-        if self is M:
-            and_ = And(other)
-        else:
-            and_ = And(self, other)
+        and_ = And(self, other)
         and_.chain = True
         return and_
 
     __rand__ = __and__
 
     def __or__(self, other):
-        if self is M:
-            return Or(other)
         return Or(self, other)
+
+    def __not__(self):
+        return Not(self)
 
     def glomit(self, target, scope):
         lhs, op, rhs = self.lhs, self.op, self.rhs
@@ -226,7 +248,8 @@ class MType(object):
             (op == '>' and lhs > rhs) or
             (op == '<' and lhs < rhs) or
             (op == 'g' and lhs >= rhs) or
-            (op == 'l' and lhs <= rhs)
+            (op == 'l' and lhs <= rhs) or
+            (op is None and target)  # M
         )
         if matched:
             return target
