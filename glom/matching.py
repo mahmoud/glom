@@ -140,7 +140,7 @@ class And(object):
     def __or__(self, other):
         return Or(self, other)
 
-    def __inv__(self):
+    def __invert__(self):
         return Not(self)
 
     def __repr__(self):
@@ -172,7 +172,7 @@ class Or(object):
         # reduce number of layers of spec
         return Or(*(self.children + (other,)))
 
-    def __inv__(self):
+    def __invert__(self):
         return Not(self)
 
     def __repr__(self):
@@ -189,13 +189,13 @@ class Not(object):
 
     def glomit(self, target, scope):
         try:  # one child must match without exception
-            return scope[glom](target, child, scope)
+            return scope[glom](target, self.child, scope)
         except GlomError:
             pass
         else:
             raise GlomMatchError("child shouldn't have passed", self.child)
 
-    def __inv__(self):
+    def __invert__(self):
         return Not(self)
 
     def __repr__(self):
@@ -245,7 +245,7 @@ class MType(object):
     def __or__(self, other):
         return Or(self, other)
 
-    def __inv__(self):
+    def __invert__(self):
         return Not(self)
 
     def glomit(self, target, scope):

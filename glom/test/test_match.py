@@ -4,7 +4,7 @@ import pytest
 
 from glom import glom, S, Literal, T, Merge, Fill
 from glom.matching import (
-    Match, M, GlomMatchError, And, Or, DEFAULT, Optional, Required, Regex)
+    Match, M, GlomMatchError, And, Or, Not, DEFAULT, Optional, Required, Regex)
 from glom.core import Auto, SKIP
 
 
@@ -35,6 +35,7 @@ def test():
     # test idiom for enum
     with pytest.raises(GlomMatchError):
         glom("c", Match("a"))
+    glom("c", Not(Match("a")))
     with pytest.raises(GlomMatchError):
         glom("c", Match(Or("a", "b")))
     _chk(Match(Or("a", "b")), "a", "c")
@@ -86,6 +87,7 @@ def test_reprs():
     repr(M == 1)
     repr(M | M == 1)
     repr(M & M == 1)
+    repr(~M)
 
 
 def test_sample():
@@ -209,7 +211,7 @@ def test_nested_struct():
             'rule_data': _json([  # list of condition-objects
                 Auto((
                     _defaults(value='null'),
-                    Match({  
+                    Match({
                         'value': _json(
                             Or(None, int, float, basestring, [int, float, basestring])),
                         'field': Auto(int),  # id of row from FilterField
