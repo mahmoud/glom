@@ -7,6 +7,7 @@ from glom.core import (glom,
                        Call,
                        Invoke,
                        Spec,
+                       Ref,
                        OMIT,  # backwards compat
                        SKIP,
                        STOP,

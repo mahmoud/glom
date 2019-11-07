@@ -995,6 +995,27 @@ class Invoke(object):
         return func(*all_args, **all_kwargs)
 
 
+class Ref(object):
+    def __init__(self, name, subspec=_MISSING):
+        self.name, self.subspec = name, subspec
+
+    def glomit(self, target, scope):
+        subspec = self.subspec
+        scope_key = (Ref, self.name)
+        if subspec is _MISSING:
+            subspec = scope[scope_key]
+        else:
+            scope[scope_key] = subspec
+        return scope[glom](target, subspec, scope)
+
+    def __repr__(self):
+        if self.subspec is _MISSING:
+            args = repr(self.name)
+        else:
+            args = repr((self.name, self.subspec))[1:-1]
+        return "Ref(" + args + ")"
+
+
 class TType(object):
     """``T``, short for "target". A singleton object that enables
     object-oriented expression of a glom specification.
