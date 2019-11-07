@@ -99,8 +99,8 @@ def test_shortcircuit():
     assert glom(True, Fill(M & "default")) == "default"
     with pytest.raises(GlomMatchError):
         glom(False, Fill(M & "default"))
-    assert glom(False, Not(M)) == False
-    assert glom(True, Fill(Not(M) | "default")) == "default"
+    assert glom(False, ~M) == False
+    assert glom(True, Fill(~M | "default")) == "default"
 
 
 def test_sample():
