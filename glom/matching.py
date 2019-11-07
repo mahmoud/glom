@@ -139,6 +139,9 @@ class And(object):
     def __or__(self, other):
         return Or(self, other)
 
+    def __inv__(self):
+        return Not(self)
+
     def __repr__(self):
         if False:  # is in M repr
             return "(" + ") & (".join([repr(c) for c in self.children]) + ")"
@@ -166,6 +169,9 @@ class Or(object):
         # reduce number of layers of spec
         return Or(*(self.children + (other,)))
 
+    def __inv__(self):
+        return Not(self)
+
     def __repr__(self):
         if False:  # is in M repr
             return "(" + ") | (".join([repr(c) for c in self.children]) + ")"
@@ -185,6 +191,9 @@ class Not(object):
             pass
         else:
             raise GlomMatchError("child shouldn't have passed", self.child)
+
+    def __inv__(self):
+        return Not(self)
 
     def __repr__(self):
         if False:  # is in M repr
@@ -233,7 +242,7 @@ class MType(object):
     def __or__(self, other):
         return Or(self, other)
 
-    def __not__(self):
+    def __inv__(self):
         return Not(self)
 
     def glomit(self, target, scope):
