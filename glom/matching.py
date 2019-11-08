@@ -31,6 +31,10 @@ from boltons.typeutils import make_sentinel
 from .core import GlomError, glom, T, Spec, MODE
 
 
+__all__ = [
+    'GlomMatchError', 'GlomTypeMatchError', 'Match', 'Regex', 'DEFAULT',
+    'And', 'Or', 'Not', 'M', 'Optional', 'Required']
+
 # NOTE: it is important that GlomMatchErrors be cheap to construct,
 # because negative matches are part of normal control flow
 # (e.g. often it is idiomatic to cascade from one possible match
@@ -84,6 +88,8 @@ class Regex(object):
 
     raises GlomMatchError if there isn't a match; returns Target if match
     """
+    __slots__ = ('flags', 'func', 'match_func', 'pattern')
+
     def __init__(self, pattern, flags=0, func=None):
         if func not in _RE_VALID_FUNCS:
             raise _RE_FUNC_ERROR
@@ -98,6 +104,7 @@ class Regex(object):
             else:
                 regex = re.compile(r"(?:{})\Z".format(pattern), flags)
                 match_func = regex.match
+        self.flags, self.func = flags, func
         self.match_func, self.pattern = match_func, pattern
 
     def glomit(self, target, scope):
@@ -106,6 +113,15 @@ class Regex(object):
         if not self.match_func(target):
             raise GlomMatchError("target did not match pattern", target, self.pattern)
         return target
+
+    def __repr__(self):
+        args = '(' + repr(self.pattern)
+        if self.flags:
+            args += ', flags=' + repr(flags)
+        if self.func is not None:
+            args += ', func=' + func.__name__
+        args += ')'
+        return "Regex" + args
 
 
 DEFAULT = make_sentinel("DEFAULT")
@@ -130,7 +146,7 @@ class _Bool(object):
         """should this Or() repr as M |?"""
         if not self.children:
             return False
-        if isinstance(self.children[0], MType):
+        if isinstance(self.children[0], _MType):
             return True
         if type(self.children[0]) in (And, Or, Not):
             return self.children[0]._m_repr()
@@ -203,13 +219,15 @@ class Not(_Bool):
             raise GlomMatchError("child shouldn't have passed", self.child)
 
     def _m_repr(self):
-        if isinstance(self.child, MType):
+        if isinstance(self.child, _MType):
             return True
         if type(self.child) not in (And, Or, Not):
             return False
         return self.child._m_repr()
 
     def __repr__(self):
+        if self.child is M:
+            return '~M'
         if self._m_repr():  # is in M repr
             return "~(" + repr(self.child) + ")"
         return "Not(" + repr(self.child) + ")"
@@ -218,7 +236,7 @@ class Not(_Bool):
 _M_OP_MAP = {'=': '==', '!': '!=', 'g': '>=', 'l': '<='}
 
 
-class MType(object):
+class _MType(object):
     """
     Similar to T, but for matching
 
@@ -229,22 +247,22 @@ class MType(object):
         self.lhs, self.op, self.rhs = lhs, op, rhs
 
     def __eq__(self, other):
-        return MType(self, '=', other)
+        return _MType(self, '=', other)
 
     def __ne__(self, other):
-        return MType(self, '!', other)
+        return _MType(self, '!', other)
 
     def __gt__(self, other):
-        return MType(self, '>', other)
+        return _MType(self, '>', other)
 
     def __lt__(self, other):
-        return MType(self, '<', other)
+        return _MType(self, '<', other)
 
     def __ge__(self, other):
-        return MType(self, 'g', other)
+        return _MType(self, 'g', other)
 
     def __le__(self, other):
-        return MType(self, 'l', other)
+        return _MType(self, 'l', other)
 
     def __and__(self, other):
         and_ = And(self, other)
@@ -285,7 +303,7 @@ class MType(object):
         return "{!r} {} {!r}".format(self.lhs, op, self.rhs)
 
 
-M = MType(None, None, None)
+M = _MType(None, None, None)
 
 
 _MISSING = make_sentinel('MISSING')
