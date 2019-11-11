@@ -154,6 +154,10 @@ def test_sample():
     good()
 
 
+def test_regex():
+    assert glom('abc', (Regex('(?P<test>.*)'), S['test'])) == 'abc'
+
+
 def test_ternary():
     assert glom('abc', Match(Or(None, 'abc'))) == 'abc'
 

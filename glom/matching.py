@@ -87,6 +87,9 @@ class Regex(object):
     checks that target is a string which matches the passed regex pattern
 
     raises GlomMatchError if there isn't a match; returns Target if match
+
+    variables captures in regex are added to the scope so they can
+    be used by downstream processes
     """
     __slots__ = ('flags', 'func', 'match_func', 'pattern')
 
@@ -110,8 +113,10 @@ class Regex(object):
     def glomit(self, target, scope):
         if type(target) is not str:
             raise GlomMatchError("target not a string")
-        if not self.match_func(target):
+        match = self.match_func(target)
+        if not match:
             raise GlomMatchError("target did not match pattern", target, self.pattern)
+        scope.update(match.groupdict())
         return target
 
     def __repr__(self):
