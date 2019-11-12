@@ -252,12 +252,9 @@ if getattr(__builtins__, '__dict__', None):
     # pypy's __builtins__ is a module, as is CPython's REPL, but at
     # normal execution time it's a dict?
     __builtins__ = __builtins__.__dict__
-    tmpl = '__builtins__.%s'
-else:
-    tmpl = "__builtins__['%s']"
 
 
-_BUILTIN_ID_NAME_MAP = dict([(id(v), tmpl % k)
+_BUILTIN_ID_NAME_MAP = dict([(id(v), k)
                              for k, v in __builtins__.items()])
 
 def _bbrepr(obj):

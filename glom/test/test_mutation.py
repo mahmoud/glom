@@ -31,7 +31,7 @@ def test_assign():
 
     assert repr(Assign(T.a, 1)) == 'Assign(T.a, 1)'
     assign_spec = Assign(T.a, 1, missing=dict)
-    # assert repr(assign_spec) == "Assign(T.a, 1, missing=__builtins__['dict'])"
+    assert repr(assign_spec) == "Assign(T.a, 1, missing=dict)"
     assert repr(assign_spec) == repr(eval(repr(assign_spec)))
 
 
