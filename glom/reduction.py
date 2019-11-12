@@ -5,7 +5,7 @@ from pprint import pprint
 
 from boltons.typeutils import make_sentinel
 
-from .core import TargetRegistry, Path, T, glom, GlomError, UnregisteredTarget
+from .core import TargetRegistry, Path, T, glom, GlomError, UnregisteredTarget, format_invocation, bbrepr
 
 _MISSING = make_sentinel('_MISSING')
 
@@ -96,7 +96,8 @@ class Fold(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r, init=%r, op=%r)' % (cn, self.subspec, self.init, self.op)
+        kwargs = {'init': self.init, 'op': self.op}
+        return format_invocation(cn, (self.subspec,), kwargs, repr=bbrepr)
 
 
 class Sum(Fold):
@@ -122,7 +123,7 @@ class Sum(Fold):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r, init=%r)' % (cn, self.subspec, self.init)
+        return format_invocation(cn, (self.subspec,), {'init': self.init}, repr=bbrepr)
 
 
 class Flatten(Fold):
@@ -153,9 +154,8 @@ class Flatten(Fold):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        if self.lazy:
-            return '%s(%r, init="lazy")' % (cn, self.subspec)
-        return '%s(%r, init=%r)' % (cn, self.subspec, self.init)
+        kwargs = {'init': 'lazy' if self.lazy else self.init}
+        return format_invocation(cn, (self.subspec,), kwargs, repr=bbrepr)
 
 
 def flatten(target, **kwargs):

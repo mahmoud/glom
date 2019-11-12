@@ -48,7 +48,7 @@ def test_fold():
 
     assert glom(target, Fold(T, lambda: 1, op=lambda l, r: l * r)) == 24
 
-    repr(Fold(T, int))
+    assert repr(Fold(T, int)).startswith('Fold(T, init=int')
 
     # signature coverage
     with pytest.raises(TypeError):

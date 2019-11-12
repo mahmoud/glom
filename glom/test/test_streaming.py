@@ -51,7 +51,8 @@ def test_filter():
     out = glom(imags, spec)
     assert out == [0j, 2j]
 
-    assert repr(Iter().filter(T.a.b)).startswith('Iter().filter(T.a.b)')
+    assert repr(Iter().filter(T.a.b)) == 'Iter().filter(T.a.b)'
+    assert repr(Iter(list).filter(sum)) == 'Iter(list).filter(sum)'
 
 
 def test_map():

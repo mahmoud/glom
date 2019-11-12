@@ -5,7 +5,7 @@ import operator
 from pprint import pprint
 
 from .core import Path, T, S, Spec, glom, UnregisteredTarget, GlomError, PathAccessError, UP
-from .core import TType, register_op, TargetRegistry, _bbrepr
+from .core import TType, register_op, TargetRegistry, bbrepr
 
 try:
     basestring
@@ -13,7 +13,7 @@ except NameError:
     basestring = str
 
 
-if getattr(__builtins__, '__dict__', None):
+if getattr(__builtins__, '__dict__', None) is not None:
     # pypy's __builtins__ is a module, as is CPython's REPL, but at
     # normal execution time it's a dict?
     __builtins__ = __builtins__.__dict__
@@ -189,7 +189,7 @@ class Assign(object):
         cn = self.__class__.__name__
         if self.missing is None:
             return '%s(%r, %r)' % (cn, self._orig_path, self.val)
-        return '%s(%r, %r, missing=%s)' % (cn, self._orig_path, self.val, _bbrepr(self.missing))
+        return '%s(%r, %r, missing=%s)' % (cn, self._orig_path, self.val, bbrepr(self.missing))
 
 
 def assign(obj, path, val, missing=None):
