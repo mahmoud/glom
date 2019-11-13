@@ -1975,7 +1975,7 @@ class Fill(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        rpr = '' if self.spec is None else repr(self.spec)
+        rpr = '' if self.spec is None else bbrepr(self.spec)
         return '%s(%s)' % (cn, rpr)
 
 
