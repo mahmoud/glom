@@ -96,7 +96,9 @@ class Fold(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        kwargs = {'init': self.init, 'op': self.op}
+        kwargs = {'init': self.init}
+        if self.op is not operator.iadd:
+            kwargs['op'] = self.op
         return format_invocation(cn, (self.subspec,), kwargs, repr=bbrepr)
 
 
@@ -123,7 +125,9 @@ class Sum(Fold):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return format_invocation(cn, (self.subspec,), {'init': self.init}, repr=bbrepr)
+        args = () if self.subspec is T else (self.subspec,)
+        kwargs = {'init': self.init} if self.init is not int else {}
+        return format_invocation(cn, args, kwargs, repr=bbrepr)
 
 
 class Flatten(Fold):
@@ -154,8 +158,13 @@ class Flatten(Fold):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        kwargs = {'init': 'lazy' if self.lazy else self.init}
-        return format_invocation(cn, (self.subspec,), kwargs, repr=bbrepr)
+        args = () if self.subspec is T else (self.subspec,)
+        kwargs = {}
+        if self.lazy:
+            kwargs['init'] = 'lazy'
+        elif self.init is not list:
+            kwargs['init'] = self.init
+        return format_invocation(cn, args, kwargs, repr=bbrepr)
 
 
 def flatten(target, **kwargs):
