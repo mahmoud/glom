@@ -958,6 +958,7 @@ class Invoke(object):
         :meth:`~Invoke.specs()` and other :class:`Invoke`
         methods may be called multiple times, just remember that every
         call returns a new spec.
+
         """
         ret = self.__class__(self.func)
         ret._args = self._args + ('S', a, kw)
@@ -995,29 +996,31 @@ class Invoke(object):
         return ret
 
     def __repr__(self):
-        chunks = [self.__class__.__name__]
+        base_fname = self.__class__.__name__
         fname_map = {'C': 'constants', 'S': 'specs', '*': 'star'}
         if type(self.func) is Spec:
-            chunks.append('.specfunc({!r})'.format(self.func.spec))
+            base_fname += '.specfunc'
+            args = (self.func.spec,)
         else:
-            chunks.append('({!r})'.format(self.func))
+            args = (self.func,)
+        chunks = [format_invocation(base_fname, args, repr=bbrepr)]
+
         for i in range(len(self._args) // 3):
-            op, args, kwargs = self._args[i * 3: i * 3 + 3]
+            op, args, _kwargs = self._args[i * 3: i * 3 + 3]
             fname = fname_map[op]
-            chunks.append('.{}('.format(fname))
             if op in ('C', 'S'):
-                chunks.append(', '.join(
-                    [repr(a) for a in args] +
-                    ['{}={!r}'.format(k, v) for k, v in kwargs.items()
-                     if self._cur_kwargs[k] is kwargs]))
+                kwargs = [(k, v) for k, v in _kwargs.items()
+                          if self._cur_kwargs[k] is _kwargs]
             else:
+                kwargs = {}
                 if args:
-                    chunks.append('args=' + repr(args))
-                if args and kwargs:
-                    chunks.append(", ")
-                if kwargs:
-                    chunks.append('kwargs=' + repr(kwargs))
-            chunks.append(')')
+                    kwargs['args'] = args
+                if _kwargs:
+                    kwargs['kwargs'] = _kwargs
+                args = ()
+
+            chunks.append('.' + format_invocation(fname, args, kwargs, repr=bbrepr))
+
         return ''.join(chunks)
 
     def glomit(self, target, scope):

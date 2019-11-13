@@ -229,6 +229,9 @@ def test_invoke():
         ).constants(3, b='b').specs(c='c'
         ).star(args='args2', kwargs='kwargs')
     repr(spec)  # no exceptions
+    assert repr(Invoke(len).specs(T)) == 'Invoke(len).specs(T)'
+    assert (repr(Invoke.specfunc(next).constants(len).constants(1))
+            == 'Invoke.specfunc(next).constants(len).constants(1)')
     assert glom(data, spec) == 'test'
     assert args == [
         (1, 2, 3, 4, 5),
