@@ -1227,10 +1227,6 @@ class Let(object):
 
 
 def _format_t(path, root=T):
-    def kwarg_fmt(kw):
-        if isinstance(kw, str):
-            return kw
-        return repr(kw)
     prepr = ['T' if root is T else 'S']
     i = 0
     while i < len(path):
@@ -1238,12 +1234,10 @@ def _format_t(path, root=T):
         if op == '.':
             prepr.append('.' + arg)
         elif op == '[':
-            prepr.append("[%r]" % (arg,))
+            prepr.append("[%s]" % (bbrepr(arg),))
         elif op == '(':
             args, kwargs = arg
-            prepr.append("(%s)" % ", ".join([repr(a) for a in args] +
-                                            ["%s=%s" % (kwarg_fmt(k), bbrepr(v))
-                                             for k, v in kwargs.items()]))
+            prepr.append(format_invocation(args=args, kwargs=kwargs, repr=bbrepr))
         elif op == 'P':
             return _format_path(path)
         i += 2

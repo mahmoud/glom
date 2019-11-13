@@ -45,6 +45,10 @@ def test_path_t_roundtrip():
     # check that multiple nested paths reduce
     assert repr(Path(Path(Path('a')))) == "Path('a')"
 
+    # check builtin repr
+    assert repr(T[len]) == 'T[len]'
+    assert repr(T.func(len, sum)) == 'T.func(len, sum)'
+
 
 def test_path_access_error_message():
 
