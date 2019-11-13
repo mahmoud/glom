@@ -59,7 +59,7 @@ def test_map():
     spec = Iter().map(lambda x: x * 2)
     out = glom(RANGE_5, spec)
     assert list(out) == [0, 2, 4, 6, 8]
-    assert repr(Iter().map(T.a.b)).startswith('Iter().map(T.a.b)')
+    assert repr(Iter().map(T.a.b)) == 'Iter().map(T.a.b)'
 
 
 def test_split_flatten():
