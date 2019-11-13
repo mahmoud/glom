@@ -24,6 +24,8 @@ def test_check_basic():
     assert repr(Check()) == 'Check()'
     assert repr(Check(T.a)) == 'Check(T.a)'
     assert repr(Check(equal_to=1)) == 'Check(equal_to=1)'
+    assert repr(Check(instance_of=dict)) == 'Check(instance_of=dict)'
+    assert repr(Check(T(len), validate=sum)) == 'Check(T(len), validate=sum)'
 
     target = [1, 'a']
     assert glom(target, [Check(type=str, default=SKIP)]) == ['a']

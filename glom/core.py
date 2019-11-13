@@ -1444,7 +1444,7 @@ class Check(object):
     def __repr__(self):
         cn = self.__class__.__name__
         posargs = (self.spec,) if self.spec is not T else ()
-        return format_invocation(cn, posargs, self._orig_kwargs)
+        return format_invocation(cn, posargs, self._orig_kwargs, repr=bbrepr)
 
 
 class Auto(object):
