@@ -16,13 +16,7 @@ applications deals with rich, heavily-nested data.
 
 What does nested data looks like? In its most basic form::
 
-  >>> data = {
-  ...     'a': {
-  ...         'b': {
-  ...             'c': 'd'
-  ...         }
-  ...     }
-  ... }
+  >>> data = {'a': {'b': {'c': 'd'}}}
   >>> data['a']['b']['c']
   'd'
 
@@ -200,11 +194,11 @@ To handle this, we can define the ``dwarf_planets`` subspec as a Coalesce fallba
   ...     }
   ... }
   >>> spec = {
-  ...     'names': (Coalesce('system.planets', 'system.dwarf_planets'), ['name']),
+  ...     'planets': (Coalesce('system.planets', 'system.dwarf_planets'), ['name']),
   ...     'moons': (Coalesce('system.planets', 'system.dwarf_planets'), ['moons'])
   ... }
   >>> pprint(glom(target, spec))
-  {'moons': [1, 69], 'names': ['earth', 'jupiter']}
+  {'moons': [1, 69], 'planets': ['earth', 'jupiter']}
 
 You can see here we get the expected results, but say our target changes...
 
