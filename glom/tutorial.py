@@ -211,7 +211,7 @@ You can see here we get the expected results, but say our target changes...
   ...     }
   ... }
   >>> pprint(glom(target, spec))
-  {'moons': [5, 0], 'names': ['pluto', 'ceres']}
+  {'moons': [5, 0], 'planets': ['pluto', 'ceres']}
 
 Voila, the target can still be parsed and we can elegantly handle changes in our data formats.
 
