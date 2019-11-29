@@ -4,7 +4,9 @@
 
    glom's tutorial is a runnable module, feel free to run ``pip
    install glom`` and ``from glom.tutorial import *`` in the Python
-   REPL to glom along.
+   REPL to glom along. Or `try it in your browser here
+   <https://repl.it/@mhashemi/glom-planetary-templating>`_ or in the
+   embedded REPLs below!
 
 Dealing with Data
 =================
@@ -55,6 +57,14 @@ Well that's short, and reads fine, but what about in the error case?
 
 That's more like it! We have a function that can give us our data, or
 give us an error message we can read, understand, and act upon.
+
+Interactive Deep Get
+--------------------
+
+.. raw:: html
+
+   <iframe height="400px" width="100%" src="https://repl.it/@mhashemi/glom-basic-deep-get?lite=true" scrolling="no" frameborder="no" allowtransparency="true" allowfullscreen="true" sandbox="allow-forms allow-pointer-lock allow-popups allow-same-origin allow-scripts allow-modals"></iframe>
+
 
 And would you believe this "deep access" example doesn't even scratch
 the surface of the tip of the iceberg? Welcome to glom.
@@ -162,6 +172,13 @@ Going back to our example, let's say we wanted to get an aggregate moon count:
 
 With glom, you have full access to Python at any given moment.
 Pass values to functions, whether built-in, imported, or defined inline with lambda.
+
+Interactive Planetary Templating
+--------------------------------
+
+.. raw:: html
+
+   <iframe height="400px" width="100%" src="https://repl.it/@mhashemi/glom-planetary-templating?lite=true" scrolling="no" frameborder="no" allowtransparency="true" allowfullscreen="true" sandbox="allow-forms allow-pointer-lock allow-popups allow-same-origin allow-scripts allow-modals"></iframe>
 
 
 Point of Contact
@@ -293,6 +310,13 @@ bit of info that'll help jog the user's memory. We're going to include
 the location, or company, or year the contact was added. You can see
 an example of this feature as implemented by GitHub, here:
 https://github.com/mahmoud/glom/stargazers
+
+Interactive Contact Management
+------------------------------
+
+.. raw:: html
+
+   <iframe height="400px" width="100%" src="https://repl.it/@mhashemi/glom-point-of-contact?lite=true" scrolling="no" frameborder="no" allowtransparency="true" allowfullscreen="true" sandbox="allow-forms allow-pointer-lock allow-popups allow-same-origin allow-scripts allow-modals"></iframe>
 
 Conclusion
 ==========

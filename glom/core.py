@@ -32,6 +32,7 @@ from collections import OrderedDict
 
 from boltons.typeutils import make_sentinel
 from boltons.iterutils import is_iterable
+#from boltons.funcutils import format_invocation
 
 PY2 = (sys.version_info[0] == 2)
 if PY2:
@@ -41,6 +42,7 @@ else:
     basestring = str
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
     from collections import ChainMap
+
 
 _type_type = type
 
@@ -80,6 +82,13 @@ execution of a tuple of subspecs.
 [0, 1, 2, 3, 4]
 """
 
+LAST_CHILD_SCOPE = make_sentinel('LAST_CHILD_SCOPE')
+LAST_CHILD_SCOPE.__doc__ = """
+Marker that can be used by parents to keep track of the last child
+scope executed.  Useful for "lifting" results out of child scopes
+for scopes that want to chain the scopes of their children together
+similar to tuple.
+"""
 MODE =  make_sentinel('MODE')
 
 ERROR_SCOPE = make_sentinel('ERROR_SCOPE')
@@ -94,6 +103,7 @@ SCOPE_POS.__doc__ = """
 within a scope -- e.g. key of dict, index of tuple -- for
 the purposes of debugging
 """
+
 
 
 class GlomError(Exception):
@@ -265,6 +275,57 @@ class UnregisteredTarget(GlomError):
         if self.path:
             msg += ' (at %r)' % (self.path,)
         return msg
+
+
+if getattr(__builtins__, '__dict__', None) is not None:
+    # pypy's __builtins__ is a module, as is CPython's REPL, but at
+    # normal execution time it's a dict?
+    __builtins__ = __builtins__.__dict__
+
+
+_BUILTIN_ID_NAME_MAP = dict([(id(v), k)
+                             for k, v in __builtins__.items()])
+
+def bbrepr(obj):
+    """A better repr for builtins, when the built-in repr isn't
+    roundtrippable.
+    """
+    ret = repr(obj)
+    if not ret.startswith('<'):
+        return ret
+    return _BUILTIN_ID_NAME_MAP.get(id(obj), ret)
+
+
+# TODO: push this back up to boltons with repr kwarg
+def format_invocation(name='', args=(), kwargs=None, **kw):
+    """Given a name, positional arguments, and keyword arguments, format
+    a basic Python-style function call.
+
+    >>> print(format_invocation('func', args=(1, 2), kwargs={'c': 3}))
+    func(1, 2, c=3)
+    >>> print(format_invocation('a_func', args=(1,)))
+    a_func(1)
+    >>> print(format_invocation('kw_func', kwargs=[('a', 1), ('b', 2)]))
+    kw_func(a=1, b=2)
+
+    """
+    _repr = kw.pop('repr', repr)
+    if kw:
+        raise TypeError('unexpected keyword args: %r' % ', '.join(kw.keys()))
+    kwargs = kwargs or {}
+    a_text = ', '.join([_repr(a) for a in args])
+    if isinstance(kwargs, dict):
+        kwarg_items = [(k, kwargs[k]) for k in sorted(kwargs)]
+    else:
+        kwarg_items = kwargs
+    kw_text = ', '.join(['%s=%s' % (k, _repr(v)) for k, v in kwarg_items])
+
+    all_args_text = a_text
+    if all_args_text and kw_text:
+        all_args_text += ', '
+    all_args_text += kw_text
+
+    return '%s(%s)' % (name, all_args_text)
 
 
 class Path(object):
@@ -473,7 +534,7 @@ class Literal(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r)' % (cn, self.value)
+        return '%s(%s)' % (cn, bbrepr(self.value))
 
 
 class Spec(object):
@@ -517,8 +578,8 @@ class Spec(object):
     def __repr__(self):
         cn = self.__class__.__name__
         if self.scope:
-            return '%s(%r, scope=%r)' % (cn, self.spec, self.scope)
-        return '%s(%r)' % (cn, self.spec)
+            return '%s(%s, scope=%r)' % (cn, bbrepr(self.spec), self.scope)
+        return '%s(%s)' % (cn, bbrepr(self.spec))
 
 
 class Coalesce(object):
@@ -586,6 +647,7 @@ class Coalesce(object):
     """
     def __init__(self, *subspecs, **kwargs):
         self.subspecs = subspecs
+        self._orig_kwargs = dict(kwargs)
         self.default = kwargs.pop('default', _MISSING)
         self.default_factory = kwargs.pop('default_factory', _MISSING)
         if self.default and self.default_factory:
@@ -622,6 +684,10 @@ class Coalesce(object):
             else:
                 raise CoalesceError(self, skipped, scope[Path])
         return ret
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return format_invocation(cn, self.subspecs, self._orig_kwargs, repr=bbrepr)
 
 
 class Inspect(object):
@@ -708,7 +774,7 @@ class Inspect(object):
         if self.breakpoint:
             self.breakpoint()
         try:
-            ret = scope[Inspect](target, self.wrapped, scope)
+            ret = scope[Inspect](target, spec, scope)
         except Exception:
             if self.post_mortem:
                 self.post_mortem()
@@ -751,6 +817,10 @@ class Call(object):
        ``Call`` is mostly for functions. Use a :attr:`~glom.T` object
        if you need to call a method.
 
+    .. warning::
+
+       :class:`Call` has a successor with a fuller-featured API, new
+       in 19.10.0: the :class:`Invoke` specifier type.
     """
     def __init__(self, func=None, args=None, kwargs=None):
         if func is None:
@@ -782,7 +852,251 @@ class Call(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r, args=%r, kwargs=%r)' % (cn, self.func, self.args, self.kwargs)
+        return '%s(%s, args=%r, kwargs=%r)' % (cn, bbrepr(self.func), self.args, self.kwargs)
+
+
+def _is_spec(obj, strict=False):
+    # a little util for codifying the spec type checking in glom
+    if isinstance(obj, TType):
+        return True
+    if strict:
+        return type(obj) is Spec
+    # TODO: revisit line below
+    return callable(getattr(obj, 'glomit', None)) and not isinstance(obj, type)  # pragma: no cover
+
+
+class Invoke(object):
+    """Specifier type designed for easy invocation of callables from glom.
+
+    Args:
+      func (callable): A function or other callable object.
+
+    ``Invoke`` is similar to :func:`functools.partial`, but with the
+    ability to set up a "templated" call which interleaves constants and
+    glom specs.
+
+    For example, the following creates a spec which can be used to
+    check if targets are integers:
+
+    >>> is_int = Invoke(isinstance).specs(T).constants(int)
+    >>> glom(5, is_int)
+    True
+
+    And this composes like any other glom spec:
+
+    >>> target = [7, object(), 9]
+    >>> glom(target, [is_int])
+    [True, False, True]
+
+    Another example, mixing positional and keyword arguments:
+
+    >>> spec = Invoke(sorted).specs(T).constants(key=int, reverse=True)
+    >>> target = ['10', '5', '20', '1']
+    >>> glom(target, spec)
+    ['20', '10', '5', '1']
+
+    Invoke also helps with evaluating zero-argument functions:
+
+    >>> glom(target={}, spec=Invoke(int))
+    0
+
+    (A trivial example, but from timestamps to UUIDs, zero-arg calls do come up!)
+
+    .. note::
+
+       ``Invoke`` is mostly for functions, object construction, and callable
+       objects. For calling methods, consider the :attr:`~glom.T` object.
+
+    """
+    def __init__(self, func):
+        if not callable(func) and not _is_spec(func, strict=True):
+            raise TypeError('expected func to be a callable or Spec instance,'
+                            ' not: %r' % (func,))
+        self.func = func
+        self._args = ()
+        # a registry of every known kwarg to its freshest value as set
+        # by the methods below. the **kw dict is used as a unique marker.
+        self._cur_kwargs = {}
+
+    @classmethod
+    def specfunc(cls, spec):
+        """Creates an :class:`Invoke` instance where the function is
+        indicated by a spec.
+
+        >>> spec = Invoke.specfunc('func').constants(5)
+        >>> glom({'func': range}, (spec, list))
+        [0, 1, 2, 3, 4]
+
+        """
+        return cls(Spec(spec))
+
+    def constants(self, *a, **kw):
+        """Returns a new :class:`Invoke` spec, with the provided positional
+        and keyword argument values stored for passing to the
+        underlying function.
+
+        >>> spec = Invoke(T).constants(5)
+        >>> glom(range, (spec, list))
+        [0, 1, 2, 3, 4]
+
+        Subsequent positional arguments are appended:
+
+        >>> spec = Invoke(T).constants(2).constants(10, 2)
+        >>> glom(range, (spec, list))
+        [2, 4, 6, 8]
+
+        Keyword arguments also work as one might expect:
+
+        >>> round_2 = Invoke(round).constants(ndigits=2).specs(T)
+        >>> glom(3.14159, round_2)
+        3.14
+
+        :meth:`~Invoke.constants()` and other :class:`Invoke`
+        methods may be called multiple times, just remember that every
+        call returns a new spec.
+        """
+        ret = self.__class__(self.func)
+        ret._args = self._args + ('C', a, kw)
+        ret._cur_kwargs = dict(self._cur_kwargs)
+        ret._cur_kwargs.update({k: kw for k, _ in kw.items()})
+        return ret
+
+    def specs(self, *a, **kw):
+        """Returns a new :class:`Invoke` spec, with the provided positional
+        and keyword arguments stored to be interpreted as specs, with
+        the results passed to the underlying function.
+
+        >>> spec = Invoke(range).specs('value')
+        >>> glom({'value': 5}, (spec, list))
+        [0, 1, 2, 3, 4]
+
+        Subsequent positional arguments are appended:
+
+        >>> spec = Invoke(range).specs('start').specs('end', 'step')
+        >>> target = {'start': 2, 'end': 10, 'step': 2}
+        >>> glom(target, (spec, list))
+        [2, 4, 6, 8]
+
+        Keyword arguments also work as one might expect:
+
+        >>> multiply = lambda x, y: x * y
+        >>> times_3 = Invoke(multiply).constants(y=3).specs(x='value')
+        >>> glom({'value': 5}, times_3)
+        15
+
+        :meth:`~Invoke.specs()` and other :class:`Invoke`
+        methods may be called multiple times, just remember that every
+        call returns a new spec.
+
+        """
+        ret = self.__class__(self.func)
+        ret._args = self._args + ('S', a, kw)
+        ret._cur_kwargs = dict(self._cur_kwargs)
+        ret._cur_kwargs.update({k: kw for k, _ in kw.items()})
+        return ret
+
+    def star(self, args=None, kwargs=None):
+        """Returns a new :class:`Invoke` spec, with *args* and/or *kwargs*
+        specs set to be "starred" or "star-starred" (respectively)
+
+        >>> import os.path
+        >>> spec = Invoke(os.path.join).star(args='path')
+        >>> target = {'path': ['path', 'to', 'dir']}
+        >>> glom(target, spec)
+        'path/to/dir'
+
+        Args:
+           args (spec): A spec to be evaluated and "starred" into the
+              underlying function.
+           kwargs (spec): A spec to be evaluated and "star-starred" into
+              the underlying function.
+
+        One or both of the above arguments should be set.
+
+        The :meth:`~Invoke.star()`, like other :class:`Invoke`
+        methods, may be called multiple times. The *args* and *kwargs*
+        will be stacked in the order in which they are provided.
+        """
+        if args is None and kwargs is None:
+            raise TypeError('expected one or both of args/kwargs to be passed')
+        ret = self.__class__(self.func)
+        ret._args = self._args + ('*', args, kwargs)
+        ret._cur_kwargs = dict(self._cur_kwargs)
+        return ret
+
+    def __repr__(self):
+        base_fname = self.__class__.__name__
+        fname_map = {'C': 'constants', 'S': 'specs', '*': 'star'}
+        if type(self.func) is Spec:
+            base_fname += '.specfunc'
+            args = (self.func.spec,)
+        else:
+            args = (self.func,)
+        chunks = [format_invocation(base_fname, args, repr=bbrepr)]
+
+        for i in range(len(self._args) // 3):
+            op, args, _kwargs = self._args[i * 3: i * 3 + 3]
+            fname = fname_map[op]
+            if op in ('C', 'S'):
+                kwargs = [(k, v) for k, v in _kwargs.items()
+                          if self._cur_kwargs[k] is _kwargs]
+            else:
+                kwargs = {}
+                if args:
+                    kwargs['args'] = args
+                if _kwargs:
+                    kwargs['kwargs'] = _kwargs
+                args = ()
+
+            chunks.append('.' + format_invocation(fname, args, kwargs, repr=bbrepr))
+
+        return ''.join(chunks)
+
+    def glomit(self, target, scope):
+        all_args = []
+        all_kwargs = {}
+
+        recurse = lambda spec: scope[glom](target, spec, scope)
+        func = recurse(self.func) if _is_spec(self.func, strict=True) else self.func
+
+        for i in range(len(self._args) // 3):
+            op, args, kwargs = self._args[i * 3: i * 3 + 3]
+            if op == 'C':
+                all_args.extend(args)
+                all_kwargs.update({k: v for k, v in kwargs.items()
+                                   if self._cur_kwargs[k] is kwargs})
+            elif op == 'S':
+                all_args.extend([recurse(arg) for arg in args])
+                all_kwargs.update({k: recurse(v) for k, v in kwargs.items()
+                                   if self._cur_kwargs[k] is kwargs})
+            elif op == '*':
+                if args is not None:
+                    all_args.extend(recurse(args))
+                if kwargs is not None:
+                    all_kwargs.update(recurse(kwargs))
+
+        return func(*all_args, **all_kwargs)
+
+
+class Ref(object):
+    def __init__(self, name, subspec=_MISSING):
+        self.name, self.subspec = name, subspec
+
+    def glomit(self, target, scope):
+        subspec = self.subspec
+        scope_key = (Ref, self.name)
+        if subspec is _MISSING:
+            subspec = scope[scope_key]
+        else:
+            scope[scope_key] = subspec
+        return scope[glom](target, subspec, scope)
+
+    def __repr__(self):
+        if self.subspec is _MISSING:
+            args = repr(self.name)
+        else:
+            args = repr((self.name, self.subspec))[1:-1]
+        return "Ref(" + args + ")"
 
 
 class TType(object):
@@ -943,39 +1257,26 @@ class Let(object):
     This specifier type assigns variables to the scope.
 
     >>> target = {'data': {'val': 9}}
-    >>> spec = Let(value=T['data']['val']).over({'val': S['value']})
+    >>> spec = (Let(value=T['data']['val']), {'val': S['value']})
     >>> glom(target, spec)
     {'val': 9}
-
-    Other form is Let(foo=spec1, bar=spec2).over(subspec)
     """
     def __init__(self, **kw):
         if not kw:
             raise TypeError('expected at least one keyword argument')
         self._binding = kw
 
-    def over(self, subspec):
-        return _LetOver(self, subspec)
-
-    def _write_to(self, target, scope):
+    def glomit(self, target, scope):
         scope.update({
             k: scope[glom](target, v, scope) for k, v in self._binding.items()})
+        return target
 
-
-class _LetOver(object):
-    def __init__(self, let, subspec):
-        self.let, self.subspec = let, subspec
-
-    def glomit(self, target, scope):
-        self.let._write_to(target, scope)
-        return scope[glom](target, self.subspec, scope)
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return format_invocation(cn, kwargs=self._binding, repr=bbrepr)
 
 
 def _format_t(path, root=T):
-    def kwarg_fmt(kw):
-        if isinstance(kw, str):
-            return kw
-        return repr(kw)
     prepr = ['T' if root is T else 'S']
     i = 0
     while i < len(path):
@@ -983,12 +1284,10 @@ def _format_t(path, root=T):
         if op == '.':
             prepr.append('.' + arg)
         elif op == '[':
-            prepr.append("[%r]" % (arg,))
+            prepr.append("[%s]" % (bbrepr(arg),))
         elif op == '(':
             args, kwargs = arg
-            prepr.append("(%s)" % ", ".join([repr(a) for a in args] +
-                                            ["%s=%r" % (kwarg_fmt(k), v)
-                                             for k, v in kwargs.items()]))
+            prepr.append(format_invocation(args=args, kwargs=kwargs, repr=bbrepr))
         elif op == 'P':
             return _format_path(path)
         i += 2
@@ -1079,6 +1378,7 @@ class Check(object):
     # raising the unified CheckError.
     def __init__(self, spec=T, **kwargs):
         self.spec = spec
+        self._orig_kwargs = dict(kwargs)
         self.default = kwargs.pop('default', RAISE)
 
         def _get_arg_val(name, cond, func, val, can_be_empty=True):
@@ -1191,21 +1491,32 @@ class Check(object):
             raise CheckError(errs, self, scope[Path])
         return ret
 
+    def __repr__(self):
+        cn = self.__class__.__name__
+        posargs = (self.spec,) if self.spec is not T else ()
+        return format_invocation(cn, posargs, self._orig_kwargs, repr=bbrepr)
 
-class Build(object):
+
+class Auto(object):
     """
-    switch to builder mode (the default)
+    Switch to Auto mode (the default)
 
     TODO: this seems like it should be a sub-class of class Spec() --
     if Spec() could help define the interface for new "modes" or dialects
     that would also help make match mode feel less duct-taped on
     """
-    def __init__(self, spec):
+    def __init__(self, spec=None):
         self.spec = spec
 
     def glomit(self, target, scope):
-        scope[MODE] = _glom_build
+        scope[MODE] = _glom_auto
         return scope[glom](target, self.spec, scope)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        rpr = '' if self.spec is None else repr(self.spec)
+        return '%s(%s)' % (cn, rpr)
+
 
 
 class _AbstractIterable(_AbstractIterableBase):
@@ -1246,8 +1557,10 @@ def _handle_list(target, spec, scope):
         raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
                         % (target.__class__.__name__, Path(*scope[Path]), e))
     ret = []
+    base_path = scope[Path]
     for i, t in enumerate(iterator):
-        val = scope[glom](t, subspec, scope.new_child({Path: scope[Path] + [i]}))
+        scope[Path] = base_path + [i]
+        val = scope[glom](t, subspec, scope)
         if val is SKIP:
             continue
         if val is STOP:
@@ -1265,6 +1578,8 @@ def _handle_tuple(target, spec, scope):
         if nxt is STOP:
             break
         res = nxt
+        # this makes it so that specs in a tuple effectively nest.
+        scope = scope[LAST_CHILD_SCOPE]
         if not isinstance(subspec, list):
             scope[Path] += [getattr(subspec, '__name__', subspec)]
     return res
@@ -1518,7 +1833,7 @@ def glom(target, spec, **kwargs):
     scope = _DEFAULT_SCOPE.new_child({
         Path: kwargs.pop('path', []),
         Inspect: kwargs.pop('inspector', None),
-        MODE: _glom_build,
+        MODE: _glom_auto,
     })
     scope[UP] = scope
     scope[ROOT] = scope
@@ -1541,7 +1856,9 @@ def glom(target, spec, **kwargs):
 
 
 def _glom(target, spec, scope):
-    scope, parent = scope.new_child(), scope
+    parent = scope
+    scope = scope.new_child()
+    parent[LAST_CHILD_SCOPE] = scope
     scope[T] = target
     scope[Spec] = spec
     scope[UP] = parent
@@ -1558,7 +1875,7 @@ def _glom(target, spec, scope):
         raise
 
 
-def _glom_build(target, spec, scope):
+def _glom_auto(target, spec, scope):
     if isinstance(spec, dict):
         return _handle_dict(target, spec, scope)
     elif isinstance(spec, list):
@@ -1706,7 +2023,7 @@ class Fill(object):
     (Sidenote for Lisp fans: Fill is like glom's quasi-quoting.)
 
     """
-    def __init__(self, spec):
+    def __init__(self, spec=None):
         self.spec = spec
 
     def glomit(self, target, scope):
@@ -1715,6 +2032,11 @@ class Fill(object):
 
     def fill(self, target):
         return glom(target, self)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        rpr = '' if self.spec is None else bbrepr(self.spec)
+        return '%s(%s)' % (cn, rpr)
 
 
 def _fill(target, spec, scope):

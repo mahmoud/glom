@@ -18,7 +18,7 @@ except ImportError:
 from boltons.iterutils import split_iter, chunked_iter, windowed_iter, unique_iter, first
 from boltons.funcutils import FunctionBuilder
 
-from .core import glom, T, STOP, SKIP, Check, _MISSING, Path, TargetRegistry, Call, Spec, S
+from .core import glom, T, STOP, SKIP, Check, _MISSING, Path, TargetRegistry, Call, Spec, S, bbrepr, format_invocation
 
 
 class Iter(object):
@@ -62,29 +62,21 @@ class Iter(object):
         return
 
     def __repr__(self):
-        chunks = [self.__class__.__name__]
+        base_args = ()
         if self.subspec != T:
-            chunks.append('({!r})'.format(self.subspec))
-        else:
-            chunks.append('()')
+            base_args = (self.subspec,)
+        base = format_invocation(self.__class__.__name__, base_args, repr=bbrepr)
+        chunks = [base]
         for fname, args, _ in reversed(self._iter_stack):
             meth = getattr(self, fname)
             fb = FunctionBuilder.from_func(meth)
             fb.args = fb.args[1:]  # drop self
             arg_names = fb.get_arg_names()
             # TODO: something fancier with defaults:
-            chunks.append("." + fname)
-            if len(args) == 0:
-                chunks.append("()")
-            elif len(arg_names) == 1:
-                assert len(args) == 1
-                chunks.append('({!r})'.format(args[0]))
-            elif arg_names:
-                chunks.append('({})'.format(", ".join([
-                    '{}={!r}'.format(name, val) for name, val in zip(arg_names, args)])))
-            else:
-                # p much just slice bc no kwargs
-                chunks.append('({})'.format(", ".join(['%s' % a for a in args])))
+            kwargs = []
+            if len(args) > 1 and arg_names:
+                args, kwargs = (), zip(arg_names, args)
+            chunks.append('.' + format_invocation(fname, args, kwargs, repr=bbrepr))
         return ''.join(chunks)
 
     def glomit(self, target, scope):
@@ -103,9 +95,10 @@ class Iter(object):
             raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
                             % (target.__class__.__name__, Path(*scope[Path]), e))
 
+        base_path = scope[Path]
         for i, t in enumerate(iterator):
-            yld = (t if self.subspec is T
-                   else scope[glom](t, self.subspec, scope.new_child({Path: scope[Path] + [i]})))
+            scope[Path] = base_path + [i]
+            yld = (t if self.subspec is T else scope[glom](t, self.subspec, scope))
             if yld is SKIP:
                 continue
             elif yld is self.sentinel or yld is STOP:
@@ -275,6 +268,7 @@ class Iter(object):
         This method accepts only positional arguments.
         """
         # TODO: make a kwarg-compatible version of this (islice takes no kwargs)
+        # TODO: also support slice syntax Iter()[::]
         try:
             islice([], *args)
         except TypeError:
@@ -384,5 +378,5 @@ class First(object):
     def __repr__(self):
         cn = self.__class__.__name__
         if self._default is None:
-            return '%s(%r)' % (cn, self._spec)
-        return '%s(%r, default=%r)' % (cn, self._spec, self._default)
+            return '%s(%s)' % (cn, bbrepr(self._spec))
+        return '%s(%s, default=%s)' % (cn, bbrepr(self._spec), bbrepr(self._default))

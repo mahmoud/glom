@@ -1,4 +1,6 @@
 
+import operator
+
 import pytest
 from boltons.dictutils import OMD
 
@@ -22,7 +24,8 @@ def test_sum_integers():
     target = target + [{}]  # add a non-compliant dict
     assert glom(target, Sum([Coalesce('num', default=0)])) ==4
 
-    repr(Sum())
+    assert repr(Sum()) == 'Sum()'
+    assert repr(Sum(len, init=float)) == 'Sum(len, init=float)'
 
 
 def test_sum_seqs():
@@ -48,7 +51,8 @@ def test_fold():
 
     assert glom(target, Fold(T, lambda: 1, op=lambda l, r: l * r)) == 24
 
-    repr(Fold(T, int))
+    assert repr(Fold(T, int)) == 'Fold(T, init=int)'
+    assert repr(Fold(T, int, op=operator.imul)).startswith('Fold(T, init=int, op=<')
 
     # signature coverage
     with pytest.raises(TypeError):
@@ -82,8 +86,9 @@ def test_flatten():
     assert next(gen) == 1
     assert list(gen) == [2, 3]
 
-    repr(Flatten())
-    repr(Flatten(init='lazy'))
+    assert repr(Flatten()) == 'Flatten()'
+    assert repr(Flatten(init='lazy')) == "Flatten(init='lazy')"
+    assert repr(Flatten(init=tuple)) == "Flatten(init=tuple)"
 
 
 def test_flatten_func():

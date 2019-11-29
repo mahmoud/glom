@@ -1,5 +1,5 @@
 attrs==17.4.0
-boltons==19.2.0
+boltons==19.3.0
 coverage==4.5.2
 face>=0.1.0
 pytest==4.1.1

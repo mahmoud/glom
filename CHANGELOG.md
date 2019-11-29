@@ -13,6 +13,25 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
+19.10.0
+-------
+*(October 29, 2019)*
+
+* Add streaming support via [Iter][iter] ([#100][i100])
+* Add better callable handling with [Invoke][invoke] ([#101][i101])
+* Add Fill ([#110][i110]) - Also adds Auto for the default mode. (soft-launch, docs TBA)
+* Add Let for variable capture ([#108][i108]) (soft-launch, docs TBA)
+* Steps in the tuple now nest scopes ([#97][i97])
+* All public specifier types now have reasonable reprs (notably, Coalesce, Check, and Assign)
+
+[iter]: https://glom.readthedocs.io/en/latest/api.html#glom.Iter
+[invoke]: https://glom.readthedocs.io/en/latest/api.html#glom.Invoke
+[i97]: https://github.com/mahmoud/glom/issues/97
+[i100]: https://github.com/mahmoud/glom/issues/100
+[i101]: https://github.com/mahmoud/glom/issues/101
+[i108]: https://github.com/mahmoud/glom/issues/108
+[i110]: https://github.com/mahmoud/glom/issues/110
+
 19.2.0
 ------
 *(February 17, 2019)*

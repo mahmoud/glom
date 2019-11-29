@@ -53,7 +53,7 @@ specifiers to declare away overly branchy procedural code.
 Stream processing iterables with Iter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-*New in glom 19.2.0*
+*New in glom 19.10.0*
 
 .. autoclass:: glom.Iter
 
@@ -94,10 +94,8 @@ specifier types and two convenience functions:
 .. autoclass:: glom.Fold
 
 
-Target mutation with Assign
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-*New in glom 18.3.0*
+Target mutation with Assign and friends
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Most of glom's API design defaults to safely copying your data. But
 such caution isn't always justified.
@@ -111,14 +109,42 @@ type.
 
 .. autoclass:: glom.Assign
 
+.. autofunction:: glom.delete
 
-Reducing lambda usage with Call
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. autoclass:: glom.Delete
 
-There's nothing quite like inserting a quick lambda into a glom spec
-to get the job done. But once a spec works, how can it be cleaned up?
+Wrapping callables with Invoke
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. autofunction:: glom.Call
+*New in glom 19.10.0*
+
+From calling functions to constructing objects, it's hardly Python if
+you're not invoking callables. By default, single-argument functions
+work great on their own in glom specs. The function gets passed the
+target and it just works:
+
+>>> glom(['1', '3', '5'], [int])
+[1, 3, 5]
+
+Zero-argument and multi-argument functions get a lot trickier,
+especially when more than one of those arguments comes from the
+target, thus the :class:`Invoke` spec.
+
+.. autoclass:: glom.Invoke
+   :members:
+
+Alternative approach to functions: Call
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An earlier, more primitive approach to callables in glom was the Call
+specifier type.
+
+.. note::
+
+   Given superiority of its successor, :class:`Invoke`,
+   the :class:`Call` type may be deprecated in a future release.
+
+.. autoclass:: glom.Call
 
 
 Object-oriented access and method calls with ``T``
@@ -161,6 +187,8 @@ other standard Python exceptions as appropriate.
 .. autoclass:: glom.UnregisteredTarget
 
 .. autoclass:: glom.PathAssignError
+
+.. autoclass:: glom.PathDeleteError
 
 .. autoclass:: glom.GlomError
 

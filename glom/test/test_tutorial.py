@@ -16,3 +16,5 @@ def test_tutorial():
     assert res == val
 
     contact = Contact('Julian', emails=[Email('julian@sunnyvaletrailerpark.info')])
+    contact.save()
+    assert Contact.objects.get(contact_id=contact.id) is contact

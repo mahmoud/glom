@@ -1,4 +1,4 @@
-from glom import Build, Fill, T, glom
+from glom import Auto, Fill, T, glom
 
 def test():
     assert glom('abc', Fill((T[0], {T[1]: T[2]}))) == ('a', {'b': 'c'})
@@ -9,4 +9,12 @@ def test():
     assert Fill((T, T, T)).fill(1) == (1, 1, 1)
 
     target = {'data': [0, 2, 4]}
-    assert glom(target, Fill((T['data'][-1], Build('data.-2')))) == (4, 2)
+    assert glom(target, Fill((T['data'][-1], Auto('data.-2')))) == (4, 2)
+
+    assert repr(Auto()) == 'Auto()'
+    assert repr(Auto(T)) == 'Auto(T)'
+
+    assert repr(Fill()) == 'Fill()'
+    assert repr(Fill(T)) == 'Fill(T)'
+
+    assert repr(Fill(len)) == 'Fill(len)'
