@@ -97,10 +97,10 @@ ERROR_SCOPE.__doc__ = """
 from which an exception was raised when processing fails.
 """
 
-SCOPE_POS = make_sentinel('SCOPE_POS')
-SCOPE_POS.__doc__ = """
-``SCOPE_POS`` is used to keep track of the current position
-within a scope -- e.g. key of dict, index of tuple -- for
+SPEC_POS = make_sentinel('SPEC_POS')
+SPEC_POS.__doc__ = """
+``SPEC_POS`` is used to keep track of the current position
+within a spec -- e.g. key of dict, index of tuple -- for
 the purposes of debugging
 """
 
@@ -1538,7 +1538,7 @@ def _get_sequence_item(target, index):
 def _handle_dict(target, spec, scope):
     ret = type(spec)()  # TODO: works for dict + ordereddict, but sufficient for all?
     for field, subspec in spec.items():
-        scope[SCOPE_POS] = field
+        scope[SPEC_POS] = field
         val = scope[glom](target, subspec, scope)
         if val is SKIP:
             continue
