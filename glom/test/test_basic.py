@@ -1,9 +1,11 @@
 
 import sys
+from xml.etree import cElementTree as ElementTree
 
 import pytest
 
-from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S, Invoke, Spec
+from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S, Invoke, Spec, Ref
+from glom import Auto, Fill, Iter
 
 import glom.core as glom_core
 from glom.core import UP, ROOT, Let
@@ -179,8 +181,10 @@ def test_abstract_iterable():
     class MyIterable(object):
         def __iter__(self):
             return iter([1, 2, 3])
+    mi = MyIterable()
+    assert list(mi) == [1, 2, 3]
 
-    assert isinstance(MyIterable(), glom_core._AbstractIterable)
+    assert isinstance(mi, glom_core._AbstractIterable)
 
 
 def test_call_and_target():
@@ -229,6 +233,9 @@ def test_invoke():
         ).constants(3, b='b').specs(c='c'
         ).star(args='args2', kwargs='kwargs')
     repr(spec)  # no exceptions
+    assert repr(Invoke(len).specs(T)) == 'Invoke(len).specs(T)'
+    assert (repr(Invoke.specfunc(next).constants(len).constants(1))
+            == 'Invoke.specfunc(next).constants(len).constants(1)')
     assert glom(data, spec) == 'test'
     assert args == [
         (1, 2, 3, 4, 5),
@@ -407,6 +414,28 @@ def test_let():
     assert repr(Let(a=T.a.b)) == 'Let(a=T.a.b)'
 
 
+def test_ref():
+    assert glom([[[]]], Ref('item', [Ref('item')])) == [[[]]]
+    with pytest.raises(Exception):  # check that it recurses downards and dies on int iteration
+        glom([[[1]]], Ref('item', [Ref('item')]))
+    assert repr(Ref('item', (T[1], Ref('item')))) == "Ref('item', (T[1], Ref('item')))"
+
+    etree2dicts = Ref('ElementTree',
+        {"tag": "tag", "text": "text", "attrib": "attrib", "children": (iter, [Ref('ElementTree')])})
+    etree2tuples = Fill(Ref('ElementTree', (T.tag, Iter(Ref('ElementTree')).all())))
+    etree = ElementTree.fromstring('''
+    <html>
+      <head>
+        <title>the title</title>
+      </head>
+      <body id="the-body">
+        <p>A paragraph</p>
+      </body>
+    </html>''')
+    glom(etree, etree2dicts)
+    glom(etree, etree2tuples)
+
+
 _IS_PYPY = '__pypy__' in sys.builtin_module_names
 @pytest.mark.skipif(_IS_PYPY, reason='pypy othertype.__repr__ is never object.__repr__')
 def test_api_repr():
@@ -417,6 +446,6 @@ def test_api_repr():
         if not callable(getattr(v, 'glomit', None)):
             continue
         if v.__repr__ is object.__repr__:
-            spec_types_wo_reprs.append(k)
+            spec_types_wo_reprs.append(k)  # pragma: no cover
 
     assert set(spec_types_wo_reprs) == set([])

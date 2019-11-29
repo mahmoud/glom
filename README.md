@@ -5,7 +5,7 @@
 <a href="https://pypi.org/project/glom/"><img src="https://img.shields.io/pypi/v/glom.svg"></a>
 <a href="https://calver.org/"><img src="https://img.shields.io/badge/calver-YY.MM.MICRO-22bfda.svg"></a>
 
-<img width="30%" align="right" src="./docs/_static/comet.png">
+<img width="30%" align="right" src="https://raw.githubusercontent.com/mahmoud/glom/master/docs/_static/comet.png">
 
 Real applications have real data, and real data nests. Objects inside
 of objects inside of lists of objects.
@@ -81,7 +81,7 @@ PathAccessError: could not access 'c', index 2 in path Path('a', 'b', 'c'), got 
 
 ## Learn more
 
-<img width="30%" align="right" src="./docs/_static/comet_multi.png">
+<img width="30%" align="right" src="https://raw.githubusercontent.com/mahmoud/glom/master/docs/_static/comet_multi.png">
 
 If all this seems interesting, continue exploring glom below:
 

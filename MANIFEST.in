@@ -1,4 +1,4 @@
-include README.md LICENSE CHANGELOG.md tox.ini requirements-test.txt .coveragerc Makefile pytest.ini .tox-coveragerc
+include LICENSE CHANGELOG.md tox.ini requirements.txt requirements-rtd.txt .coveragerc Makefile pytest.ini .tox-coveragerc
 exclude TODO.md appveyor.yml
 global-exclude flycheck_*
 

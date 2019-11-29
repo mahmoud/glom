@@ -16,3 +16,5 @@ def test():
 
     assert repr(Fill()) == 'Fill()'
     assert repr(Fill(T)) == 'Fill(T)'
+
+    assert repr(Fill(len)) == 'Fill(len)'

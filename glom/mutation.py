@@ -5,7 +5,7 @@ import operator
 from pprint import pprint
 
 from .core import Path, T, S, Spec, glom, UnregisteredTarget, GlomError, PathAccessError, UP
-from .core import TType, register_op, TargetRegistry
+from .core import TType, register_op, TargetRegistry, bbrepr
 
 try:
     basestring
@@ -13,7 +13,7 @@ except NameError:
     basestring = str
 
 
-if getattr(__builtins__, '__dict__', None):
+if getattr(__builtins__, '__dict__', None) is not None:
     # pypy's __builtins__ is a module, as is CPython's REPL, but at
     # normal execution time it's a dict?
     __builtins__ = __builtins__.__dict__
@@ -49,8 +49,32 @@ class PathAssignError(GlomError):
                 % (self.dest_name, self.path, self.exc))
 
 
+class PathDeleteError(PathAssignError):
+    """This :exc:`GlomError` subtype is raised when an assignment fails,
+    stemming from an :func:`~glom.delete` call or other
+    :class:`~glom.Delete` usage.
+
+    One example would be deleting an out-of-range position in a list::
+
+      >>> delete(["short", "list"], Path(5))
+      Traceback (most recent call last):
+      ...
+      PathDeleteError: could not delete 5 on object at Path(), got error: IndexError(...
+
+    Other assignment failures could be due to deleting a read-only
+    ``@property`` or exception being raised inside a ``__delattr__()``.
+
+    """
+    def __str__(self):
+        return ('could not delete %r on object at %r, got error: %r'
+                % (self.dest_name, self.path, self.exc))
+
+
+
 class Assign(object):
-    """The ``Assign`` specifier type enables glom to modify the target,
+    """*New in glom 18.3.0*
+
+    The ``Assign`` specifier type enables glom to modify the target,
     performing a "deep-set" to mirror glom's original deep-get use
     case.
 
@@ -182,11 +206,13 @@ class Assign(object):
         cn = self.__class__.__name__
         if self.missing is None:
             return '%s(%r, %r)' % (cn, self._orig_path, self.val)
-        return '%s(%r, %r, missing=%r)' % (cn, self._orig_path, self.val, self.missing)
+        return '%s(%r, %r, missing=%s)' % (cn, self._orig_path, self.val, bbrepr(self.missing))
 
 
 def assign(obj, path, val, missing=None):
-    """The ``assign()`` function provides convenient "deep set"
+    """*New in glom 18.3.0*
+
+    The ``assign()`` function provides convenient "deep set"
     functionality, modifying nested data structures in-place::
 
       >>> target = {'a': [{'b': 'c'}, {'d': None}]}
@@ -227,3 +253,133 @@ def _assign_autodiscover(type_obj):
 
 
 register_op('assign', auto_func=_assign_autodiscover, exact=False)
+
+
+class Delete(object):
+    """*New in glom 19.11.0*
+
+    In addition to glom's core "deep-get" and ``Assign``'s "deep-set",
+    the ``Delete`` specifier type performs a "deep-del", which can
+    remove items from larger data structures by key, attribute, and
+    index.
+
+    >>> target = {'dict': {'x': [5, 6, 7]}}
+    >>> glom(target, Delete('dict.x.1'))
+    {'dict': {'x': [5, 7]}}
+    >>> glom(target, Delete('dict.x'))
+    {'dict': {}}
+
+    If a target path is missing, a :exc:`PathDeleteError` will be
+    raised. To ignore missing targets, use the ``ignore_missing``
+    flag:
+
+    >>> glom(target, Delete('does_not_exist', ignore_missing=True))
+    {'dict': {}}
+
+    ``Delete`` has built-in support for deleting attributes of
+    objects, keys of dicts, and indexes of sequences
+    (like lists). Additional types can be registered through
+    :func:`~glom.register()` using the ``"delete"`` operation name.
+
+    """
+    def __init__(self, path, ignore_missing=False):
+        if isinstance(path, basestring):
+            path = Path.from_text(path)
+        elif type(path) is TType:
+            path = Path(path)
+        elif not isinstance(path, Path):
+            raise TypeError('path argument must be a .-delimited string, Path, T, or S')
+
+        try:
+            self.op, self.arg = path.items()[-1]
+        except IndexError:
+            raise ValueError('path must have at least one element')
+        self._orig_path = path
+        self.path = path[:-1]
+
+        if self.op not in '[.P':
+            raise ValueError('last part of path must be an attribute or index')
+
+        self.ignore_missing = ignore_missing
+
+    def glomit(self, target, scope):
+        op, arg, path = self.op, self.arg, self.path
+        if self.path.startswith(S):
+            dest_target = scope[UP]
+            dest_path = self.path.from_t()
+        else:
+            dest_target = target
+            dest_path = self.path
+        try:
+            dest = scope[glom](dest_target, dest_path, scope)
+        except PathAccessError as pae:
+            if not self.ignore_missing:
+                raise
+        else:
+            if op == '[':
+                try:
+                    del dest[arg]
+                except IndexError as e:
+                    if not self.ignore_missing:
+                        raise PathDeleteError(e, path, arg)
+            elif op == '.':
+                try:
+                    delattr(dest, arg)
+                except AttributeError as e:
+                    if not self.ignore_missing:
+                        raise PathDeleteError(e, path, arg)
+            elif op == 'P':
+                _delete = scope[TargetRegistry].get_handler('delete', dest)
+                try:
+                    _delete(dest, arg)
+                except Exception as e:
+                    if not self.ignore_missing:
+                        raise PathDeleteError(e, path, arg)
+
+        return target
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r)' % (cn, self._orig_path)
+
+
+def delete(obj, path, ignore_missing=False):
+    """*New in glom 19.11.0*
+
+    The ``delete()`` function provides "deep del" functionality,
+    modifying nested data structures in-place::
+
+      >>> target = {'a': [{'b': 'c'}, {'d': None}]}
+      >>> delete(target, 'a.0.b')
+      {'a': [{}, {'d': None}]}
+
+    Attempting to delete missing keys, attributes, and indexes will
+    raise a :exc:`PathDeleteError`. To ignore these errors, use the
+    *ignore_missing* argument::
+
+      >>> delete(target, 'does_not_exist', ignore_missing=True)
+      {'a': [{}, {'d': None}]}
+
+    For more information and examples, see the :class:`~glom.Delete`
+    specifier type, which this convenience function wraps.
+
+    """
+    return glom(obj, Delete(path, ignore_missing=ignore_missing))
+
+
+def _del_sequence_item(target, idx):
+    del target[int(idx)]
+
+
+def _delete_autodiscover(type_obj):
+    if issubclass(type_obj, _UNASSIGNABLE_BASE_TYPES):
+        return False
+
+    if callable(getattr(type_obj, '__delitem__', None)):
+        if callable(getattr(type_obj, 'index', None)):
+            return _del_sequence_item
+        return operator.delitem
+    return delattr
+
+
+register_op('delete', auto_func=_delete_autodiscover, exact=False)

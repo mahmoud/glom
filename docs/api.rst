@@ -94,10 +94,8 @@ specifier types and two convenience functions:
 .. autoclass:: glom.Fold
 
 
-Target mutation with Assign
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-*New in glom 18.3.0*
+Target mutation with Assign and friends
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Most of glom's API design defaults to safely copying your data. But
 such caution isn't always justified.
@@ -110,6 +108,10 @@ type.
 .. autofunction:: glom.assign
 
 .. autoclass:: glom.Assign
+
+.. autofunction:: glom.delete
+
+.. autoclass:: glom.Delete
 
 Wrapping callables with Invoke
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -185,6 +187,8 @@ other standard Python exceptions as appropriate.
 .. autoclass:: glom.UnregisteredTarget
 
 .. autoclass:: glom.PathAssignError
+
+.. autoclass:: glom.PathDeleteError
 
 .. autoclass:: glom.GlomError
 
