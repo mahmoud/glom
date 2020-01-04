@@ -318,3 +318,56 @@ def merge(target, **kwargs):
         raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
     spec = Merge(subspec, init, op)
     return glom(target, spec)
+
+
+class Group(object):
+    """
+    Group is used to organize an iterable by the result of the key-spec.
+
+    For example:
+
+    glom(range(10), Group(lambda t: t % 2)) == {0: [0, 2, 4, 6, 8], 1: [1, 3, 5, 7, 9]}
+
+    A second spec can be used to specify the value.
+
+    glom(range(10), Group(lambda t: t % 2, lambda t: t * 2)) == {
+        0: [0, 4, 8, 12, 16], 1: [2, 6, 10, 14, 18]}
+
+    Additional specs will add additional layers of key / values.
+
+    Group(spec) transforms [item] -> {spec(item): [item]}
+    Group(spec1, spec2) transforms [item] -> {spec1(item): [spec2(item)]}
+
+    Group(spec1, spec2, ... specN) transforms [item[ -> {spec1(item): {spec2(item): { ... : [specN(item)] } ... }}
+    """
+    def __init__(self, *specs):
+        if not specs:
+            raise ArgumentError("Group() must be passed at least one key spec")
+        self.specs = specs
+
+    def glomit(self, target, scope):
+        recur = scope[glom]
+        if len(self.specs) == 1:
+            spec = self.specs[0]
+            grouped = {}
+            for item in target:
+                key = recur(item, spec, scope)
+                if key not in grouped:
+                    grouped[key] = []
+                grouped[key].append(item)
+            return grouped
+        data = [[recur(item, spec, scope) for spec in self.specs] for item in target]
+        grouped = {}
+        for row in data:
+            cur = grouped
+            for key in row[:-2]:
+                if key not in cur:
+                    cur[key] = {}
+                cur = cur[key]
+            if row[-2] not in cur:
+                cur[row[-2]] = []
+            cur[row[-2]].append(row[-1])
+        return grouped
+
+    def __repr__(self):
+        return "Group(" + ", ".join([repr(e) for e in self.specs]) + ")"

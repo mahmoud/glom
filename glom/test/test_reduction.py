@@ -4,7 +4,7 @@ import operator
 import pytest
 from boltons.dictutils import OMD
 
-from glom import glom, T, Sum, Fold, Flatten, Coalesce, flatten, FoldError, Glommer, Merge, merge
+from glom import glom, T, Sum, Fold, Flatten, Coalesce, flatten, FoldError, Glommer, Merge, merge, Group
 
 
 def test_sum_integers():
@@ -152,3 +152,12 @@ def test_merge_func():
     # basic signature test
     with pytest.raises(TypeError):
         merge([], nonexistentkwarg=False)
+
+
+def test_group():
+    assert glom(range(6), Group(lambda t: t % 2)) == {0: [0, 2, 4], 1: [1, 3, 5]}
+    assert (glom(range(6), Group(lambda t: t % 3, lambda t: t % 2, lambda t: t / 10.0)) ==
+        {0: {0: [0.0], 1: [0.3]}, 1: {1: [0.1], 0: [0.4]}, 2: {0: [0.2], 1: [0.5]}})
+
+    assert repr(Group(T)) == "Group(T)"
+    assert repr(Group(T, T, T)) == "Group(T, T, T)"
