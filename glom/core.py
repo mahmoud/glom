@@ -2015,3 +2015,30 @@ def _fill(target, spec, scope):
     if callable(spec):
         return spec(target)
     return spec
+
+
+class Format(object):
+    """
+    deferred call to fmt_str.format(**current target)
+
+    optionally, a spec may be used to specify something
+    other than the current target to be **'d into fmt_str.format()
+
+    for example, Format(fmt_str, S) could be used to pull variables
+    from the scope
+    """
+    def __init__(self, fmt_str, spec=T):
+        self.fmt_str, self.spec = fmt_str, spec
+
+    def glomit(self, target, scope):
+        if self.spec is T:
+            fmt_args = target
+        else:
+            fmt_args = scope[glom](target, self.spec, scope)
+        return self.fmt_str.format(**fmt_args)
+
+    def __repr__(self):
+        ret = "Format(" + repr(self.fmt_str)
+        if self.spec is not T:
+            ret += ", " + repr(self.spec)
+        return ret + ")"
