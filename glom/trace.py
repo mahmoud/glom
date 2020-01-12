@@ -17,22 +17,32 @@ from .core import Spec, T, UP, Path, SPEC_POS, TType
 _NO_TARGET = object()
 
 
+def _unpack_stack(scope):
+    """
+    convert scope to [(scope, spec, target)]
+    """
+    # root glom call generates two scopes up at the top that aren't part
+    # of execution
+    return [(scope, scope[Spec], scope[T]) for scope in list(reversed(scope.maps[:-2]))]
+
+
+def _format_value(value, maxlen):
+    s = repr(value)
+    if len(s) > maxlen:
+        s = s[:maxlen/2] + '...' + s[-maxlen/2:]
+    return s
+
+
 def line_stack(scope):
     """
     unpack a scope into a single line summary
     (shortest summary possible)
     """
-    # root glom call generates two scopes up at the top that aren't part
-    # of execution
-    scopes = list(reversed(scope.maps[:-2]))
-
     # the goal here is to do a kind of delta-compression --
     # if the target is the same, don't repeat it
     segments = []
-    target = _NO_TARGET
-    for scope in scopes:
-        spec = scope[Spec]
-        target, prev_target = scope[T], target
+    prev_target = _NO_TARGET
+    for scope, spec, target in _unpack_stack(scope):
         segments.append('/')
         if type(spec) in (TType, Path):
             segments.append(repr(spec))
@@ -45,6 +55,7 @@ def line_stack(scope):
             segments.append('<')
             segments.append('->'.join([str(p) for p in scope[Path]]))
             segments.append('>')
+        prev_target = target
 
     return "".join(segments)
 
@@ -53,14 +64,28 @@ def short_stack(scope):
     """
     unpack a scope into a multi-line but short summary
     """
-    pass
+    segments = []
+    prev_target = _NO_TARGET
+    for scope, spec, target in _unpack_stack(scope):
+        segments.append("-> " + _format_value(spec, 40))
+        if target != prev_target:
+            segments.append(_format_value(target, 40))
+        prev_target = target
+    return "\n".join(segments)
 
 
 def tall_stack(scope):
     """
     unpack a scope into the most detailed information
     """
-    pass
+    segments = []
+    prev_target = _NO_TARGET
+    for scope, spec, target in _unpack_stack(scope):
+        segments.append("-> " + repr(spec))
+        if target != prev_target:
+            segments.append(repr(target))
+        prev_target = target
+    return "\n".join(segments)
 
 
 """

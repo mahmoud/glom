@@ -29,6 +29,7 @@ import operator
 from abc import ABCMeta
 from pprint import pprint
 from collections import OrderedDict
+import traceback
 
 from boltons.typeutils import make_sentinel
 from boltons.iterutils import is_iterable
@@ -95,6 +96,11 @@ ERROR_SCOPE = make_sentinel('ERROR_SCOPE')
 ERROR_SCOPE.__doc__ = """
 ``ERROR_SCOPE`` is used by glom internals to store the scope
 from which an exception was raised when processing fails.
+"""
+
+ERROR_FRAME = make_sentinel('ERROR_FRAME')
+ERROR_FRAME.__doc__ = """
+the frame at which the exception happened
 """
 
 SPEC_POS = make_sentinel('SPEC_POS')
@@ -1848,10 +1854,37 @@ def glom(target, spec, **kwargs):
             if default is _MISSING:
                 raise
             ret = default
-    except GlomError as ge:
-        # TODO: what about non-GlomErrors (e.g., those raised by
-        # callables, like glom('a', int) )
-        raise ge
+    except Exception as e:
+        if ERROR_FRAME in scope[ROOT]:
+
+            class GlomWrapError(type(e)):
+                def __init__(self, scope, inner_frame, tb, wrapped):
+                    from . import trace
+
+                    self.scope, self.wrapped = scope, wrapped
+                    limit = 1
+                    cur_frame = tb.tb_frame
+                    while cur_frame and cur_frame != inner_frame:
+                        limit += 1
+                        cur_frame = cur_frame.f_back
+                    # drop references to frames & etc but this is expensive operations
+                    self.inner_format = ("GlomWrapError:\n" +
+                        trace.short_stack(self.scope) + "\n" +
+                        traceback.format_exc(limit))
+
+                def __str__(self):
+                    return self.inner_format
+
+                def __repr__(self):
+                    return str(self)
+
+                def __getattr__(self, name):
+                    return getattr(self.wrapped, name)
+
+            if not isinstance(GlomWrapError, GlomError):
+                GlomWrapError.__bases__ = GlomWrapError.__bases__ + (GlomError,)
+
+            raise GlomWrapError(scope[ROOT][ERROR_SCOPE], scope[ROOT][ERROR_FRAME], sys.exc_info()[2], e)
     return ret
 
 
@@ -1872,6 +1905,7 @@ def _glom(target, spec, scope):
         return scope[MODE](target, spec, scope)
     except Exception:
         scope[ROOT].setdefault(ERROR_SCOPE, scope)
+        scope[ROOT].setdefault(ERROR_FRAME, sys._getframe())
         raise
 
 
