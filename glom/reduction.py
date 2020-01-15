@@ -320,29 +320,29 @@ def merge(target, **kwargs):
     return glom(target, spec)
 
 
-class Group(object):
+class Bucketize(object):
     """
-    Group is used to organize an iterable by the result of the key-spec.
+    Bucketize is used to organize an iterable by the result of the key-spec.
 
     For example:
 
-    glom(range(10), Group(lambda t: t % 2)) == {0: [0, 2, 4, 6, 8], 1: [1, 3, 5, 7, 9]}
+    glom(range(10), Bucketize(lambda t: t % 2)) == {0: [0, 2, 4, 6, 8], 1: [1, 3, 5, 7, 9]}
 
     A second spec can be used to specify the value.
 
-    glom(range(10), Group(lambda t: t % 2, lambda t: t * 2)) == {
+    glom(range(10), Bucketize(lambda t: t % 2, lambda t: t * 2)) == {
         0: [0, 4, 8, 12, 16], 1: [2, 6, 10, 14, 18]}
 
     Additional specs will add additional layers of key / values.
 
-    Group(spec) transforms [item] -> {spec(item): [item]}
-    Group(spec1, spec2) transforms [item] -> {spec1(item): [spec2(item)]}
+    Bucketize(spec) transforms [item] -> {spec(item): [item]}
+    Bucketize(spec1, spec2) transforms [item] -> {spec1(item): [spec2(item)]}
 
-    Group(spec1, spec2, ... specN) transforms [item[ -> {spec1(item): {spec2(item): { ... : [specN(item)] } ... }}
+    Bucketize(spec1, spec2, ... specN) transforms [item[ -> {spec1(item): {spec2(item): { ... : [specN(item)] } ... }}
     """
     def __init__(self, *specs):
         if not specs:
-            raise ArgumentError("Group() must be passed at least one key spec")
+            raise TypeError("expected at least one key spec")
         self.specs = specs
 
     def glomit(self, target, scope):
@@ -370,4 +370,13 @@ class Group(object):
         return grouped
 
     def __repr__(self):
-        return "Group(" + ", ".join([repr(e) for e in self.specs]) + ")"
+        cn = self.__class__.__name__
+        return cn + "(" + ", ".join([repr(e) for e in self.specs]) + ")"
+
+
+def bucketize(target, *specs):
+    """
+    TODO: docstring
+    """
+    spec = Bucketize(*specs)
+    return glom(target, spec)
