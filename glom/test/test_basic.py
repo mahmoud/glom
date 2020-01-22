@@ -181,8 +181,10 @@ def test_abstract_iterable():
     class MyIterable(object):
         def __iter__(self):
             return iter([1, 2, 3])
+    mi = MyIterable()
+    assert list(mi) == [1, 2, 3]
 
-    assert isinstance(MyIterable(), glom_core._AbstractIterable)
+    assert isinstance(mi, glom_core._AbstractIterable)
 
 
 def test_call_and_target():
@@ -231,6 +233,9 @@ def test_invoke():
         ).constants(3, b='b').specs(c='c'
         ).star(args='args2', kwargs='kwargs')
     repr(spec)  # no exceptions
+    assert repr(Invoke(len).specs(T)) == 'Invoke(len).specs(T)'
+    assert (repr(Invoke.specfunc(next).constants(len).constants(1))
+            == 'Invoke.specfunc(next).constants(len).constants(1)')
     assert glom(data, spec) == 'test'
     assert args == [
         (1, 2, 3, 4, 5),
@@ -441,6 +446,6 @@ def test_api_repr():
         if not callable(getattr(v, 'glomit', None)):
             continue
         if v.__repr__ is object.__repr__:
-            spec_types_wo_reprs.append(k)
+            spec_types_wo_reprs.append(k)  # pragma: no cover
 
     assert set(spec_types_wo_reprs) == set([])

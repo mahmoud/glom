@@ -32,7 +32,7 @@ from collections import OrderedDict
 
 from boltons.typeutils import make_sentinel
 from boltons.iterutils import is_iterable
-from boltons.funcutils import format_invocation
+#from boltons.funcutils import format_invocation
 
 PY2 = (sys.version_info[0] == 2)
 if PY2:
@@ -248,6 +248,57 @@ class UnregisteredTarget(GlomError):
         return msg
 
 
+if getattr(__builtins__, '__dict__', None) is not None:
+    # pypy's __builtins__ is a module, as is CPython's REPL, but at
+    # normal execution time it's a dict?
+    __builtins__ = __builtins__.__dict__
+
+
+_BUILTIN_ID_NAME_MAP = dict([(id(v), k)
+                             for k, v in __builtins__.items()])
+
+def bbrepr(obj):
+    """A better repr for builtins, when the built-in repr isn't
+    roundtrippable.
+    """
+    ret = repr(obj)
+    if not ret.startswith('<'):
+        return ret
+    return _BUILTIN_ID_NAME_MAP.get(id(obj), ret)
+
+
+# TODO: push this back up to boltons with repr kwarg
+def format_invocation(name='', args=(), kwargs=None, **kw):
+    """Given a name, positional arguments, and keyword arguments, format
+    a basic Python-style function call.
+
+    >>> print(format_invocation('func', args=(1, 2), kwargs={'c': 3}))
+    func(1, 2, c=3)
+    >>> print(format_invocation('a_func', args=(1,)))
+    a_func(1)
+    >>> print(format_invocation('kw_func', kwargs=[('a', 1), ('b', 2)]))
+    kw_func(a=1, b=2)
+
+    """
+    _repr = kw.pop('repr', repr)
+    if kw:
+        raise TypeError('unexpected keyword args: %r' % ', '.join(kw.keys()))
+    kwargs = kwargs or {}
+    a_text = ', '.join([_repr(a) for a in args])
+    if isinstance(kwargs, dict):
+        kwarg_items = [(k, kwargs[k]) for k in sorted(kwargs)]
+    else:
+        kwarg_items = kwargs
+    kw_text = ', '.join(['%s=%s' % (k, _repr(v)) for k, v in kwarg_items])
+
+    all_args_text = a_text
+    if all_args_text and kw_text:
+        all_args_text += ', '
+    all_args_text += kw_text
+
+    return '%s(%s)' % (name, all_args_text)
+
+
 class Path(object):
     """Path objects specify explicit paths when the default
     ``'a.b.c'``-style general access syntax won't work or isn't
@@ -454,7 +505,7 @@ class Literal(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r)' % (cn, self.value)
+        return '%s(%s)' % (cn, bbrepr(self.value))
 
 
 class Spec(object):
@@ -498,8 +549,8 @@ class Spec(object):
     def __repr__(self):
         cn = self.__class__.__name__
         if self.scope:
-            return '%s(%r, scope=%r)' % (cn, self.spec, self.scope)
-        return '%s(%r)' % (cn, self.spec)
+            return '%s(%s, scope=%r)' % (cn, bbrepr(self.spec), self.scope)
+        return '%s(%s)' % (cn, bbrepr(self.spec))
 
 
 class Coalesce(object):
@@ -607,7 +658,7 @@ class Coalesce(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return format_invocation(cn, self.subspecs, self._orig_kwargs)
+        return format_invocation(cn, self.subspecs, self._orig_kwargs, repr=bbrepr)
 
 
 class Inspect(object):
@@ -772,7 +823,7 @@ class Call(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r, args=%r, kwargs=%r)' % (cn, self.func, self.args, self.kwargs)
+        return '%s(%s, args=%r, kwargs=%r)' % (cn, bbrepr(self.func), self.args, self.kwargs)
 
 
 def _is_spec(obj, strict=False):
@@ -907,6 +958,7 @@ class Invoke(object):
         :meth:`~Invoke.specs()` and other :class:`Invoke`
         methods may be called multiple times, just remember that every
         call returns a new spec.
+
         """
         ret = self.__class__(self.func)
         ret._args = self._args + ('S', a, kw)
@@ -944,29 +996,31 @@ class Invoke(object):
         return ret
 
     def __repr__(self):
-        chunks = [self.__class__.__name__]
+        base_fname = self.__class__.__name__
         fname_map = {'C': 'constants', 'S': 'specs', '*': 'star'}
         if type(self.func) is Spec:
-            chunks.append('.specfunc({!r})'.format(self.func.spec))
+            base_fname += '.specfunc'
+            args = (self.func.spec,)
         else:
-            chunks.append('({!r})'.format(self.func))
+            args = (self.func,)
+        chunks = [format_invocation(base_fname, args, repr=bbrepr)]
+
         for i in range(len(self._args) // 3):
-            op, args, kwargs = self._args[i * 3: i * 3 + 3]
+            op, args, _kwargs = self._args[i * 3: i * 3 + 3]
             fname = fname_map[op]
-            chunks.append('.{}('.format(fname))
             if op in ('C', 'S'):
-                chunks.append(', '.join(
-                    [repr(a) for a in args] +
-                    ['{}={!r}'.format(k, v) for k, v in kwargs.items()
-                     if self._cur_kwargs[k] is kwargs]))
+                kwargs = [(k, v) for k, v in _kwargs.items()
+                          if self._cur_kwargs[k] is _kwargs]
             else:
+                kwargs = {}
                 if args:
-                    chunks.append('args=' + repr(args))
-                if args and kwargs:
-                    chunks.append(", ")
-                if kwargs:
-                    chunks.append('kwargs=' + repr(kwargs))
-            chunks.append(')')
+                    kwargs['args'] = args
+                if _kwargs:
+                    kwargs['kwargs'] = _kwargs
+                args = ()
+
+            chunks.append('.' + format_invocation(fname, args, kwargs, repr=bbrepr))
+
         return ''.join(chunks)
 
     def glomit(self, target, scope):
@@ -1169,24 +1223,6 @@ UP = make_sentinel('UP')
 ROOT = make_sentinel('ROOT')
 
 
-def _format_invocation(name='', args=(), kwargs=None):  # pragma: no cover
-    # TODO: add to boltons
-    kwargs = kwargs or {}
-    a_text = ', '.join([repr(a) for a in args])
-    if isinstance(kwargs, dict):
-        kwarg_items = kwargs.items()
-    else:
-        kwarg_items = kwargs
-    kw_text = ', '.join(['%s=%r' % (k, v) for k, v in kwarg_items])
-
-    star_args_text = a_text
-    if star_args_text and kw_text:
-        star_args_text += ', '
-    star_args_text += kw_text
-
-    return '%s(%s)' % (name, star_args_text)
-
-
 class Let(object):
     """
     This specifier type assigns variables to the scope.
@@ -1208,14 +1244,10 @@ class Let(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return _format_invocation(cn, kwargs=self._binding)
+        return format_invocation(cn, kwargs=self._binding, repr=bbrepr)
 
 
 def _format_t(path, root=T):
-    def kwarg_fmt(kw):
-        if isinstance(kw, str):
-            return kw
-        return repr(kw)
     prepr = ['T' if root is T else 'S']
     i = 0
     while i < len(path):
@@ -1223,12 +1255,10 @@ def _format_t(path, root=T):
         if op == '.':
             prepr.append('.' + arg)
         elif op == '[':
-            prepr.append("[%r]" % (arg,))
+            prepr.append("[%s]" % (bbrepr(arg),))
         elif op == '(':
             args, kwargs = arg
-            prepr.append("(%s)" % ", ".join([repr(a) for a in args] +
-                                            ["%s=%r" % (kwarg_fmt(k), v)
-                                             for k, v in kwargs.items()]))
+            prepr.append(format_invocation(args=args, kwargs=kwargs, repr=bbrepr))
         elif op == 'P':
             return _format_path(path)
         i += 2
@@ -1435,7 +1465,7 @@ class Check(object):
     def __repr__(self):
         cn = self.__class__.__name__
         posargs = (self.spec,) if self.spec is not T else ()
-        return format_invocation(cn, posargs, self._orig_kwargs)
+        return format_invocation(cn, posargs, self._orig_kwargs, repr=bbrepr)
 
 
 class Auto(object):
@@ -1966,7 +1996,7 @@ class Fill(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        rpr = '' if self.spec is None else repr(self.spec)
+        rpr = '' if self.spec is None else bbrepr(self.spec)
         return '%s(%s)' % (cn, rpr)
 
 

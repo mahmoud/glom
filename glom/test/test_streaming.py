@@ -51,14 +51,15 @@ def test_filter():
     out = glom(imags, spec)
     assert out == [0j, 2j]
 
-    assert repr(Iter().filter(T.a.b)).startswith('Iter().filter(T.a.b)')
+    assert repr(Iter().filter(T.a.b)) == 'Iter().filter(T.a.b)'
+    assert repr(Iter(list).filter(sum)) == 'Iter(list).filter(sum)'
 
 
 def test_map():
     spec = Iter().map(lambda x: x * 2)
     out = glom(RANGE_5, spec)
     assert list(out) == [0, 2, 4, 6, 8]
-    assert repr(Iter().map(T.a.b)).startswith('Iter().map(T.a.b)')
+    assert repr(Iter().map(T.a.b)) == 'Iter().map(T.a.b)'
 
 
 def test_split_flatten():

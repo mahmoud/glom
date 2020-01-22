@@ -68,13 +68,10 @@ def test_types_bare():
 
     # check again that registering object for 'get' doesn't change the
     # fact that we don't have iterate support yet
-    try:
+    with pytest.raises(UnregisteredTarget) as exc_info:
         glommer.glom({'test': [{'hi': 'hi'}]}, ('test', ['hi']))
-    except UnregisteredTarget as ute:
-        # feel free to update the "(at ['test'])" part to improve path display
-        assert str(ute) == "target type 'list' not registered for 'iterate', expected one of registered types: (dict) (at ['test'])"
-    else:
-        assert False, 'expected an UnregisteredTarget exception'
+    # feel free to update the "(at ['test'])" part to improve path display
+    assert str(exc_info.value) == "target type 'list' not registered for 'iterate', expected one of registered types: (dict) (at ['test'])"
     return
 
 
@@ -98,7 +95,7 @@ def test_exact_register():
     assert value == expected
 
     with pytest.raises(UnregisteredTarget):
-        glommer.glom(list(range(3)), [lambda x: x * 2])
+        glommer.glom(list(range(3)), ['unused'])
 
     return
 
@@ -199,7 +196,7 @@ def test_faulty_op_registration():
     treg = TargetRegistry()
 
     with pytest.raises(TypeError, match="text name, not:"):
-        treg.register_op(None, lambda t: False)
+        treg.register_op(None, len)
     with pytest.raises(TypeError, match="callable, not:"):
         treg.register_op('fake_op', object())
 

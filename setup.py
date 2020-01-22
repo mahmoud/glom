@@ -1,21 +1,4 @@
-"""*glom gets results.*
-
-To be more precise, glom helps pull together objects from other
-objects in a declarative, dynamic, and downright simple way.
-
-Built with services, APIs, and general serialization in mind, glom
-helps filter objects as well as perform deep fetches which would be
-tedious to perform in a procedural manner.
-
-Where "schema" and other libraries focus on validation and parsing
-less-structured data into Python objects, glom goes the other
-direction, producing more-readily serializable data from valid
-higher-level objects.
-
-"""
-
 from setuptools import setup
-
 
 __author__ = 'Mahmoud Hashemi and Kurt Rose'
 __version__ = '19.10.1dev'
@@ -23,19 +6,25 @@ __contact__ = 'mahmoud@hatnote.com'
 __url__ = 'https://github.com/mahmoud/glom'
 __license__ = 'BSD'
 
+with open('README.md') as read_me:
+    long_description = read_me.read()
 
 setup(name='glom',
       version=__version__,
       description="A declarative object transformer and formatter, for conglomerating nested data.",
-      long_description=__doc__,
+      long_description=long_description,
+      long_description_content_type='text/markdown',
       author=__author__,
       author_email=__contact__,
       url=__url__,
+      project_urls={
+          'Documentation': 'https://glom.readthedocs.io/en/latest/',
+      },
       packages=['glom', 'glom.test'],
       install_requires=['boltons>=19.3.0', 'attrs', 'face'],
-      extras_require = {
-        'yaml':  ['PyYAML'],
-        },
+      extras_require={
+          'yaml': ['PyYAML'],
+      },
       entry_points={'console_scripts': ['glom = glom.cli:console_main']},
       include_package_data=True,
       zip_safe=False,
