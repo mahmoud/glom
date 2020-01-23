@@ -37,6 +37,7 @@ import json
 
 from face import Command, Flag, face_middleware, PosArgSpec, PosArgDisplay
 from face.command import CommandLineError
+from face.utils import isatty
 
 import glom
 from glom import Path, GlomError, Inspect
@@ -184,9 +185,8 @@ def mw_get_target(next_, posargs_, target_file, target_format, spec_file, spec_f
             target_text = open(target_file, 'r').read()
         except IOError as ose:
             _error('could not read target file %r, got: %s' % (target_file, ose))
-    elif not target_text and not os.isatty(sys.stdin.fileno()):
-        with sys.stdin as f:
-            target_text = f.read()
+    elif not target_text and not isatty(sys.stdin):
+        target_text = sys.stdin.read()
 
     target = mw_handle_target(target_text, target_format)
 
