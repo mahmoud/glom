@@ -67,7 +67,7 @@ def glom_cli(target, spec, indent, debug, inspect):
     return
 
 
-def main(argv):
+def get_command():
     posargs = PosArgSpec(str, max_count=2, display={'label': '[spec [target]]'})
     cmd = Command(glom_cli, posargs=posargs, middlewares=[mw_get_target])
     cmd.add('--target-file', str, missing=None, doc='path to target data source')
@@ -82,7 +82,11 @@ def main(argv):
 
     cmd.add('--debug', parse_as=True, doc='interactively debug any errors that come up')
     cmd.add('--inspect', parse_as=True, doc='interactively explore the data')
+    return cmd
 
+
+def main(argv):
+    cmd = get_command()
     return cmd.run(argv) or 0
 
 
@@ -102,6 +106,7 @@ def _error(msg):
     # TODO: build this functionality into face
     print('error:', msg)
     raise CommandLineError(msg)
+
 
 def mw_handle_target(target_text, target_format):
     """ Handles reading in a file specified in cli command.
@@ -136,6 +141,7 @@ def mw_handle_target(target_text, target_format):
     else:
         _error('expected target-format to be one of python, json, or yaml')
     return target
+
 
 @face_middleware(provides=['spec', 'target'])
 def mw_get_target(next_, posargs_, target_file, target_format, spec_file, spec_format):
