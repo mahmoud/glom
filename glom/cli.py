@@ -178,8 +178,7 @@ def mw_get_target(next_, posargs_, target_file, target_format, spec_file, spec_f
     if target_text and target_file:
         _error('expected target file or target argument, not both')
     elif target_text == '-' or target_file == '-':
-        with sys.stdin as f:
-            target_text = f.read()
+        target_text = sys.stdin.read()
     elif target_file:
         try:
             target_text = open(target_file, 'r').read()
