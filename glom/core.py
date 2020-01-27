@@ -2035,11 +2035,10 @@ class Format(object):
             fmt_args = target
         else:
             fmt_args = scope[glom](target, self.spec, scope)
-        if fmt_args is scope:
-            # pypy doesn't like any keys in .format(**) which
-            # are not strings, even though they arent referenced
-            fmt_args = {k: v for k, v in fmt_args.items() if isinstance(k, str)}
-        return self.fmt_str.format(**fmt_args)
+        # according to spec, only strings are allowed as ** args;
+        # filter out non-str keys as a convenience
+        return self.fmt_str.format(
+          **{k: v for k, v in fmt_args.items() if isinstance(k, str)})
 
     def __repr__(self):
         ret = "Format(" + repr(self.fmt_str)
