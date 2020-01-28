@@ -22,6 +22,18 @@ the supporting data structure would be (sum, count)
 
 
 class Group(object):
+    """
+    supports nesting grouping operations --
+    think of a glom-style recursive boltons.iterutils.bucketize
+
+    the "branches" of a Group spec are dicts;
+    the leaves are lists, or an Aggregation object
+    an Aggregation object is any object that defines the
+    method agg(target, accumulator)
+
+    target is the current target, accumulator is a dict
+    maintained by Group mode
+    """
     def __init__(self, spec):
         self.spec = spec
 
@@ -42,9 +54,11 @@ def _group(target, spec, scope):
     Group mode dispatcher
     """
     recurse = lambda spec: scope[glom](target, spec, scope)
-    acc = scope[ACC]  # current accumulator
     acc2 = scope[ACC2]  # current acuumulator support structure
+    if callable(getattr(spec, "agg", None)):
+        return spec.agg(target, acc2)
     if type(spec) is dict:
+        acc = scope[ACC]  # current accumulator
         for keyspec, valspec in spec.items():
             key = recurse(keyspec)
             if key not in acc:
@@ -55,7 +69,10 @@ def _group(target, spec, scope):
             acc[key] = recurse(valspec)
         return acc
     elif type(spec) is list:
+        acc = scope[ACC]  # current accumulator
         for valspec in spec:
+            assert type(valspec) is not dict
+            # dict inside list is not valid
             acc.append(recurse(valspec))
         return acc
     elif callable(spec):
@@ -71,27 +88,22 @@ def _mk_acc(spec):
         return {}
     if type(spec) is list:
         return []
+    return None
 
 
 class First(object):
-    def __init__(self): pass
+    __slots__ = ()
 
-    def glomit(self, target, scope):
-        if ACC2 not in scope:
-            raise Exception("called outside of aggregation scope")
-        acc2 = scope[ACC2]
+    def agg(self, target, acc2):
         if self not in acc2:
             acc2[self] = target
         return acc2[self]
 
 
 class Avg(object):
-    def __init__(self): pass
+    __slots__ = ()
 
-    def glomit(self, target, scope):
-        if ACC2 not in scope:
-            raise Exception("called outside of aggregation scope")
-        acc2 = scope[ACC2]
+    def agg(self, target, acc2):
         if self not in acc2:
             acc2[self] = [0, 0.0]
         acc2[self][0] += target
@@ -100,12 +112,9 @@ class Avg(object):
 
 
 class Sum(object):
-    def __init__(self): pass
+    __slots__ = ()
 
-    def glomit(self, target, scope):
-        if ACC2 not in scope:
-            raise Exception("called outside of aggregation scope")
-        acc2 = scope[ACC2]
+    def agg(self, target, acc2):
         if self not in acc2:
             acc2[self] = 0
         acc2[self] += target
