@@ -10,11 +10,6 @@ ACC.__doc__ = """
 current accumulator for aggregation
 """
 
-NXT_ACC = make_sentinel('ACC')
-NXT_ACC.__doc__ = """
-next accumulator for aggregation
-"""
-
 
 class Group(object):
     def __init__(self, spec):
@@ -22,10 +17,10 @@ class Group(object):
 
     def glomit(self, target, scope):
         scope[MODE] = _group
-        scope[NXT_ACC] = type(self.spec)()  # dict or list
+        scope[ACC] = type(self.spec)()  # dict or list
         for t in target:
             scope[glom](t, self.spec, scope)
-        return scope[NXT_ACC]
+        return scope[ACC]
 
 
 def _group(target, spec, scope):
@@ -33,13 +28,13 @@ def _group(target, spec, scope):
     Group mode dispatcher
     """
     recurse = lambda spec: scope[glom](target, spec, scope)
-    acc = scope[ACC] = scope[NXT_ACC]  # current accumulator
+    acc = scope[ACC] # current accumulator
     if type(spec) is dict:
         for keyspec, valspec in spec.items():
             key = recurse(keyspec)
             if key not in acc:
                 acc[key] = _mk_acc(valspec)
-            scope[NXT_ACC] = acc[key]
+            scope[ACC] = acc[key]
             recurse(valspec)
     elif type(spec) is list:
         for valspec in spec:
