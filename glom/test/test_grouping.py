@@ -1,4 +1,4 @@
-from glom.grouping import Group, First
+from glom.grouping import Group, First, Avg, Sum
 from glom import glom, T
 
 
@@ -9,5 +9,9 @@ def test_bucketing():
 
 
 def test_agg():
-	assert glom(range(10), Group(First())) == 0
-	assert glom(range(10), Group(T)) == 9  # this is basically Last
+	t = list(range(10))
+	assert glom(t, Group(First())) == 0
+	assert glom(t, Group(T)) == 9  # this is basically Last
+
+	assert glom(t, Group(Avg())) == 1.0 * sum(t) / len(t)
+	assert glom(t, Group(Sum())) == sum(t)

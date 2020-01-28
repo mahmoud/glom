@@ -83,3 +83,30 @@ class First(object):
         if self not in acc2:
             acc2[self] = target
         return acc2[self]
+
+
+class Avg(object):
+    def __init__(self): pass
+
+    def glomit(self, target, scope):
+        if ACC2 not in scope:
+            raise Exception("called outside of aggregation scope")
+        acc2 = scope[ACC2]
+        if self not in acc2:
+            acc2[self] = [0, 0.0]
+        acc2[self][0] += target
+        acc2[self][1] += 1
+        return acc2[self][0] / acc2[self][1]
+
+
+class Sum(object):
+    def __init__(self): pass
+
+    def glomit(self, target, scope):
+        if ACC2 not in scope:
+            raise Exception("called outside of aggregation scope")
+        acc2 = scope[ACC2]
+        if self not in acc2:
+            acc2[self] = 0
+        acc2[self] += target
+        return acc2[self]
