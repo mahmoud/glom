@@ -122,7 +122,7 @@ class Sum(object):
 
 
 class Max(object):
-    __slots__ = {}
+    __slots__ = ()
 
     def agg(self, target, acc2):
         if self not in acc2:
@@ -133,11 +133,21 @@ class Max(object):
 
 
 class Min(object):
-    __slots__ = {}
+    __slots__ = ()
 
     def agg(self, target, acc2):
         if self not in acc2:
             acc2[self] = target
         if target < acc2[self]:
             acc2[self] = target
+        return acc2[self]
+
+
+class Count(object):
+    __slots__ = ()
+
+    def agg(self, target, acc2):
+        if self not in acc2:
+            acc2[self] = 0
+        acc2[self] += 1
         return acc2[self]

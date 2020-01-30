@@ -1,4 +1,4 @@
-from glom.grouping import Group, First, Avg, Sum, Max, Min
+from glom.grouping import Group, First, Avg, Sum, Max, Min, Count
 from glom import glom, T
 
 
@@ -18,3 +18,6 @@ def test_agg():
 
     assert glom([0, 1, 0], Group(Max())) == 1
     assert glom([1, 0, 1], Group(Min())) == 0
+
+    assert glom(range(10), Group({lambda t: t % 2: Count()})) == {
+		0: 5, 1: 5}
