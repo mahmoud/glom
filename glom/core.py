@@ -1222,19 +1222,19 @@ def _t_eval(target, _t, scope):
             try:
                 cur = getattr(cur, arg)
             except AttributeError as e:
-                raise PathAccessError(e, Path(_t), i // 2)
+                raise PathAccessError(e, Path(_t), i // 2) from None
         elif op == '[':
             try:
                 cur = cur[arg]
             except (KeyError, IndexError, TypeError) as e:
-                raise PathAccessError(e, Path(_t), i // 2)
+                raise PathAccessError(e, Path(_t), i // 2) from None
         elif op == 'P':
             # Path type stuff (fuzzy match)
             get = scope[TargetRegistry].get_handler('get', cur, path=t_path[2:i+2:2])
             try:
                 cur = get(cur, arg)
             except Exception as e:
-                raise PathAccessError(e, Path(_t), i // 2)
+                raise PathAccessError(e, Path(_t), i // 2) from None
         elif op == '(':
             args, kwargs = arg
             scope[Path] += t_path[2:i+2:2]
@@ -1862,11 +1862,22 @@ def glom(target, spec, **kwargs):
                     from . import trace
 
                     self.scope, self.wrapped = scope, wrapped
-                    limit = 1
+                    frames = []
                     cur_frame = tb.tb_frame
+                    while cur_frame:
+                        frames.append(cur_frame)
+                        cur_frame = cur_frame.f_back
+                    limit = len(frames) - scope[ROOT]['skip_frames']
+                    '''
+                    limit = 1
                     while cur_frame and cur_frame != inner_frame:
                         limit += 1
                         cur_frame = cur_frame.f_back
+                    if not cur_frame:
+                        # somehow this scheme totally doesn't work in 3.7
+                        # tb.tb_frame() is set to THIS frame somehow?
+                        raise Exception("couldn't find", inner_frame)
+                    '''
                     # drop references to frames & etc but this is expensive operations
                     self.inner_format = ("GlomWrapError:\n" +
                         trace.short_stack(self.scope) + "\n" +
@@ -1884,7 +1895,8 @@ def glom(target, spec, **kwargs):
             if not isinstance(GlomWrapError, GlomError):
                 GlomWrapError.__bases__ = GlomWrapError.__bases__ + (GlomError,)
 
-            raise GlomWrapError(scope[ROOT][ERROR_SCOPE], scope[ROOT][ERROR_FRAME], sys.exc_info()[2], e)
+            err = GlomWrapError(scope[ROOT][ERROR_SCOPE], scope[ROOT][ERROR_FRAME], sys.exc_info()[2], e)
+            raise err from None
     return ret
 
 
@@ -1906,6 +1918,7 @@ def _glom(target, spec, scope):
     except Exception:
         scope[ROOT].setdefault(ERROR_SCOPE, scope)
         scope[ROOT].setdefault(ERROR_FRAME, sys._getframe())
+        scope[ROOT]['skip_frames'] = scope[ROOT].get('skip_frames', 0) + 1
         raise
 
 

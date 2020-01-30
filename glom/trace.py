@@ -26,10 +26,12 @@ def _unpack_stack(scope):
     return [(scope, scope[Spec], scope[T]) for scope in list(reversed(scope.maps[:-2]))]
 
 
+# TODO: get fancier here and replace repr()
+# with something that only recurses one level
 def _format_value(value, maxlen):
     s = repr(value)
     if len(s) > maxlen:
-        s = s[:maxlen/2] + '...' + s[-maxlen/2:]
+        s = s[:maxlen] + '...'
     return s
 
 
@@ -60,16 +62,16 @@ def line_stack(scope):
     return "".join(segments)
 
 
-def short_stack(scope):
+def short_stack(scope, width=70):
     """
     unpack a scope into a multi-line but short summary
     """
     segments = []
     prev_target = _NO_TARGET
     for scope, spec, target in _unpack_stack(scope):
-        segments.append("-> " + _format_value(spec, 40))
+        segments.append("-> " + _format_value(spec, 67))
         if target != prev_target:
-            segments.append(_format_value(target, 40))
+            segments.append(_format_value(target, 70))
         prev_target = target
     return "\n".join(segments)
 
