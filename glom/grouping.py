@@ -92,6 +92,16 @@ def _mk_acc(spec):
 
 
 class First(object):
+    """
+    holds onto the first value
+
+    >>> glom([1, 2, 3], Group(First()))
+    1
+    """
+    # TODO: this could be optimized with a "done" flag
+    # set in acc2; dicts could check if all children are
+    # "done" set their own done flag, roll it up all the way
+    # to the root
     __slots__ = ()
 
     def agg(self, target, acc2):
@@ -101,6 +111,13 @@ class First(object):
 
 
 class Avg(object):
+    """
+    takes the numerical average of all values;
+    raises exception on non-numeric value
+
+    >>> glom([1, 2, 3], Group(Avg()))
+    2.0
+    """
     __slots__ = ()
 
     def agg(self, target, acc2):
@@ -112,6 +129,13 @@ class Avg(object):
 
 
 class Sum(object):
+    """
+    takes the sum of all values;
+    raises exception on values incompatible with addition operator
+
+    >>> glom([1, 2, 3], Group(Sum()))
+    6
+    """
     __slots__ = ()
 
     def agg(self, target, acc2):
@@ -122,6 +146,13 @@ class Sum(object):
 
 
 class Max(object):
+    """
+    takes the maximum of all values;
+    raises exception on values that are not comparable
+
+    >>> glom([1, 2, 3], Group(Max()))
+    3
+    """
     __slots__ = ()
 
     def agg(self, target, acc2):
@@ -133,6 +164,13 @@ class Max(object):
 
 
 class Min(object):
+    """
+    takes the minimum of all values;
+    raises exception on values that are not comparable
+
+    >>> glom([1, 2, 3], Group(Min()))
+    1
+    """
     __slots__ = ()
 
     def agg(self, target, acc2):
@@ -144,6 +182,12 @@ class Min(object):
 
 
 class Count(object):
+    """
+    takes a count of how many values occurred
+
+    >>> glom([1, 2, 3], Group(Count()))
+    3
+    """
     __slots__ = ()
 
     def agg(self, target, acc2):
