@@ -3,7 +3,7 @@ Group mode
 """
 from boltons.typeutils import make_sentinel
 
-from .core import glom, MODE
+from .core import glom, MODE, SKIP, STOP
 
 
 ACC = make_sentinel('ACC')
@@ -59,21 +59,43 @@ def _group(target, spec, scope):
         return spec.agg(target, acc2)
     if type(spec) is dict:
         acc = scope[ACC]  # current accumulator
+        done = True
         for keyspec, valspec in spec.items():
+            if acc2.get(keyspec, None) is STOP:
+                continue
             key = recurse(keyspec)
+            if key is SKIP:
+                done = False  # SKIP means we still want more vals
+                continue
+            if key is STOP:
+                acc2[keyspec] = STOP
+                continue
             if key not in acc:
                 acc[key] = _mk_acc(valspec)
                 acc2[key] = {}
             scope[ACC] = acc[key]
             scope[ACC2] = acc2[key]
-            acc[key] = recurse(valspec)
+            result = recurse(valspec)
+            if result is STOP:
+                acc2[keyspec] = STOP
+                continue
+            done = False  # SKIP or returning a value means we still want more vals
+            if result is SKIP:
+                continue
+            acc[key] = result
+        if done:
+            return STOP
         return acc
     elif type(spec) is list:
         acc = scope[ACC]  # current accumulator
         for valspec in spec:
             assert type(valspec) is not dict
             # dict inside list is not valid
-            acc.append(recurse(valspec))
+            result = recurse(valspec)
+            if result is STOP:
+                return STOP
+            if result is not SKIP:
+                acc.append(result)
         return acc
     elif callable(spec):
         return spec(target)
