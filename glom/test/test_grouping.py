@@ -1,4 +1,4 @@
-from glom.grouping import Group, First, Avg, Sum, Max, Min, Count
+from glom.grouping import Group, First, Avg, Sum, Max, Min, Count, Limit
 from glom import glom, T
 
 
@@ -21,3 +21,5 @@ def test_agg():
 
     assert glom(range(10), Group({lambda t: t % 2: Count()})) == {
 		0: 5, 1: 5}
+
+    # assert glom(t, Group(Limit(1, T))) == 0

@@ -216,3 +216,32 @@ class Count(object):
             acc2[self] = 0
         acc2[self] += 1
         return acc2[self]
+
+
+'''
+NOTE: this cannot be done as an aggregator since they are
+not recursive; enable when recursion is available again
+once grouping / reduction merge is complete
+
+class Limit(object):
+    """
+    limits the number of values passed to sub-accumulator
+
+    >>> glom([1, 2, 3], Group(T))
+    3
+    >>> glom([1, 2, 3], Group(Limit(1, T)))
+    1
+    """
+    __slots__ = ('n', 'agg')
+
+    def __init__(self, n, agg):
+        self.n, self.agg = n, agg
+
+    def agg(self, target, acc2):
+        if self not in acc2:
+            acc2[self] = 0
+        acc2[self] += 1
+        if acc2[self] > self.n:
+            return STOP
+        return self.agg.agg(target, acc2)
+'''
