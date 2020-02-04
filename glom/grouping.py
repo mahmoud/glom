@@ -44,8 +44,11 @@ class Group(object):
         elif type(self.spec) is dict:
             scope[ACC] = {}
         scope[ACC2] = {}
+        ret = None
         for t in target:
-            ret = scope[glom](t, self.spec, scope)
+            last, ret = ret, scope[glom](t, self.spec, scope)
+            if ret is STOP:
+                return last
         return ret
 
 
@@ -80,9 +83,8 @@ def _group(target, spec, scope):
                 acc2[keyspec] = STOP
                 continue
             done = False  # SKIP or returning a value means we still want more vals
-            if result is SKIP:
-                continue
-            acc[key] = result
+            if result is not SKIP:
+                acc[key] = result
         if done:
             return STOP
         return acc
@@ -120,16 +122,13 @@ class First(object):
     >>> glom([1, 2, 3], Group(First()))
     1
     """
-    # TODO: this could be optimized with a "done" flag
-    # set in acc2; dicts could check if all children are
-    # "done" set their own done flag, roll it up all the way
-    # to the root
     __slots__ = ()
 
     def agg(self, target, acc2):
         if self not in acc2:
-            acc2[self] = target
-        return acc2[self]
+            acc2[self] = STOP
+            return target
+        return STOP
 
 
 class Avg(object):
