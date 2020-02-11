@@ -33,6 +33,10 @@ class Group(object):
 
     target is the current target, accumulator is a dict
     maintained by Group mode
+
+    unlike Iter(), Group() converts an iterable target
+    into a single result; Iter() converts an iterable
+    target into an iterable result
     """
     def __init__(self, spec):
         self.spec = spec

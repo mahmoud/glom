@@ -86,6 +86,15 @@ class Fold(object):
 
         return self._fold(iterator)
 
+    # TODO: this doesn't work b/c .glomit() has higher precedence than .agg()
+    # ... maybe a property?  Sum().agg?
+    def agg(self, target, acc):
+        assert self.subspec is T, "cannot change iterable when being used for aggregation"
+        if self not in acc:
+            acc[self] = self.init()
+        acc[self] = self.op(acc[self], target)
+        return acc[self]
+
     def _fold(self, iterator):
         ret, op = self.init(), self.op
 

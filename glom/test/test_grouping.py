@@ -1,5 +1,7 @@
-from glom.grouping import Group, First, Avg, Sum, Max, Min, Count, Limit
+from glom.grouping import Group, First, Avg, Sum, Max, Min, Count
 from glom import glom, T
+
+from glom.reduction import Merge, Flatten
 
 
 def test_bucketing():
@@ -23,3 +25,8 @@ def test_agg():
 		0: 5, 1: 5}
 
     # assert glom(t, Group(Limit(1, T))) == 0
+
+
+def test_reduce():
+    assert glom([[1], [2], [3]], Group(Flatten())) == [1, 2, 3]
+    assert glom([{'a': 1}, {'b': 2}], Group(Merge())) == {'a': 1, 'b': 2}
