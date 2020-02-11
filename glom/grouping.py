@@ -8,16 +8,10 @@ from .core import glom, MODE, SKIP, STOP
 
 ACC = make_sentinel('ACC')
 ACC.__doc__ = """
-current accumulator for aggregation
-"""
-
-
-ACC2 = make_sentinel('ACC2')
-ACC2.__doc__ = """
-supporting accumulators for aggregation
-
-e.g. if current aggregation is average,
-the supporting data structure would be (sum, count)
+current accumulator for aggregation;
+structure roughly corresponds to the result,
+but is not 1:1; instead the main purpose is to ensure
+data is kept until the Group() finishes executing
 """
 
 
@@ -43,11 +37,7 @@ class Group(object):
 
     def glomit(self, target, scope):
         scope[MODE] = _group
-        if type(self.spec) is list:
-            scope[ACC] = []
-        elif type(self.spec) is dict:
-            scope[ACC] = {}
-        scope[ACC2] = {}
+        scope[ACC] = {}
         ret = None
         for t in target:
             last, ret = ret, scope[glom](t, self.spec, scope)
@@ -61,11 +51,18 @@ def _group(target, spec, scope):
     Group mode dispatcher
     """
     recurse = lambda spec: scope[glom](target, spec, scope)
-    acc2 = scope[ACC2]  # current acuumulator support structure
+    acc2 = scope[ACC]  # current acuumulator support structure
     if callable(getattr(spec, "agg", None)):
         return spec.agg(target, acc2)
+    elif callable(spec):
+        return spec(target)
+    if type(spec) not in (dict, list):
+        raise TypeError("not a valid spec")
+    if id(spec) in acc2:
+        acc = acc2[id(spec)]  # current accumulator
+    else:
+        acc = acc2[id(spec)] = type(spec)()
     if type(spec) is dict:
-        acc = scope[ACC]  # current accumulator
         done = True
         for keyspec, valspec in spec.items():
             if acc2.get(keyspec, None) is STOP:
@@ -78,10 +75,9 @@ def _group(target, spec, scope):
                 acc2[keyspec] = STOP
                 continue
             if key not in acc:
-                acc[key] = _mk_acc(valspec)
+                # TODO: guard against key == id(spec)
                 acc2[key] = {}
-            scope[ACC] = acc[key]
-            scope[ACC2] = acc2[key]
+            scope[ACC] = acc2[key]
             result = recurse(valspec)
             if result is STOP:
                 acc2[keyspec] = STOP
@@ -93,7 +89,6 @@ def _group(target, spec, scope):
             return STOP
         return acc
     elif type(spec) is list:
-        acc = scope[ACC]  # current accumulator
         for valspec in spec:
             assert type(valspec) is not dict
             # dict inside list is not valid
@@ -103,20 +98,6 @@ def _group(target, spec, scope):
             if result is not SKIP:
                 acc.append(result)
         return acc
-    elif callable(spec):
-        return spec(target)
-    raise TypeError("not a valid spec")
-
-
-def _mk_acc(spec):
-    """
-    make an acculumator for a given spec
-    """
-    if type(spec) is dict:
-        return {}
-    if type(spec) is list:
-        return []
-    return None
 
 
 class First(object):
