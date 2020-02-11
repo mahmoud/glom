@@ -6,9 +6,9 @@ from boltons.typeutils import make_sentinel
 from .core import glom, MODE, SKIP, STOP
 
 
-ACC = make_sentinel('ACC')
-ACC.__doc__ = """
-current accumulator for aggregation;
+ACC_TREE = make_sentinel('ACC_TREE')
+ACC_TREE.__doc__ = """
+tree of accumulators for aggregation;
 structure roughly corresponds to the result,
 but is not 1:1; instead the main purpose is to ensure
 data is kept until the Group() finishes executing
@@ -37,7 +37,7 @@ class Group(object):
 
     def glomit(self, target, scope):
         scope[MODE] = _group
-        scope[ACC] = {}
+        scope[ACC_TREE] = {}
         ret = None
         for t in target:
             last, ret = ret, scope[glom](t, self.spec, scope)
@@ -51,36 +51,36 @@ def _group(target, spec, scope):
     Group mode dispatcher
     """
     recurse = lambda spec: scope[glom](target, spec, scope)
-    acc2 = scope[ACC]  # current acuumulator support structure
+    tree = scope[ACC_TREE]  # current acuumulator support structure
     if callable(getattr(spec, "agg", None)):
-        return spec.agg(target, acc2)
+        return spec.agg(target, tree)
     elif callable(spec):
         return spec(target)
     if type(spec) not in (dict, list):
         raise TypeError("not a valid spec")
-    if id(spec) in acc2:
-        acc = acc2[id(spec)]  # current accumulator
+    if id(spec) in tree:
+        acc = tree[id(spec)]  # current accumulator
     else:
-        acc = acc2[id(spec)] = type(spec)()
+        acc = tree[id(spec)] = type(spec)()
     if type(spec) is dict:
         done = True
         for keyspec, valspec in spec.items():
-            if acc2.get(keyspec, None) is STOP:
+            if tree.get(keyspec, None) is STOP:
                 continue
             key = recurse(keyspec)
             if key is SKIP:
                 done = False  # SKIP means we still want more vals
                 continue
             if key is STOP:
-                acc2[keyspec] = STOP
+                tree[keyspec] = STOP
                 continue
             if key not in acc:
                 # TODO: guard against key == id(spec)
-                acc2[key] = {}
-            scope[ACC] = acc2[key]
+                tree[key] = {}
+            scope[ACC_TREE] = tree[key]
             result = recurse(valspec)
             if result is STOP:
-                acc2[keyspec] = STOP
+                tree[keyspec] = STOP
                 continue
             done = False  # SKIP or returning a value means we still want more vals
             if result is not SKIP:
@@ -109,9 +109,9 @@ class First(object):
     """
     __slots__ = ()
 
-    def agg(self, target, acc2):
-        if self not in acc2:
-            acc2[self] = STOP
+    def agg(self, target, tree):
+        if self not in tree:
+            tree[self] = STOP
             return target
         return STOP
 
@@ -126,12 +126,12 @@ class Avg(object):
     """
     __slots__ = ()
 
-    def agg(self, target, acc2):
-        if self not in acc2:
-            acc2[self] = [0, 0.0]
-        acc2[self][0] += target
-        acc2[self][1] += 1
-        return acc2[self][0] / acc2[self][1]
+    def agg(self, target, tree):
+        if self not in tree:
+            tree[self] = [0, 0.0]
+        tree[self][0] += target
+        tree[self][1] += 1
+        return tree[self][0] / tree[self][1]
 
 
 class Sum(object):
@@ -144,11 +144,11 @@ class Sum(object):
     """
     __slots__ = ()
 
-    def agg(self, target, acc2):
-        if self not in acc2:
-            acc2[self] = 0
-        acc2[self] += target
-        return acc2[self]
+    def agg(self, target, tree):
+        if self not in tree:
+            tree[self] = 0
+        tree[self] += target
+        return tree[self]
 
 
 class Max(object):
@@ -161,12 +161,12 @@ class Max(object):
     """
     __slots__ = ()
 
-    def agg(self, target, acc2):
-        if self not in acc2:
-            acc2[self] = target
-        if target > acc2[self]:
-            acc2[self] = target
-        return acc2[self]
+    def agg(self, target, tree):
+        if self not in tree:
+            tree[self] = target
+        if target > tree[self]:
+            tree[self] = target
+        return tree[self]
 
 
 class Min(object):
@@ -179,12 +179,12 @@ class Min(object):
     """
     __slots__ = ()
 
-    def agg(self, target, acc2):
-        if self not in acc2:
-            acc2[self] = target
-        if target < acc2[self]:
-            acc2[self] = target
-        return acc2[self]
+    def agg(self, target, tree):
+        if self not in tree:
+            tree[self] = target
+        if target < tree[self]:
+            tree[self] = target
+        return tree[self]
 
 
 class Count(object):
@@ -196,11 +196,11 @@ class Count(object):
     """
     __slots__ = ()
 
-    def agg(self, target, acc2):
-        if self not in acc2:
-            acc2[self] = 0
-        acc2[self] += 1
-        return acc2[self]
+    def agg(self, target, tree):
+        if self not in tree:
+            tree[self] = 0
+        tree[self] += 1
+        return tree[self]
 
 
 '''
@@ -222,11 +222,11 @@ class Limit(object):
     def __init__(self, n, agg):
         self.n, self.agg = n, agg
 
-    def agg(self, target, acc2):
-        if self not in acc2:
-            acc2[self] = 0
-        acc2[self] += 1
-        if acc2[self] > self.n:
+    def agg(self, target, tree):
+        if self not in tree:
+            tree[self] = 0
+        tree[self] += 1
+        if tree[self] > self.n:
             return STOP
-        return self.agg.agg(target, acc2)
+        return self.agg.agg(target, tree)
 '''
