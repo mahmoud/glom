@@ -5,7 +5,8 @@ from pprint import pprint
 
 from boltons.typeutils import make_sentinel
 
-from .core import TargetRegistry, Path, T, glom, GlomError, UnregisteredTarget, format_invocation, bbrepr
+from .core import T, glom, GlomError, format_invocation, bbrepr, UnregisteredTarget, MODE
+from .grouping import GROUP, target_iter, ACC_TREE
 
 _MISSING = make_sentinel('_MISSING')
 
@@ -66,34 +67,17 @@ class Fold(object):
                             (self.__class__.__name__, op))
 
     def glomit(self, target, scope):
+        # in GROUP mode, applies to elements, in other modes applies to iterable
         if self.subspec is not T:
             target = scope[glom](target, self.subspec, scope)
 
+        if scope[MODE] is GROUP:
+            return self._agg(target, scope[ACC_TREE])
         try:
-            iterate = scope[TargetRegistry].get_handler('iterate', target, path=scope[Path])
+            return self._fold(target_iter(target, scope))
         except UnregisteredTarget as ut:
             raise FoldError('can only %s on iterable targets, not %s type (%s)'
                             % (self.__class__.__name__, type(target).__name__, ut))
-
-        try:
-            iterator = iterate(target)
-        except Exception as e:
-            # TODO: should this be a GlomError of some form? probably
-            # not, because it was registered, but an unexpected
-            # failure occurred.
-            raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
-                            % (target.__class__.__name__, Path(*scope[Path]), e))
-
-        return self._fold(iterator)
-
-    # TODO: this doesn't work b/c .glomit() has higher precedence than .agg()
-    # ... maybe a property?  Sum().agg?
-    def agg(self, target, acc):
-        assert self.subspec is T, "cannot change iterable when being used for aggregation"
-        if self not in acc:
-            acc[self] = self.init()
-        acc[self] = self.op(acc[self], target)
-        return acc[self]
 
     def _fold(self, iterator):
         ret, op = self.init(), self.op
@@ -102,6 +86,12 @@ class Fold(object):
             ret = op(ret, v)
 
         return ret
+
+    def _agg(self, target, tree):
+        if self not in tree:
+            tree[self] = self.init()
+        tree[self] = self.op(tree[self], target)
+        return tree[self]
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -298,6 +288,15 @@ class Merge(Fold):
             op(ret, v)
 
         return ret
+
+
+    def _agg(self, target, tree):
+        if self not in tree:
+            acc = tree[self] = self.init()
+        else:
+            acc = tree[self]
+        self.op(acc, target)
+        return acc
 
 
 def merge(target, **kwargs):

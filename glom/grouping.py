@@ -3,7 +3,7 @@ Group mode
 """
 from boltons.typeutils import make_sentinel
 
-from .core import glom, MODE, SKIP, STOP
+from .core import glom, MODE, SKIP, STOP, TargetRegistry, Path
 
 
 ACC_TREE = make_sentinel('ACC_TREE')
@@ -13,6 +13,19 @@ structure roughly corresponds to the result,
 but is not 1:1; instead the main purpose is to ensure
 data is kept until the Group() finishes executing
 """
+
+def target_iter(target, scope):
+    iterate = scope[TargetRegistry].get_handler('iterate', target, path=scope[Path])
+
+    try:
+        iterator = iterate(target)
+    except Exception as e:
+        # TODO: should this be a GlomError of some form? probably
+        # not, because it was registered, but an unexpected
+        # failure occurred.
+        raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
+                        % (target.__class__.__name__, Path(*scope[Path]), e))
+    return iterator
 
 
 class Group(object):
@@ -36,19 +49,19 @@ class Group(object):
         self.spec = spec
 
     def glomit(self, target, scope):
-        scope[MODE] = _group
+        scope[MODE] = GROUP
         scope[ACC_TREE] = {}
         ret = None
-        for t in target:
+        for t in target_iter(target, scope):
             last, ret = ret, scope[glom](t, self.spec, scope)
             if ret is STOP:
                 return last
         return ret
 
 
-def _group(target, spec, scope):
+def GROUP(target, spec, scope):
     """
-    Group mode dispatcher
+    Group mode dispatcher; also sentinel for current mode = group
     """
     recurse = lambda spec: scope[glom](target, spec, scope)
     tree = scope[ACC_TREE]  # current acuumulator support structure
