@@ -14,6 +14,18 @@ but is not 1:1; instead the main purpose is to ensure
 data is kept until the Group() finishes executing
 """
 
+CUR_AGG = make_sentinel('CUR_AGG')
+CUR_AGG.__doc__ = """
+the spec which is currently performing aggregation --
+useful for specs that want to work in either "aggregate"
+mode, or "spec" mode depending on if they are in Group mode
+or not; this sentinel in the Scope allows a spec to decide
+if it is "closest" to the Group and so should behave
+like an aggregate, or if it is further away and so should
+have normal spec behavior.
+"""
+
+
 def target_iter(target, scope):
     iterate = scope[TargetRegistry].get_handler('iterate', target, path=scope[Path])
 
@@ -50,6 +62,7 @@ class Group(object):
 
     def glomit(self, target, scope):
         scope[MODE] = GROUP
+        scope[CUR_AGG] = None  # reset aggregation tripwire for sub-specs
         scope[ACC_TREE] = {}
         ret = None
         for t in target_iter(target, scope):
@@ -111,6 +124,7 @@ def GROUP(target, spec, scope):
             if result is not SKIP:
                 acc.append(result)
         return acc
+    raise ValueError("{} not a valid spec type for Group mode".format(type(spec)))
 
 
 class First(object):

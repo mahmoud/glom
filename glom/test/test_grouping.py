@@ -30,5 +30,4 @@ def test_agg():
 def test_reduce():
     assert glom([[1], [2, 3]], Group(Flatten())) == [1, 2, 3]
     assert glom([{'a': 1}, {'b': 2}], Group(Merge())) == {'a': 1, 'b': 2}
-    # blows up into [[1], [1], [2, 3], [4]]
-    # assert glom([[[1]], [[2, 3], [4]]], Group(Flatten(Flatten()))) == [1, 2, 3, 4]
+    assert glom([[[1]], [[2, 3], [4]]], Group(Flatten(Flatten()))) == [1, 2, 3, 4]
