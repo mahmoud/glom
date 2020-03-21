@@ -239,6 +239,8 @@ class Sample(object):
 
     >>> glom([1, 2, 3], Group(Sample(2)))
     [1, 3]
+    >>> glom([1, 2, 3], Group(Sample(2)))
+    [3, 2]
     """
     __slots__ = ('size',)
 
