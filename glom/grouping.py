@@ -1,6 +1,8 @@
 """
 Group mode
 """
+import random
+
 from boltons.typeutils import make_sentinel
 
 from .core import glom, MODE, SKIP, STOP, TargetRegistry, Path
@@ -230,10 +232,34 @@ class Count(object):
         return tree[self]
 
 
-'''
-NOTE: this cannot be done as an aggregator since they are
-not recursive; enable when recursion is available again
-once grouping / reduction merge is complete
+# TODO: is this a good idea or better to use random.sample()?
+class Sample(object):
+    """
+    takes a random sample of the values
+
+    >>> glom([1, 2, 3], Group(Sample(2)))
+    [1, 3]
+    """
+    __slots__ = ('size',)
+
+    def __init__(self, size):
+        self.size = size
+
+    def agg(self, target, tree):
+        # simple reservoir sampling scheme
+        # https://en.wikipedia.org/wiki/Reservoir_sampling#Simple_algorithm
+        if self not in tree:
+            tree[self] = [0, []]
+        num_seen, sample = tree[self]
+        if len(sample) < self.size:
+            sample.append(target)
+        else:
+            pos = random.randint(0, num_seen)
+            if pos < self.size:
+                sample[pos] = target
+        tree[self][0] += 1
+        return sample
+
 
 class Limit(object):
     """
@@ -244,16 +270,17 @@ class Limit(object):
     >>> glom([1, 2, 3], Group(Limit(1, T)))
     1
     """
-    __slots__ = ('n', 'agg')
+    __slots__ = ('n', 'subspec')
 
-    def __init__(self, n, agg):
-        self.n, self.agg = n, agg
+    def __init__(self, n, subspec):
+        self.n, self.subspec = n, subspec
 
-    def agg(self, target, tree):
+    def glomit(self, target, scope):
+        assert scope[MODE] is GROUP, "Limit() only valid in Group mode"
+        tree = scope[ACC_TREE]  # current acuumulator support structure
         if self not in tree:
-            tree[self] = 0
-        tree[self] += 1
-        if tree[self] > self.n:
+            tree[self] = [0, {}]
+        tree[self][0] += 1
+        if tree[self][0] > self.n:
             return STOP
-        return self.agg.agg(target, tree)
-'''
+        return scope[glom](target, self.subspec, scope)

@@ -1,4 +1,4 @@
-from glom.grouping import Group, First, Avg, Sum, Max, Min, Count
+from glom.grouping import Group, First, Avg, Sum, Max, Min, Count, Sample, Limit
 from glom import glom, T
 
 from glom.reduction import Merge, Flatten
@@ -24,10 +24,21 @@ def test_agg():
     assert glom(range(10), Group({lambda t: t % 2: Count()})) == {
 		0: 5, 1: 5}
 
-    # assert glom(t, Group(Limit(1, T))) == 0
+
+def test_limit():
+    t = list(range(10))
+    assert glom(t, Group(Limit(1, T))) == 0
+    assert glom(t, Group(Limit(3, Max()))) == 2
+    assert glom(t, Group(Limit(3, [T]))) == [0, 1, 2]
 
 
 def test_reduce():
     assert glom([[1], [2, 3]], Group(Flatten())) == [1, 2, 3]
     assert glom([{'a': 1}, {'b': 2}], Group(Merge())) == {'a': 1, 'b': 2}
     assert glom([[[1]], [[2, 3], [4]]], Group(Flatten(Flatten()))) == [1, 2, 3, 4]
+
+
+def test_sample():
+    assert glom([1, 2, 3], Group(Sample(5))) == [1, 2, 3]
+    s = glom([1, 2, 3], Group(Sample(2)))
+    assert s in [[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]]
