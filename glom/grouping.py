@@ -5,7 +5,7 @@ import random
 
 from boltons.typeutils import make_sentinel
 
-from .core import glom, MODE, SKIP, STOP, TargetRegistry, Path
+from .core import glom, MODE, SKIP, STOP, TargetRegistry, Path, T
 
 
 ACC_TREE = make_sentinel('ACC_TREE')
@@ -237,9 +237,9 @@ class Sample(object):
     """
     takes a random sample of the values
 
-    >>> glom([1, 2, 3], Group(Sample(2)))
+    >>> glom([1, 2, 3], Group(Sample(2)))  # doctest: +SKIP
     [1, 3]
-    >>> glom([1, 2, 3], Group(Sample(2)))
+    >>> glom([1, 2, 3], Group(Sample(2)))  # doctest: +SKIP
     [3, 2]
     """
     __slots__ = ('size',)
