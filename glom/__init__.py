@@ -23,6 +23,7 @@ from glom.core import (glom,
                        CheckError,
                        PathAccessError,
                        CoalesceError,
+                       InvalidSpecifier,
                        UnregisteredTarget,
                        T, S)
 

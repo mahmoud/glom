@@ -92,7 +92,6 @@ similar to tuple.
 MODE =  make_sentinel('MODE')
 
 
-
 class GlomError(Exception):
     """The base exception for all the errors that might be raised from
     :func:`glom` processing logic.
@@ -197,6 +196,11 @@ class CoalesceError(GlomError):
         if self.path is not None:
             msg += ' (at path %r)' % (self.path,)
         return msg
+
+
+class InvalidSpecifier(GlomError, TypeError):
+    """Raised when a spec structure is malformed, e.g., when a specifier
+    type is invalid for the current mode."""
 
 
 class UnregisteredTarget(GlomError):

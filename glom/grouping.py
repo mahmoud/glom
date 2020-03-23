@@ -1,11 +1,13 @@
 """
 Group mode
 """
+from __future__ import division
+
 import random
 
 from boltons.typeutils import make_sentinel
 
-from .core import glom, MODE, SKIP, STOP, TargetRegistry, Path, T
+from .core import glom, MODE, SKIP, STOP, TargetRegistry, Path, T, InvalidSpecifier
 
 
 ACC_TREE = make_sentinel('ACC_TREE')
@@ -63,7 +65,7 @@ class Group(object):
         self.spec = spec
 
     def glomit(self, target, scope):
-        scope[MODE] = GROUP
+        scope[MODE] = _group
         scope[CUR_AGG] = None  # reset aggregation tripwire for sub-specs
         scope[ACC_TREE] = {}
         ret = None
@@ -74,7 +76,8 @@ class Group(object):
         return ret
 
 
-def GROUP(target, spec, scope):
+# TODO: conventon proposal: should mode functions be all-caps like globals?
+def _group(target, spec, scope):
     """
     Group mode dispatcher; also sentinel for current mode = group
     """
@@ -118,8 +121,9 @@ def GROUP(target, spec, scope):
         return acc
     elif type(spec) is list:
         for valspec in spec:
-            assert type(valspec) is not dict
-            # dict inside list is not valid
+            if type(valspec) is dict:
+                raise InvalidSpecifier('dicts within lists are not'
+                                       ' allowed while in Group mode: %r' % spec)
             result = recurse(valspec)
             if result is STOP:
                 return STOP
@@ -156,11 +160,14 @@ class Avg(object):
     __slots__ = ()
 
     def agg(self, target, tree):
-        if self not in tree:
-            tree[self] = [0, 0.0]
-        tree[self][0] += target
-        tree[self][1] += 1
-        return tree[self][0] / tree[self][1]
+        try:
+            avg_acc = tree[self]
+        except KeyError:
+            # format is [sum, count]
+            avg_acc = tree[self] = [0.0, 0]
+        avg_acc[0] += target
+        avg_acc[1] += 1
+        return avg_acc[0] / avg_acc[1]
 
 
 class Sum(object):
@@ -191,9 +198,7 @@ class Max(object):
     __slots__ = ()
 
     def agg(self, target, tree):
-        if self not in tree:
-            tree[self] = target
-        if target > tree[self]:
+        if self not in tree or target > tree[self]:
             tree[self] = target
         return tree[self]
 
@@ -209,9 +214,7 @@ class Min(object):
     __slots__ = ()
 
     def agg(self, target, tree):
-        if self not in tree:
-            tree[self] = target
-        if target < tree[self]:
+        if self not in tree or target < tree[self]:
             tree[self] = target
         return tree[self]
 
@@ -269,16 +272,17 @@ class Limit(object):
 
     >>> glom([1, 2, 3], Group(T))
     3
-    >>> glom([1, 2, 3], Group(Limit(1, T)))
+    >>> glom([1, 2, 3], Group(Limit(1)))
     1
     """
     __slots__ = ('n', 'subspec')
 
-    def __init__(self, n, subspec):
+    def __init__(self, n, subspec=T):
         self.n, self.subspec = n, subspec
 
     def glomit(self, target, scope):
-        assert scope[MODE] is GROUP, "Limit() only valid in Group mode"
+        if scope[MODE] is not _group:
+            raise InvalidSpecifier("Limit() only valid in Group mode")
         tree = scope[ACC_TREE]  # current acuumulator support structure
         if self not in tree:
             tree[self] = [0, {}]

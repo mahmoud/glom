@@ -6,7 +6,7 @@ from pprint import pprint
 from boltons.typeutils import make_sentinel
 
 from .core import T, glom, GlomError, format_invocation, bbrepr, UnregisteredTarget, MODE
-from .grouping import GROUP, target_iter, ACC_TREE, CUR_AGG
+from .grouping import _group, target_iter, ACC_TREE, CUR_AGG
 
 _MISSING = make_sentinel('_MISSING')
 
@@ -68,7 +68,7 @@ class Fold(object):
 
     def glomit(self, target, scope):
         is_agg = False
-        if scope[MODE] is GROUP and scope.get(CUR_AGG) is None:
+        if scope[MODE] is _group and scope.get(CUR_AGG) is None:
             scope[CUR_AGG] = self
             is_agg = True
 

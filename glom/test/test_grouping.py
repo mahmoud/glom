@@ -1,3 +1,5 @@
+from __future__ import division
+
 from glom.grouping import Group, First, Avg, Sum, Max, Min, Count, Sample, Limit
 from glom import glom, T
 
@@ -15,7 +17,7 @@ def test_agg():
     assert glom(t, Group(First())) == 0
     assert glom(t, Group(T)) == 9  # this is basically Last
 
-    assert glom(t, Group(Avg())) == 1.0 * sum(t) / len(t)
+    assert glom(t, Group(Avg())) == sum(t) / len(t)
     assert glom(t, Group(Sum())) == sum(t)
 
     assert glom([0, 1, 0], Group(Max())) == 1
