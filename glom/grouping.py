@@ -83,14 +83,16 @@ def GROUP(target, spec, scope):
         return spec.agg(target, tree)
     elif callable(spec):
         return spec(target)
-    if type(spec) not in (dict, list):
-        raise BadSpec("Group() mode expected dict, list, callable, or"
+    _spec_type = type(spec)
+    if _spec_type not in (dict, list):
+        raise BadSpec("Group mode expected dict, list, callable, or"
                       " aggregator, not: %r" % (spec,))
-    if id(spec) in tree:
-        acc = tree[id(spec)]  # current accumulator
-    else:
-        acc = tree[id(spec)] = type(spec)()
-    if type(spec) is dict:
+    _spec_id = id(spec)
+    try:
+        acc = tree[_spec_id]  # current accumulator
+    except KeyError:
+        acc = tree[_spec_id] = _spec_type()
+    if _spec_type is dict:
         done = True
         for keyspec, valspec in spec.items():
             if tree.get(keyspec, None) is STOP:
@@ -116,7 +118,7 @@ def GROUP(target, spec, scope):
         if done:
             return STOP
         return acc
-    elif type(spec) is list:
+    elif _spec_type is list:
         for valspec in spec:
             if type(valspec) is dict:
                 raise BadSpec('dicts within lists are not'
@@ -127,7 +129,7 @@ def GROUP(target, spec, scope):
             if result is not SKIP:
                 acc.append(result)
         return acc
-    raise ValueError("{} not a valid spec type for Group mode".format(type(spec)))
+    raise ValueError("{} not a valid spec type for Group mode".format(_spec_type))
 
 
 class First(object):
