@@ -286,6 +286,7 @@ class Limit(object):
         tree = scope[ACC_TREE]  # current acuumulator support structure
         if self not in tree:
             tree[self] = [0, {}]
+        scope[ACC_TREE] = tree[self][1]
         tree[self][0] += 1
         if tree[self][0] > self.n:
             return STOP
