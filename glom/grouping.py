@@ -62,7 +62,7 @@ class Group(object):
         self.spec = spec
 
     def glomit(self, target, scope):
-        scope[MODE] = _group
+        scope[MODE] = GROUP
         scope[CUR_AGG] = None  # reset aggregation tripwire for sub-specs
         scope[ACC_TREE] = {}
         ret = None
@@ -73,8 +73,7 @@ class Group(object):
         return ret
 
 
-# TODO: conventon proposal: should mode functions be all-caps like globals?
-def _group(target, spec, scope):
+def GROUP(target, spec, scope):
     """
     Group mode dispatcher; also sentinel for current mode = group
     """
@@ -294,7 +293,7 @@ class Limit(object):
         self.subspec = subspec
 
     def glomit(self, target, scope):
-        if scope[MODE] is not _group:
+        if scope[MODE] is not GROUP:
             raise BadSpec("Limit() only valid in Group mode")
         tree = scope[ACC_TREE]  # current acuumulator support structure
         if self not in tree:

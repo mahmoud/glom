@@ -1484,7 +1484,7 @@ class Auto(object):
         self.spec = spec
 
     def glomit(self, target, scope):
-        scope[MODE] = _glom_auto
+        scope[MODE] = AUTO
         return scope[glom](target, self.spec, scope)
 
     def __repr__(self):
@@ -1807,7 +1807,7 @@ def glom(target, spec, **kwargs):
     scope = _DEFAULT_SCOPE.new_child({
         Path: kwargs.pop('path', []),
         Inspect: kwargs.pop('inspector', None),
-        MODE: _glom_auto,
+        MODE: AUTO,
     })
     scope[UP] = scope
     scope[ROOT] = scope
@@ -1840,7 +1840,7 @@ def _glom(target, spec, scope):
     return scope[MODE](target, spec, scope)
 
 
-def _glom_auto(target, spec, scope):
+def AUTO(target, spec, scope):
     if isinstance(spec, dict):
         return _handle_dict(target, spec, scope)
     elif isinstance(spec, list):
@@ -1992,7 +1992,7 @@ class Fill(object):
         self.spec = spec
 
     def glomit(self, target, scope):
-        scope[MODE] = _fill
+        scope[MODE] = FILL
         return scope[glom](target, self.spec, scope)
 
     def fill(self, target):
@@ -2004,7 +2004,7 @@ class Fill(object):
         return '%s(%s)' % (cn, rpr)
 
 
-def _fill(target, spec, scope):
+def FILL(target, spec, scope):
     # TODO: register an operator or two for the following to allow
     # extension. This operator can probably be shared with the
     # upcoming traversal/remap feature.
