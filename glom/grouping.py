@@ -7,7 +7,7 @@ import random
 
 from boltons.typeutils import make_sentinel
 
-from .core import glom, MODE, SKIP, STOP, TargetRegistry, Path, T, InvalidSpecifier, _MISSING
+from .core import glom, MODE, SKIP, STOP, TargetRegistry, Path, T, BadSpec, _MISSING
 
 
 ACC_TREE = make_sentinel('ACC_TREE')
@@ -36,9 +36,6 @@ def target_iter(target, scope):
     try:
         iterator = iterate(target)
     except Exception as e:
-        # TODO: should this be a GlomError of some form? probably
-        # not, because it was registered, but an unexpected
-        # failure occurred.
         raise TypeError('failed to iterate on instance of type %r at %r (got %r)'
                         % (target.__class__.__name__, Path(*scope[Path]), e))
     return iterator
@@ -88,7 +85,8 @@ def _group(target, spec, scope):
     elif callable(spec):
         return spec(target)
     if type(spec) not in (dict, list):
-        raise TypeError("not a valid spec")
+        raise BadSpec("Group() mode expected dict, list, callable, or"
+                      " aggregator, not: %r" % (spec,))
     if id(spec) in tree:
         acc = tree[id(spec)]  # current accumulator
     else:
@@ -122,7 +120,7 @@ def _group(target, spec, scope):
     elif type(spec) is list:
         for valspec in spec:
             if type(valspec) is dict:
-                raise InvalidSpecifier('dicts within lists are not'
+                raise BadSpec('dicts within lists are not'
                                        ' allowed while in Group mode: %r' % spec)
             result = recurse(valspec)
             if result is STOP:
@@ -297,7 +295,7 @@ class Limit(object):
 
     def glomit(self, target, scope):
         if scope[MODE] is not _group:
-            raise InvalidSpecifier("Limit() only valid in Group mode")
+            raise BadSpec("Limit() only valid in Group mode")
         tree = scope[ACC_TREE]  # current acuumulator support structure
         if self not in tree:
             tree[self] = [0, {}]

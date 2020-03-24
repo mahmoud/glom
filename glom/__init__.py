@@ -20,10 +20,10 @@ from glom.core import (glom,
                        Coalesce,
                        Inspect,
                        GlomError,
+                       BadSpec,
                        CheckError,
                        PathAccessError,
                        CoalesceError,
-                       InvalidSpecifier,
                        UnregisteredTarget,
                        T, S)
 

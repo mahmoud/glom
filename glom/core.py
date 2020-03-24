@@ -198,7 +198,7 @@ class CoalesceError(GlomError):
         return msg
 
 
-class InvalidSpecifier(GlomError, TypeError):
+class BadSpec(GlomError, TypeError):
     """Raised when a spec structure is malformed, e.g., when a specifier
     type is invalid for the current mode."""
 
