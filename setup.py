@@ -1,3 +1,4 @@
+import sys
 from setuptools import setup
 
 __author__ = 'Mahmoud Hashemi and Kurt Rose'
@@ -6,7 +7,12 @@ __contact__ = 'mahmoud@hatnote.com'
 __url__ = 'https://github.com/mahmoud/glom'
 __license__ = 'BSD'
 
-with open('README.md') as read_me:
+
+open_kwarg = {}
+if sys.version_info[0] == 3:
+    open_kwarg['encoding'] = 'utf-8'
+
+with open('README.md', **open_kwarg) as read_me:
     long_description = read_me.read()
 
 setup(name='glom',
