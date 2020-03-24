@@ -79,6 +79,10 @@ class Group(object):
                 return last
         return ret
 
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r)' % (cn, self.spec)
+
 
 def GROUP(target, spec, scope):
     """
@@ -155,6 +159,9 @@ class First(object):
             return target
         return STOP
 
+    def __repr__(self):
+        return '%s()' % self.__class__.__name__
+
 
 class Avg(object):
     """
@@ -176,6 +183,9 @@ class Avg(object):
         avg_acc[1] += 1
         return avg_acc[0] / avg_acc[1]
 
+    def __repr__(self):
+        return '%s()' % self.__class__.__name__
+
 
 class Sum(object):
     """
@@ -193,6 +203,9 @@ class Sum(object):
         tree[self] += target
         return tree[self]
 
+    def __repr__(self):
+        return '%s()' % self.__class__.__name__
+
 
 class Max(object):
     """
@@ -208,6 +221,9 @@ class Max(object):
         if self not in tree or target > tree[self]:
             tree[self] = target
         return tree[self]
+
+    def __repr__(self):
+        return '%s()' % self.__class__.__name__
 
 
 class Min(object):
@@ -225,6 +241,9 @@ class Min(object):
             tree[self] = target
         return tree[self]
 
+    def __repr__(self):
+        return '%s()' % self.__class__.__name__
+
 
 class Count(object):
     """
@@ -240,6 +259,9 @@ class Count(object):
             tree[self] = 0
         tree[self] += 1
         return tree[self]
+
+    def __repr__(self):
+        return '%s()' % self.__class__.__name__
 
 
 class Sample(object):
@@ -274,6 +296,10 @@ class Sample(object):
                 sample[pos] = target
         tree[self][0] += 1
         return sample
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.size)
+
 
 
 class Limit(object):
@@ -313,3 +339,6 @@ class Limit(object):
         if tree[self][0] > self.n:
             return STOP
         return scope[glom](target, self.subspec, scope)
+
+    def __repr__(self):
+        return '%s(%r, %r)' % (self.__class__.__name__, self.n, self.subspec)

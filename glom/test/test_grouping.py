@@ -45,7 +45,8 @@ def test_corner_cases():
         assert glom(target, Group('no string support yet'))
 
     # bucket ints by their bit length and then odd/even, limited to 3 per bucket
-    res = glom(range(20), Group({T.bit_length(): {lambda t: t % 2: Limit(3)}}))
+    spec = Group({T.bit_length(): {lambda t: t % 2: Limit(3)}})
+    res = glom(range(20), spec)
     assert res == {0: {0: [0]},
                    1: {1: [1]},
                    2: {0: [2], 1: [3]},
@@ -66,6 +67,13 @@ def test_agg():
     assert glom([0, 1, 0], Group(Max())) == 1
     assert glom([1, 0, 1], Group(Min())) == 0
 
+    assert repr(Group(First())) == 'Group(First())'
+    assert repr(Avg()) == 'Avg()'
+    assert repr(Max()) == 'Max()'
+    assert repr(Min()) == 'Min()'
+    assert repr(Sum()) == 'Sum()'
+    assert repr(Count()) == 'Count()'
+
     assert glom(range(10), Group({lambda t: t % 2: Count()})) == {
 		0: 5, 1: 5}
 
@@ -75,6 +83,8 @@ def test_limit():
     assert glom(t, Group(Limit(1, T))) == 0
     assert glom(t, Group(Limit(3, Max()))) == 2
     assert glom(t, Group(Limit(3, [T]))) == [0, 1, 2]
+
+    assert repr(Group(Limit(3, Max()))) == 'Group(Limit(3, Max()))'
 
     with raises(BadSpec):
         assert glom(t, Limit(1))  # needs to be wrapped in Group for now
@@ -88,6 +98,10 @@ def test_reduce():
 
 
 def test_sample():
-    assert glom([1, 2, 3], Group(Sample(5))) == [1, 2, 3]
+    spec = Group(Sample(5))
+    assert glom([1, 2, 3], spec) == [1, 2, 3]
+
+    assert repr(spec) == 'Group(Sample(5))'
+
     s = glom([1, 2, 3], Group(Sample(2)))
     assert s in [[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]]
