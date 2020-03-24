@@ -7,7 +7,7 @@ import random
 
 from boltons.typeutils import make_sentinel
 
-from .core import glom, MODE, SKIP, STOP, TargetRegistry, Path, T, InvalidSpecifier
+from .core import glom, MODE, SKIP, STOP, TargetRegistry, Path, T, InvalidSpecifier, _MISSING
 
 
 ACC_TREE = make_sentinel('ACC_TREE')
@@ -268,17 +268,29 @@ class Sample(object):
 
 class Limit(object):
     """
-    limits the number of values passed to sub-accumulator
+    Limits the number of values passed to sub-accumulator
 
-    >>> glom([1, 2, 3], Group(T))
-    3
-    >>> glom([1, 2, 3], Group(Limit(1)))
-    1
+    >>> glom([1, 2, 3], Group(Limit(2)))
+    [1, 2]
+
+    To override the default untransformed list output, set the subspec kwarg:
+
+    >>> glom(range(10), Group(Limit(3, subspec={(lambda x: x % 2): [T]})))
+    {0: [0, 2], 1: [1]}
+
+    You can even nest Limits in other ``Group`` specs:
+
+    >>> glom(range(10), Group(Limit(5, {(lambda x: x % 2): Limit(2)})))
+    {0: [0, 2], 1: [1, 3]}
+
     """
     __slots__ = ('n', 'subspec')
 
-    def __init__(self, n, subspec=T):
-        self.n, self.subspec = n, subspec
+    def __init__(self, n, subspec=_MISSING):
+        if subspec is _MISSING:
+            subspec = [T]
+        self.n = n
+        self.subspec = subspec
 
     def glomit(self, target, scope):
         if scope[MODE] is not _group:
