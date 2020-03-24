@@ -65,7 +65,14 @@ class Group(object):
         scope[MODE] = GROUP
         scope[CUR_AGG] = None  # reset aggregation tripwire for sub-specs
         scope[ACC_TREE] = {}
-        ret = None
+
+        # handle the basecase where the spec stops immediately
+        # TODO: something smarter
+        if type(self.spec) in (dict, list):
+            ret = type(self.spec)()
+        else:
+            ret = None
+
         for t in target_iter(target, scope):
             last, ret = ret, scope[glom](t, self.spec, scope)
             if ret is STOP:
@@ -121,15 +128,16 @@ def GROUP(target, spec, scope):
     elif _spec_type is list:
         for valspec in spec:
             if type(valspec) is dict:
+                # doesn't make sense due to arity mismatch. did you mean [Auto({...})] ?
                 raise BadSpec('dicts within lists are not'
-                                       ' allowed while in Group mode: %r' % spec)
+                              ' allowed while in Group mode: %r' % spec)
             result = recurse(valspec)
             if result is STOP:
                 return STOP
             if result is not SKIP:
                 acc.append(result)
         return acc
-    raise ValueError("{} not a valid spec type for Group mode".format(_spec_type))
+    raise ValueError("{} not a valid spec type for Group mode".format(_spec_type))  # pragma: no cover
 
 
 class First(object):
@@ -239,8 +247,8 @@ class Sample(object):
 
     >>> glom([1, 2, 3], Group(Sample(2)))  # doctest: +SKIP
     [1, 3]
-    >>> glom([1, 2, 3], Group(Sample(2)))  # doctest: +SKIP
-    [3, 2]
+    >>> glom(range(5000), Group(Sample(2)))  # doctest: +SKIP
+    [272, 2901]
 
     The advantage of this over :func:`random.sample` is that this can
     take an arbitrarily-sized, potentially-very-long streaming input
