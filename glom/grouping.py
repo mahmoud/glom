@@ -235,15 +235,18 @@ class Count(object):
         return tree[self]
 
 
-# TODO: is this a good idea or better to use random.sample()?
 class Sample(object):
-    """
-    takes a random sample of the values
+    """takes a random sample of the values
 
     >>> glom([1, 2, 3], Group(Sample(2)))  # doctest: +SKIP
     [1, 3]
     >>> glom([1, 2, 3], Group(Sample(2)))  # doctest: +SKIP
     [3, 2]
+
+    The advantage of this over :func:`random.sample` is that this can
+    take an arbitrarily-sized, potentially-very-long streaming input
+    and returns a fixed-size output. Note that this does not stream
+    results out, so your streaming input must have finite length.
     """
     __slots__ = ('size',)
 
