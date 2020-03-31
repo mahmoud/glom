@@ -187,26 +187,6 @@ class Avg(object):
         return '%s()' % self.__class__.__name__
 
 
-class Sum(object):
-    """
-    takes the sum of all values;
-    raises exception on values incompatible with addition operator
-
-    >>> glom([1, 2, 3], Group(Sum()))
-    6
-    """
-    __slots__ = ()
-
-    def agg(self, target, tree):
-        if self not in tree:
-            tree[self] = 0
-        tree[self] += target
-        return tree[self]
-
-    def __repr__(self):
-        return '%s()' % self.__class__.__name__
-
-
 class Max(object):
     """
     takes the maximum of all values;
@@ -239,25 +219,6 @@ class Min(object):
     def agg(self, target, tree):
         if self not in tree or target < tree[self]:
             tree[self] = target
-        return tree[self]
-
-    def __repr__(self):
-        return '%s()' % self.__class__.__name__
-
-
-class Count(object):
-    """
-    takes a count of how many values occurred
-
-    >>> glom([1, 2, 3], Group(Count()))
-    3
-    """
-    __slots__ = ()
-
-    def agg(self, target, tree):
-        if self not in tree:
-            tree[self] = 0
-        tree[self] += 1
         return tree[self]
 
     def __repr__(self):
@@ -331,7 +292,7 @@ class Limit(object):
     def glomit(self, target, scope):
         if scope[MODE] is not GROUP:
             raise BadSpec("Limit() only valid in Group mode")
-        tree = scope[ACC_TREE]  # current acuumulator support structure
+        tree = scope[ACC_TREE]  # current accumulator support structure
         if self not in tree:
             tree[self] = [0, {}]
         scope[ACC_TREE] = tree[self][1]

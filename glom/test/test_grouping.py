@@ -3,9 +3,9 @@ from __future__ import division
 from pytest import raises
 
 from glom import glom, T, SKIP, STOP, Auto, BadSpec
-from glom.grouping import Group, First, Avg, Sum, Max, Min, Count, Sample, Limit
+from glom.grouping import Group, First, Avg, Max, Min, Sample, Limit
 
-from glom.reduction import Merge, Flatten
+from glom.reduction import Merge, Flatten, Sum, Count
 
 
 def test_bucketing():

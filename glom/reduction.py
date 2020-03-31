@@ -133,6 +133,23 @@ class Sum(Fold):
         return format_invocation(cn, args, kwargs, repr=bbrepr)
 
 
+class Count(Fold):
+    """
+    takes a count of how many values occurred
+
+    >>> glom([1, 2, 3], Count())
+    3
+    """
+    __slots__ = ()
+
+    def __init__(self):
+        super(Count, self).__init__(
+            subspec=T, init=int, op=lambda cur, val: cur + 1)
+
+    def __repr__(self):
+        return '%s()' % self.__class__.__name__
+
+
 class Flatten(Fold):
     """The `Flatten` specifier type is used to combine iterables. By
     default it flattens an iterable of iterables into a single list
