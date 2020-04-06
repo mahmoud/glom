@@ -64,7 +64,7 @@ class Fold(object):
                             (self.__class__.__name__, op))
         if not callable(init):
             raise TypeError('expected callable for %s init param, not: %r' %
-                            (self.__class__.__name__, op))
+                            (self.__class__.__name__, init))
 
     def glomit(self, target, scope):
         is_agg = False
