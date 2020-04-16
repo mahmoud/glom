@@ -56,7 +56,9 @@ A brief checklist for release:
 * git commit (if applicable)
 * Bump setup.py version off of -dev
 * git commit -a -m "bump version for x.y.z release"
-* python setup.py sdist bdist_wheel upload
+* rm -rf dist/*
+* python setup.py sdist bdist_wheel
+* twine upload dist/*
 * bump docs/conf.py version
 * git commit
 * git tag -a vx.y.z -m "brief summary"
