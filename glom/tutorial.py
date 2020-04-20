@@ -240,7 +240,7 @@ It extracts the moon count from a dictionary that has the planet names as a key.
   >>> pprint(glom(target, spec))
   {'moons': {'pluto': 6, 'venus': 0, 'earth': 1}}
 
-Don't worry, if you do not fully understand how this works at this point. If you
+Don't worry if you do not fully understand how this works at this point. If you
 need it, look up ``Iter()``, ``T`` and ``merge`` in the glom API reference.
 
 True Python Native
