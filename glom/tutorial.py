@@ -241,7 +241,7 @@ It extracts the moon count from a dictionary that has the planet names as a key.
   {'moons': {'pluto': 6, 'venus': 0, 'earth': 1}}
 
 Don't worry if you do not fully understand how this works at this point. If you
-need it, look up ``Iter()``, ``T`` and ``merge`` in the glom API reference.
+would like to learn more, look up :class:`~glom.Iter()`, :data:`~glom.T`, or :class:`~glom.Merge` in the glom API reference.
 
 True Python Native
 ==================
