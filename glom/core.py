@@ -1054,6 +1054,14 @@ class Invoke(object):
 
 
 class Ref(object):
+    """Name a part of a spec and refer to it elsewhere in the same spec,
+    useful for trees and other self-similar data structures.
+
+    Args:
+       name (str): The name of the spec to reference.
+       subspec: Pass a spec to name it *name*, or leave unset to refer
+          to an already-named spec.
+    """
     def __init__(self, name, subspec=_MISSING):
         self.name, self.subspec = name, subspec
 

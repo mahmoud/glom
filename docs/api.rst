@@ -168,6 +168,11 @@ step, you can do these checks inline with your glom spec, using
 
 .. _exceptions:
 
+Self-referential specs
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: glom.Ref
+
 Exceptions
 ----------
 
