@@ -2,7 +2,7 @@ import sys
 from setuptools import setup
 
 __author__ = 'Mahmoud Hashemi and Kurt Rose'
-__version__ = '19.10.1dev'
+__version__ = '20.5.0'
 __contact__ = 'mahmoud@hatnote.com'
 __url__ = 'https://github.com/mahmoud/glom'
 __license__ = 'BSD'
