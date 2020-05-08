@@ -2,7 +2,6 @@ import sys
 from setuptools import setup
 
 __author__ = 'Mahmoud Hashemi and Kurt Rose'
-__version__ = '20.5.1dev'
 __contact__ = 'mahmoud@hatnote.com'
 __url__ = 'https://github.com/mahmoud/glom'
 __license__ = 'BSD'
@@ -16,7 +15,7 @@ with open('README.md', **open_kwarg) as read_me:
     long_description = read_me.read()
 
 setup(name='glom',
-      version=__version__,
+      version="20.5.1dev",
       description="A declarative object transformer and formatter, for conglomerating nested data.",
       long_description=long_description,
       long_description_content_type='text/markdown',
