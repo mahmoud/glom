@@ -98,11 +98,6 @@ ERROR_SCOPE.__doc__ = """
 from which an exception was raised when processing fails.
 """
 
-ERROR_FRAME = make_sentinel('ERROR_FRAME')
-ERROR_FRAME.__doc__ = """
-the frame at which the exception happened
-"""
-
 SPEC_POS = make_sentinel('SPEC_POS')
 SPEC_POS.__doc__ = """
 ``SPEC_POS`` is used to keep track of the current position
@@ -1845,6 +1840,7 @@ def glom(target, spec, **kwargs):
     scope[ROOT] = scope
     scope[T] = target
     scope.update(kwargs.pop('scope', {}))
+    err = None
     if kwargs:
         raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
     try:
@@ -1855,48 +1851,41 @@ def glom(target, spec, **kwargs):
                 raise
             ret = default
     except Exception as e:
-        if ERROR_FRAME in scope[ROOT]:
+        class GlomWrapError(type(e)):
+            def __init__(self, scope, wrapped):
+                from . import trace
 
-            class GlomWrapError(type(e)):
-                def __init__(self, scope, inner_frame, tb, wrapped):
-                    from . import trace
+                # tried MANY approaches here -- one problem pragmatically is
+                # that traceback module and sys.exc_info() see different
+                # stacks here -- maybe it is something to do with running
+                # under pytest
+                lines = traceback.format_exc().split("\n")
+                limit = 0
+                for line in reversed(lines):
+                    if __file__ in line and "_glom" in line:
+                        limit -= 1
+                        break
+                    limit += 1
 
-                    self.scope, self.wrapped = scope, wrapped
-                    frames = []
-                    cur_frame = tb.tb_frame
-                    while cur_frame:
-                        frames.append(cur_frame)
-                        cur_frame = cur_frame.f_back
-                    limit = len(frames) - scope[ROOT]['skip_frames']
-                    '''
-                    limit = 1
-                    while cur_frame and cur_frame != inner_frame:
-                        limit += 1
-                        cur_frame = cur_frame.f_back
-                    if not cur_frame:
-                        # somehow this scheme totally doesn't work in 3.7
-                        # tb.tb_frame() is set to THIS frame somehow?
-                        raise Exception("couldn't find", inner_frame)
-                    '''
-                    # drop references to frames & etc but this is expensive operations
-                    self.inner_format = ("GlomWrapError:\n" +
-                        trace.short_stack(self.scope) + "\n" +
-                        traceback.format_exc(limit))
+                self.short_stack = trace.short_stack(scope)
+                self.inner_format = ("\n".join(
+                    [trace.short_stack(scope)] + lines[-limit:]))
 
-                def __str__(self):
-                    return self.inner_format
+            def __str__(self):
+                return self.inner_format
 
-                def __repr__(self):
-                    return str(self)
+            def __repr__(self):
+                return str(self)
 
-                def __getattr__(self, name):
-                    return getattr(self.wrapped, name)
+            def __getattr__(self, name):
+                return getattr(self.wrapped, name)
 
-            if not isinstance(GlomWrapError, GlomError):
-                GlomWrapError.__bases__ = GlomWrapError.__bases__ + (GlomError,)
+        if not isinstance(GlomWrapError, GlomError):
+            GlomWrapError.__bases__ = GlomWrapError.__bases__ + (GlomError,)
 
-            err = GlomWrapError(scope[ROOT][ERROR_SCOPE], scope[ROOT][ERROR_FRAME], sys.exc_info()[2], e)
-            raise err from None
+        err = GlomWrapError(scope[ROOT][ERROR_SCOPE], e)
+    if err:
+        raise err
     return ret
 
 
@@ -1917,8 +1906,6 @@ def _glom(target, spec, scope):
         return scope[MODE](target, spec, scope)
     except Exception:
         scope[ROOT].setdefault(ERROR_SCOPE, scope)
-        scope[ROOT].setdefault(ERROR_FRAME, sys._getframe())
-        scope[ROOT]['skip_frames'] = scope[ROOT].get('skip_frames', 0) + 1
         raise
 
 
