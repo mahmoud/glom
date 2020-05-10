@@ -1873,7 +1873,6 @@ def glom(target, spec, **kwargs):
         else:
             err = GlomError.wrap(e)
         err._finalize(scope[ERROR_SCOPE])
-    print("ERRRRRRRR", err)
     if err:
         raise err
     return ret
