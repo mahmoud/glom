@@ -99,14 +99,6 @@ ERROR_SCOPE.__doc__ = """
 from which an exception was raised when processing fails.
 """
 
-SPEC_POS = make_sentinel('SPEC_POS')
-SPEC_POS.__doc__ = """
-``SPEC_POS`` is used to keep track of the current position
-within a spec -- e.g. key of dict, index of tuple -- for
-the purposes of debugging
-"""
-
-
 
 class GlomError(Exception):
     """The base exception for all the errors that might be raised from
@@ -1560,7 +1552,6 @@ def _get_sequence_item(target, index):
 def _handle_dict(target, spec, scope):
     ret = type(spec)()  # TODO: works for dict + ordereddict, but sufficient for all?
     for field, subspec in spec.items():
-        scope[SPEC_POS] = field
         val = scope[glom](target, subspec, scope)
         if val is SKIP:
             continue

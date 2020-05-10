@@ -11,7 +11,7 @@ scope[SCOPE_POS] -- spec cursor (for dict + tuple type specs)
 """
 from __future__ import print_function
 
-from .core import Spec, T, UP, Path, SPEC_POS, TType
+from .core import Spec, T, UP, Path, TType
 
 
 _NO_TARGET = object()
@@ -111,4 +111,15 @@ _STACK_UNWIND = (
     S['stack'],
     reversed
 )
+
+TODO: in the future consider having a handle for SPECs to dump their state
+
+
+SPEC_POS = make_sentinel('SPEC_POS')
+SPEC_POS.__doc__ = '''
+``SPEC_POS`` is used to keep track of the current position
+within a spec -- e.g. key of dict, index of tuple -- for
+the purposes of debugging
+'''
+
 """
