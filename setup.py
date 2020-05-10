@@ -1,12 +1,18 @@
+import sys
 from setuptools import setup
 
 __author__ = 'Mahmoud Hashemi and Kurt Rose'
-__version__ = '19.10.1dev'
+__version__ = '20.5.1dev'
 __contact__ = 'mahmoud@hatnote.com'
 __url__ = 'https://github.com/mahmoud/glom'
 __license__ = 'BSD'
 
-with open('README.md') as read_me:
+
+open_kwarg = {}
+if sys.version_info[0] == 3:
+    open_kwarg['encoding'] = 'utf-8'
+
+with open('README.md', **open_kwarg) as read_me:
     long_description = read_me.read()
 
 setup(name='glom',
@@ -50,7 +56,9 @@ A brief checklist for release:
 * git commit (if applicable)
 * Bump setup.py version off of -dev
 * git commit -a -m "bump version for x.y.z release"
-* python setup.py sdist bdist_wheel upload
+* rm -rf dist/*
+* python setup.py sdist bdist_wheel
+* twine upload dist/*
 * bump docs/conf.py version
 * git commit
 * git tag -a vx.y.z -m "brief summary"

@@ -6,8 +6,10 @@ https://github.com/python/cpython/blob/c6cd164cffedb306a4c6644d9d03072f24da246d/
 No modifications are necessary for glom usage. It is included for
 Python 2 compatibility only.
 """
-
-from collections import MutableMapping
+try:
+    from collections.abc import MutableMapping
+except ImportError:
+    from collections import MutableMapping
 
 try:
     from thread import get_ident

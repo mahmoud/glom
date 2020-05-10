@@ -99,7 +99,6 @@ ERROR_SCOPE.__doc__ = """
 from which an exception was raised when processing fails.
 """
 
-
 class GlomError(Exception):
     """The base exception for all the errors that might be raised from
     :func:`glom` processing logic.
@@ -240,6 +239,11 @@ class CoalesceError(GlomError):
         if self.path is not None:
             msg += ' (at path %r)' % (self.path,)
         return msg
+
+
+class BadSpec(GlomError, TypeError):
+    """Raised when a spec structure is malformed, e.g., when a specifier
+    type is invalid for the current mode."""
 
 
 class UnregisteredTarget(GlomError):
@@ -1093,6 +1097,14 @@ class Invoke(object):
 
 
 class Ref(object):
+    """Name a part of a spec and refer to it elsewhere in the same spec,
+    useful for trees and other self-similar data structures.
+
+    Args:
+       name (str): The name of the spec to reference.
+       subspec: Pass a spec to name it *name*, or leave unset to refer
+          to an already-named spec.
+    """
     def __init__(self, name, subspec=_MISSING):
         self.name, self.subspec = name, subspec
 
@@ -1523,7 +1535,7 @@ class Auto(object):
         self.spec = spec
 
     def glomit(self, target, scope):
-        scope[MODE] = _glom_auto
+        scope[MODE] = AUTO
         return scope[glom](target, self.spec, scope)
 
     def __repr__(self):
@@ -1846,7 +1858,7 @@ def glom(target, spec, **kwargs):
     scope = _DEFAULT_SCOPE.new_child({
         Path: kwargs.pop('path', []),
         Inspect: kwargs.pop('inspector', None),
-        MODE: _glom_auto,
+        MODE: AUTO,
     })
     scope[UP] = scope
     scope[ROOT] = scope
@@ -1893,7 +1905,7 @@ def _glom(target, spec, scope):
         raise
 
 
-def _glom_auto(target, spec, scope):
+def AUTO(target, spec, scope):
     if isinstance(spec, dict):
         return _handle_dict(target, spec, scope)
     elif isinstance(spec, list):
@@ -2045,7 +2057,7 @@ class Fill(object):
         self.spec = spec
 
     def glomit(self, target, scope):
-        scope[MODE] = _fill
+        scope[MODE] = FILL
         return scope[glom](target, self.spec, scope)
 
     def fill(self, target):
@@ -2057,7 +2069,7 @@ class Fill(object):
         return '%s(%s)' % (cn, rpr)
 
 
-def _fill(target, spec, scope):
+def FILL(target, spec, scope):
     # TODO: register an operator or two for the following to allow
     # extension. This operator can probably be shared with the
     # upcoming traversal/remap feature.

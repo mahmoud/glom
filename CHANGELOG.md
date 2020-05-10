@@ -13,6 +13,21 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
+20.5.0
+------
+*(May 2, 2020)*
+
+* Added [delete()  and Delete()][delete], for deletion of keys and attributes
+* Added [Ref()][ref_spec] specifier type for recursive specs
+* Added [Group()][group_spec] for structural grouping, like a souped-up [bucketize][boltons_bucketize]
+* Some repr improvements
+* CLI and testing upgrades
+
+[delete]: https://glom.readthedocs.io/en/latest/api.html#glom.delete
+[ref_spec]: https://glom.readthedocs.io/en/latest/api.html#glom.Ref
+[group_spec]: https://glom.readthedocs.io/en/latest/api.html#glom.Group
+[boltons_bucketize]: https://boltons.readthedocs.io/en/latest/iterutils.html#boltons.iterutils.bucketize
+
 19.10.0
 -------
 *(October 29, 2019)*

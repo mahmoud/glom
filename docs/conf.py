@@ -32,13 +32,13 @@ pprint(os.environ)
 # -- Project information -----------------------------------------------------
 
 project = u'glom'
-copyright = u'2019, Mahmoud Hashemi'
+copyright = u'2020, Mahmoud Hashemi'
 author = u'Mahmoud Hashemi'
 
 # The short X.Y version
-version = u'19.10'
+version = u'20.5'
 # The full version, including alpha/beta/rc tags
-release = u'19.10.0'
+release = u'20.5.0'
 
 
 todo_add_to_theme_to_keep_menus_expanded = """

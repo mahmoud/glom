@@ -236,7 +236,7 @@ with a dict:
 Transform Tree
 --------------
 
-With an arbitrary depth tree, :data:`~glom.Ref` can be used to
+With an arbitrary depth tree, :class:`~glom.Ref` can be used to
 express a recursive spec.
 
 For example, this `etree2dicts` spec will recursively walk an `ElementTree`
@@ -255,7 +255,7 @@ Alternatively, say we only wanted to generate tuples of tag and children:
     etree2tuples = Fill(Ref('ElementTree', (T.tag, Iter(Ref('ElementTree')).all())))
 
 
-(Note also the use of :data:`~glom.Fill` mode to easily construct a tuple.)
+(Note also the use of :class:`~glom.Fill` mode to easily construct a tuple.)
 
 .. code-block:: html
 
