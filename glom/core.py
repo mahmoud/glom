@@ -153,9 +153,6 @@ class GlomError(Exception):
     def __repr__(self):
         return str(self)
 
-    def __getattr__(self, name):
-        return getattr(self.wrapped, name)
-
 
 class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
     """This :exc:`GlomError` subtype represents a failure to access an
