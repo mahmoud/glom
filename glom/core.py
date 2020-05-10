@@ -119,6 +119,9 @@ class GlomError(Exception):
     @classmethod
     def wrap(cls, exc):
         class GlomWrapError(type(exc), GlomError): pass
+        return GlomWrapError(*exc.args)
+        # this is another pattern, but doesn't work for C-defined exceptions
+        # (maybe if hasattr(sys.modules[type(exc).__module__], "__file__")?)
         exc2 = copy.copy(exc)
         exc2.__class__ = GlomWrapError
         return exc2
@@ -143,7 +146,9 @@ class GlomError(Exception):
             ["", trace.short_stack(scope)] + lines[-limit:]))
 
     def __str__(self):
-        return self.inner_format
+        if hasattr(self, "inner_format"):
+            return self.inner_format
+        return ""
 
     def __repr__(self):
         return str(self)
@@ -194,7 +199,9 @@ class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
         return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.part_idx)
 
     def __str__(self):
-        return GlomError.__str__(self) + ('got error: %r' % (self.exc))
+        return GlomError.__str__(self) + (
+            'could not access %r, part %r of %r, got error: %r'
+            % (self.path.values()[self.part_idx], self.part_idx, self.path, self.exc))
 
 
 class CoalesceError(GlomError):

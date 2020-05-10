@@ -1,22 +1,29 @@
-from glom import glom, S, Coalesce
+import traceback
+
+import pytest
+
+from glom import glom, S, Coalesce, GlomError
 from glom.trace import line_stack, short_stack, tall_stack
 
 
 from glom.tutorial import CONTACTS
 
 
+@pytest.mark.skip("used to inspect stack trace")
 def test_line_trace():
     stacklifier = ([{'data': S}],)
     scope = glom([1], stacklifier)[0]['data']
     raise Exception(line_stack(scope))
 
 
+@pytest.mark.skip("used to inspect stack trace")
 def test_short_trace():
     stacklifier = ([{'data': S}],)
     scope = glom([1], stacklifier)[0]['data']
     raise Exception(short_stack(scope))
 
 
+@pytest.mark.skip("used to inspect stack trace")
 def test_tall_trace():
     stacklifier = ([{'data': S}],)
     scope = glom([1], stacklifier)[0]['data']
@@ -44,4 +51,7 @@ SPEC = {'results': [{'id': 'id',
 
 
 def test_in_situ():
-    glom(CONTACTS, SPEC)
+    try:
+        glom(CONTACTS, SPEC)
+    except GlomError:
+        traceback.print_exc()
