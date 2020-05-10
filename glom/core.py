@@ -116,22 +116,39 @@ class GlomError(Exception):
     GlomError.
     """
     @classmethod
-    def from_scope(cls, scope):
-        # TODO: this could maybe be the __init__
-        ret = cls()
-        ret.scope = scope
-        return ret
+    def wrap(cls, exc):
+        class GlomWrapError(type(exc), GlomError): pass
+        exc2 = copy.copy(exc)
+        exc2.__class__ = GlomWrapError
+        return exc2
 
-    def finalize(self):
-        # ... walk up scope chain map
-        # then:
-        del self.scope
+    def _finalize(self, scope):
+        from . import trace
 
-    def __repr__(self):
-        pass
+        # tried MANY approaches here -- one problem pragmatically is
+        # that traceback module and sys.exc_info() see different
+        # stacks here -- maybe it is something to do with running
+        # under pytest
+        lines = traceback.format_exc().split("\n")
+        limit = 0
+        for line in reversed(lines):
+            if __file__ in line and "_glom" in line:
+                limit -= 1
+                break
+            limit += 1
+
+        self.short_stack = trace.short_stack(scope)
+        self.inner_format = ("\n".join(
+            ["", trace.short_stack(scope)] + lines[-limit:]))
 
     def __str__(self):
-        pass
+        return self.inner_format
+
+    def __repr__(self):
+        return str(self)
+
+    def __getattr__(self, name):
+        return getattr(self.wrapped, name)
 
 
 class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
@@ -176,8 +193,7 @@ class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
         return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.part_idx)
 
     def __str__(self):
-        return ('could not access %r, part %r of %r, got error: %r'
-                % (self.path.values()[self.part_idx], self.part_idx, self.path, self.exc))
+        return GlomError.__str__(self) + ('got error: %r' % (self.exc))
 
 
 class CoalesceError(GlomError):
@@ -1851,39 +1867,12 @@ def glom(target, spec, **kwargs):
                 raise
             ret = default
     except Exception as e:
-        class GlomWrapError(type(e)):
-            def __init__(self, scope, wrapped):
-                from . import trace
-
-                # tried MANY approaches here -- one problem pragmatically is
-                # that traceback module and sys.exc_info() see different
-                # stacks here -- maybe it is something to do with running
-                # under pytest
-                lines = traceback.format_exc().split("\n")
-                limit = 0
-                for line in reversed(lines):
-                    if __file__ in line and "_glom" in line:
-                        limit -= 1
-                        break
-                    limit += 1
-
-                self.short_stack = trace.short_stack(scope)
-                self.inner_format = ("\n".join(
-                    [trace.short_stack(scope)] + lines[-limit:]))
-
-            def __str__(self):
-                return self.inner_format
-
-            def __repr__(self):
-                return str(self)
-
-            def __getattr__(self, name):
-                return getattr(self.wrapped, name)
-
-        if not isinstance(GlomWrapError, GlomError):
-            GlomWrapError.__bases__ = GlomWrapError.__bases__ + (GlomError,)
-
-        err = GlomWrapError(scope[ROOT][ERROR_SCOPE], e)
+        if isinstance(e, GlomError):
+            err = e
+        else:
+            err = GlomError.wrap(e)
+        err._finalize(scope[ERROR_SCOPE])
+    print("ERRRRRRRR", err)
     if err:
         raise err
     return ret
