@@ -1242,19 +1242,22 @@ def _t_eval(target, _t, scope):
             try:
                 cur = getattr(cur, arg)
             except AttributeError as e:
-                raise PathAccessError(e, Path(_t), i // 2) from None
+                pae = PathAccessError(e, Path(_t), i // 2)
+                raise pae if not hasattr(pae, 'with_traceback') else pae.with_traceback(None)
         elif op == '[':
             try:
                 cur = cur[arg]
             except (KeyError, IndexError, TypeError) as e:
-                raise PathAccessError(e, Path(_t), i // 2) from None
+                pae = PathAccessError(e, Path(_t), i // 2)
+                raise pae if not hasattr(pae, 'with_traceback') else pae.with_traceback(None)
         elif op == 'P':
             # Path type stuff (fuzzy match)
             get = scope[TargetRegistry].get_handler('get', cur, path=t_path[2:i+2:2])
             try:
                 cur = get(cur, arg)
             except Exception as e:
-                raise PathAccessError(e, Path(_t), i // 2) from None
+                pae = PathAccessError(e, Path(_t), i // 2)
+                raise pae if not hasattr(pae, 'with_traceback') else pae.with_traceback(None)
         elif op == '(':
             args, kwargs = arg
             scope[Path] += t_path[2:i+2:2]
