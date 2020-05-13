@@ -12,19 +12,33 @@ from glom.tutorial import CONTACTS
 def test_line_trace():
     stacklifier = ([{'data': S}],)
     scope = glom([1], stacklifier)[0]['data']
-    line_stack(scope)
+    fmtd_stack = line_stack(scope)
+    assert fmtd_stack == '/tuple!list/list<0>/dict!int/S'
 
 
 def test_short_trace():
     stacklifier = ([{'data': S}],)
     scope = glom([1], stacklifier)[0]['data']
-    short_stack(scope)
-
+    fmtd_stack = short_stack(scope)
+    exp_lines = ["-> ([{'data': S}],)",
+                 "[1]",
+                 "-> [{'data': S}]",
+                 "-> {'data': S}",
+                 "1",
+                 "-> S"]
+    assert fmtd_stack.splitlines() == exp_lines
 
 def test_tall_trace():
     stacklifier = ([{'data': S}],)
     scope = glom([1], stacklifier)[0]['data']
-    tall_stack(scope)
+    fmtd_stack = tall_stack(scope)
+    exp_lines = ["-> ([{'data': S}],)",
+                 "[1]",
+                 "-> [{'data': S}]",
+                 "-> {'data': S}",
+                 "1",
+                 "-> S"]
+    assert fmtd_stack.splitlines() == exp_lines
 
 
 def _err(inp, depth=3):
