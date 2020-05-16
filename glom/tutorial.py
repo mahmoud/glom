@@ -224,7 +224,7 @@ They use parts of the data itself as a key. This we call data-driven assignment.
 The following example shows you a way to handle this situation.
 It extracts the moon count from a dictionary that has the planet names as a key.
 
-  >>> from glom import glom, T, merge, Iter, Coalesce
+  >>> from glom import glom, T, Merge, Iter, Coalesce
   >>> target = {
   ...    "pluto": {"moons": 6, "population": None},
   ...    "venus": {"population": {"aliens": 5}},
@@ -233,15 +233,16 @@ It extracts the moon count from a dictionary that has the planet names as a key.
   >>> spec = {
   ...     "moons": (
   ...          T.items(),
-  ...          Iter({T[0]: (T[1], Coalesce("moons", default=0))}).all(),
-  ...          merge,
+  ...          Iter({T[0]: (T[1], Coalesce("moons", default=0))}),
+  ...          Merge(),
   ...     )
   ... }
   >>> pprint(glom(target, spec))
   {'moons': {'pluto': 6, 'venus': 0, 'earth': 1}}
 
-Don't worry if you do not fully understand how this works at this point. If you
-would like to learn more, look up :class:`~glom.Iter()`, :data:`~glom.T`, or :class:`~glom.Merge` in the glom API reference.
+Don't worry if you do not fully understand how this works at this
+point. If you would like to learn more, look up :class:`~glom.Iter()`,
+:data:`~glom.T`, or :class:`~glom.Merge` in the glom API reference.
 
 True Python Native
 ==================
