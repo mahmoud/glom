@@ -215,6 +215,34 @@ You can see here we get the expected results, but say our target changes...
 
 Voila, the target can still be parsed and we can elegantly handle changes in our data formats.
 
+Data-Driven Assignment
+======================
+
+Quite often APIs deliver data in dictionaries without constant key values.
+They use parts of the data itself as a key. This we call data-driven assignment.
+
+The following example shows you a way to handle this situation.
+It extracts the moon count from a dictionary that has the planet names as a key.
+
+  >>> from glom import glom, T, Merge, Iter, Coalesce
+  >>> target = {
+  ...    "pluto": {"moons": 6, "population": None},
+  ...    "venus": {"population": {"aliens": 5}},
+  ...    "earth": {"moons": 1, "population": {"humans": 7700000000, "aliens": 1}},
+  ... }
+  >>> spec = {
+  ...     "moons": (
+  ...          T.items(),
+  ...          Iter({T[0]: (T[1], Coalesce("moons", default=0))}),
+  ...          Merge(),
+  ...     )
+  ... }
+  >>> pprint(glom(target, spec))
+  {'moons': {'earth': 1, 'pluto': 6, 'venus': 0}}
+
+Don't worry if you do not fully understand how this works at this
+point. If you would like to learn more, look up :class:`~glom.Iter()`,
+:data:`~glom.T`, or :class:`~glom.Merge` in the glom API reference.
 
 True Python Native
 ==================
@@ -256,7 +284,8 @@ a Contacts web service, like an address book, but backed by an
 ORM/database and compatible with web and mobile frontends.
 
 Let's create a Contact to familiarize ourselves with our test data:
-
+pri
+  >>> from glom.tutorial import *  # import the tutorial module members
   >>> contact = Contact('Julian',
   ...                   emails=[Email(email='jlahey@svtp.info')],
   ...                   location='Canada')
