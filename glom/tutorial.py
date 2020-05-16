@@ -228,7 +228,7 @@ It extracts the moon count from a dictionary that has the planet names as a key.
   >>> target = {
   ...    "pluto": {"moons": 6, "population": None},
   ...    "venus": {"population": {"aliens": 5}},
-  ...    "earth": {"moons": 1, "population": {"humans": 7_700_000_000, "aliens": 1}},
+  ...    "earth": {"moons": 1, "population": {"humans": 7700000000, "aliens": 1}},
   ... }
   >>> spec = {
   ...     "moons": (
