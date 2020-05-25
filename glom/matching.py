@@ -232,6 +232,7 @@ class _Bool(object):
             return self.children[0]._m_repr()
         return False
 
+    # TODO: make builtins look good: "float", not <class 'float'>
     def __repr__(self):
         child_reprs = [repr(c) for c in self.children]
         if self._m_repr():

@@ -291,3 +291,4 @@ def test_nested_struct():
 def test_repr():
     repr(GlomMatchError("uh oh"))
     repr(GlomTypeMatchError("uh oh {0}", dict))
+    assert repr(And(M == 1, float)) == "(M == 1) & float"
