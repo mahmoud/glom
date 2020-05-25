@@ -240,6 +240,10 @@ class _Bool(object):
 
 
 class And(_Bool):
+    """
+    Applies child specs one after the other to the target; if none of the
+    specs raises `GlomError`, returns the last result.
+    """
     OP = "&"
     __slots__ = ('children',)
 
@@ -259,6 +263,11 @@ class And(_Bool):
 
 
 class Or(_Bool):
+    """
+    Tries to apply the first child spec to the target, and return the result.
+    If `GlomError` is raised, try the next child spec until there are no
+    all child specs have been tried, then raise `GlomMatchError`.
+    """
     OP = "|"
     __slots__ = ('children',)
 
@@ -281,6 +290,13 @@ class Or(_Bool):
 
 
 class Not(_Bool):
+    """
+    Inverts the child -- child spec will be expected to raise
+    `GlomError`, in which case the target will be returned.
+
+    If the child spec does not raise `GlomError`, `GlomMatchError`
+    will be raised.
+    """
     __slots__ = ('child',)
 
     def __init__(self, child):
