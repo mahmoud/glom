@@ -241,6 +241,13 @@ class Not(_Bool):
 _M_OP_MAP = {'=': '==', '!': '!=', 'g': '>=', 'l': '<='}
 
 
+class _M_Subspec(object):
+    __slots__ = ('spec')
+
+    def __init__(self, spec):
+        self.spec = spec
+
+
 class _MType(object):
     """
     Similar to T, but for matching
@@ -248,8 +255,14 @@ class _MType(object):
     M == is an escape valve for comparisons with values that would otherwise
     be interpreted as specs by Match
     """
+    __slots__ = ('lhs', 'op', 'rhs')
+
     def __init__(self, lhs, op, rhs):
         self.lhs, self.op, self.rhs = lhs, op, rhs
+
+    def __call__(self, spec):
+        """wrap a sub-spec in order to apply comparison operators to the result"""
+        return _M_Subspec(spec)
 
     def __eq__(self, other):
         return _MType(self, '=', other)
@@ -288,6 +301,10 @@ class _MType(object):
             lhs = target
         if rhs is M:
             rhs = target
+        if type(lhs) is _M_Subspec:
+            lhs = scope[glom](target, lhs.spec, scope)
+        if type(rhs) is _M_Subspec:
+            rhs = scope[glom](target, rhs.spec, scope)
         matched = (
             (op == '=' and lhs == rhs) or
             (op == '!' and lhs != rhs) or

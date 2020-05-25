@@ -48,6 +48,13 @@ def test():
     Match(M > 0).verify(1.0)
 
 
+def test_spec_match():
+    """test that M __call__ can be used to wrap a subspec for comparison"""
+    target = {}
+    target['a'] = target
+    assert glom(target, M == M('a'))
+    
+
 def test_cruddy_json():
     _chk(
         Match({'int_id?': M & Auto(int) & (M > 0)}),
