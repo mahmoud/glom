@@ -231,7 +231,7 @@ def test_nested_struct():
         _defaults(save_as_new=False),
         Match({
             'rule_id': Or('', Regex(r'\d+')),
-            'rule_name': basestring,
+            'rule_name': str,
             'effect': Or('approve', 'custom_approvers'),
             'rule_approvers': _json([{'pk': int, 'level': int}]),
             'rule_data': _json([  # list of condition-objects
@@ -239,11 +239,11 @@ def test_nested_struct():
                     _defaults(value='null'),
                     Match({
                         'value': _json(
-                            Or(None, int, float, basestring, [int, float, basestring])),
+                            Or(None, int, float, str, [int, float, str])),
                         'field': Auto(int),  # id of row from FilterField
-                        'operator': basestring,  # corresponds to FilterOperator.display_name
+                        'operator': str,  # corresponds to FilterOperator.display_name
                     })))]),
-            'save_as_new': Or(basestring, bool),
+            'save_as_new': Or(str, bool),
         }))
 
     rule = dict(
