@@ -299,3 +299,35 @@ Will translate to the following tuples:
     >>> etree = ElementTree.fromstring(html_text)
     >>> glom(etree, etree2tuples)
     ('html', [('head', [('title', [])]), ('body', [('p', [])])])
+
+
+Stringify Parsed JSON
+---------------------
+
+Tree-walking with `Ref()` combines very powerfully with pattern matching
+from `Match()`.
+
+In this case, consider that we want to transform parsed JSON recursively
+such that all unicodes are converted to native strings.
+
+
+.. code-block:: python
+    glom(json.loads(data),
+        Ref('json',
+            Match(Or(
+                And(dict, {Ref('json'): Ref('json')}),
+                And(list, [Ref('json')]),
+                And(type(u''), Auto(str)),
+                object))))
+
+
+`Match()` above splits the `Ref()` evaluation into 4 cases:
+
+* on `dict`, use `Ref()` to recurse for all keys and values
+* on `list`, use `Ref()` to recurse on each item
+* on `type(u'')` -- py3 `str` or py2 `unicode` -- transform the target with `str`
+* for all other values, pass them through
+
+As motivation for why this might come up, attributes, class names,
+function names, and identifiers must be byte-strings in python 2 and
+unicode in python 3.

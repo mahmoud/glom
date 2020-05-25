@@ -5,7 +5,7 @@ import pytest
 from glom import glom, S, Literal, T, Merge, Fill, Let, Ref
 from glom.matching import (
     Match, M, GlomMatchError, And, Or, Not, DEFAULT, Optional, Required, Regex)
-from glom.core import Auto, SKIP
+from glom.core import Auto, SKIP, Ref
 
 
 def _chk(spec, good_target, bad_target):
@@ -226,11 +226,29 @@ def test_clamp():
     assert glom(range(10), [(M < 7) | Literal(SKIP)]) == [0, 1, 2, 3, 4, 5, 6]
 
 
+def test_json_ref():
+    assert glom(
+        {'a': {'b': [0, 1]}},
+        Ref('json',
+            Match(Or(
+                And(dict, {Ref('json'): Ref('json')}),
+                And(list, [Ref('json')]),
+                And(0, Auto(lambda t: None)),
+                object)))) == {'a': {'b': [None, 1]}}
+
+
 def test_nested_struct():
     """adapted from use case"""
     import json
 
-    _json = lambda spec: Auto((json.loads, Match(spec)))
+    _json = lambda spec: Auto((json.loads, _str_json, Match(spec)))
+
+    _str_json = Ref('json',
+        Match(Or(
+            And(dict, {Ref('json'): Ref('json')}),
+            And(list, [Ref('json')]),
+            And(type(u''), Auto(str)),
+            object)))
 
     _defaults = lambda **kw: Merge(Fill([T]), init=lambda: dict(kw))
 

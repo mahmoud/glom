@@ -53,7 +53,72 @@ class GlomTypeMatchError(GlomMatchError, TypeError): pass
 
 class Match(object):
     """
-    switch to "match" mode
+    Match mode of glom provides pattern matching functionality.
+
+    Patterns are evaluated similar to `schema`_:
+    * Specs are evaluated (this always has highest precendence in glom)
+    * a type matches instances of that type
+    * dicts, lists, tuples, sets, and frozensets are matched recursively
+    * any other values are compared to the target with ==
+
+    By itself, this allows to assert that structures match certain patterns.
+
+    For example, let's say we are loading data of the form:
+
+    >>> input =[
+    ... {'id': 1, 'email': 'alice@example.com'},
+    ... {'id': 2, 'email': 'bob@example.com'}]
+
+    Glom match can be used to ensure ths input is in its expected form:
+
+    >>> glom(input, Match([{'id': int, 'email': str}]))
+
+    This ensures that `input` is a list of dicts, each of which
+    has exactly two keys `'id'` and `'email'` whose values are
+    an `int` and `str`.
+
+    With a more complex match schema, we can be more precise:
+
+    >>> glom(input, Match([{'id': And(M > 0, int), 'email': Regex('[^@]+@[^@]+')}]))
+
+    :class:`~glom.And` allows multiple conditions to be applied
+    (:class:`~glom.Or` and :class:`~glom.Not` are also available.)
+
+    :class:`~glom.Regex` evaluates the passed pattern against the target value.
+    In this case, we check that an email has exactly one `@`,
+    at least one character before the `@` and at least one character
+    after the `@`.
+
+    Finally, :attr:`~glom.M` is a stand-in for the current target, similar to :attr:`~glom.T`.
+
+    Note that the four rules above imply that `object` is a match-anything pattern.
+    Because `isinstance(val, object)` is true for all values in Python,
+    `object` is a useful stopping case.  For instance, if we wanted to allow
+    additional keys and values in the user dict above we could add `object` as a
+    generic pass through:
+
+    >>> glom(input,
+             Match([{'id': int, 'email': str, object: object}])
+
+    In addition to being useful as a structure validator on its own,
+    :class:`~glom.Match` can be embedded inside other specs in order
+    to add `pattern matching`_ functionality.
+
+    As a simple example, let's say we have a list of ids, some of which
+    are `None` and we want to filter those out:
+
+    >>> ids = [1, None, 2, 3, None]
+
+    >>> glom(ids, [Or(And(M == None, SKIP), T)])
+    [1, 2, 3]
+
+    The glom evaluation above has two branches.  First,
+    if the current target is equal to None, :attr:`~glom.SKIP`
+    will be returned.  Otherwise, the :class:`~glom.Or` will
+    try the other path, which always returns the target itself
+
+    .. _schema: https://github.com/keleshev/schema
+    .. _pattern matching: https://en.wikipedia.org/wiki/Pattern_matching
     """
     def __init__(self, spec):
         self.spec = spec
@@ -380,14 +445,12 @@ def _precedence(match):
     if type(match) in (Required, Optional):
         match = match.key
     if match is DEFAULT:
-        return 5
-    if type(match) in (list, tuple, set, frozenset, dict):
         return 4
-    if isinstance(match, type):
+    if type(match) in (list, tuple, set, frozenset, dict):
         return 3
-    if hasattr(match, "glomit"):
+    if isinstance(match, type):
         return 2
-    if callable(match):
+    if hasattr(match, "glomit"):
         return 1
     return 0  # == match
 
@@ -403,20 +466,22 @@ def _handle_dict(target, spec, scope):
         key for key in spec_keys
         if _precedence(key) == 0 and type(key) != Optional
         or type(key) == Required}
+    result = {}
     for key, val in target.items():
         for spec_key in spec_keys:
             try:
-                scope[glom](key, spec_key, scope)
+                key = scope[glom](key, spec_key, scope)
             except GlomMatchError:
                 pass
             else:
-                scope[glom](val, spec[spec_key], scope)
+                result[key] = scope[glom](val, spec[spec_key], scope)
                 required.discard(spec_key)
                 break
         else:
             raise GlomMatchError("key {!r} didn't match any of {!r}", key, spec_keys)
     if required:
         raise GlomMatchError("missing keys {} from value {}", required, target)
+    return result
 
 
 def _glom_match(target, spec, scope):
@@ -424,14 +489,15 @@ def _glom_match(target, spec, scope):
         if not isinstance(target, spec):
             raise GlomTypeMatchError(type(target), spec)
     elif isinstance(spec, dict):
-        _handle_dict(target, spec, scope)
+        return _handle_dict(target, spec, scope)
     elif isinstance(spec, (list, set, frozenset)):
         if not isinstance(target, type(spec)):
             raise GlomTypeMatchError(type(target), type(spec))
+        result = []
         for item in target:
             for child in spec:
                 try:
-                    scope[glom](item, child, scope)
+                    result.append(scope[glom](item, child, scope))
                     break
                 except GlomMatchError as e:
                     last_error = e
@@ -442,13 +508,16 @@ def _glom_match(target, spec, scope):
                 # NOTE: unless error happens above, break will skip else branch
                 # so last_error will have been assigned
                 raise last_error
+        return result
     elif isinstance(spec, tuple):
         if not isinstance(target, tuple):
             raise GlomTypeMatchError(type(target), tuple)
         if len(target) != len(spec):
             raise GlomMatchError("{!r} does not match {!r}", target, spec)
+        result = []
         for sub_target, sub_spec in zip(target, spec):
-            scope[glom](sub_target, sub_spec, scope)
+            result.append(scope[glom](sub_target, sub_spec, scope))
+        return tuple(result)
     elif target != spec:
         raise GlomMatchError("{!r} does not match {!r}", target, spec)
     return target
