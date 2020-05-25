@@ -4,7 +4,8 @@ import pytest
 
 from glom import glom, S, Literal, T, Merge, Fill, Let, Ref
 from glom.matching import (
-    Match, M, GlomMatchError, And, Or, Not, DEFAULT, Optional, Required, Regex)
+    Match, M, GlomMatchError, GlomTypeMatchError, And, Or, Not,
+    DEFAULT, Optional, Required, Regex)
 from glom.core import Auto, SKIP, Ref
 
 
@@ -284,3 +285,8 @@ def test_nested_struct():
     glom(rule, rule_spec)
     rule['save_as_new'] = 'true'
     glom(rule, rule_spec)
+
+
+def test_repr():
+    repr(GlomMatchError("uh oh"))
+    repr(GlomTypeMatchError("uh oh {0}", dict))

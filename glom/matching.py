@@ -44,11 +44,14 @@ class GlomMatchError(GlomError):
         super(GlomMatchError, self).__init__(fmt, *args)
 
     def __repr__(self):
-        fmt, args = self.args
+        fmt, args = self.args[0], self.args[1:]
         return "{}({})".format(self.__class__.__name__, fmt.format(*args))
 
 
-class GlomTypeMatchError(GlomMatchError, TypeError): pass
+class GlomTypeMatchError(GlomMatchError, TypeError):
+    def __init__(self, actual, expected):
+        super(GlomTypeMatchError, self).__init__(
+            "expected type {!r}, not {!r}", expected, actual)
 
 
 class Match(object):
