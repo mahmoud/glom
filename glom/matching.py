@@ -74,8 +74,8 @@ class Match(object):
 
     Glom match can be used to ensure ths input is in its expected form:
 
-    >>> glom(input, Match([{'id': int, 'email': str}])) == [
-        {'id': 1, 'email': 'alice@example.com'}, {'id': 2, 'email': 'bob@example.com'}]
+    >>> glom(input, Match([{'id': int, 'email': str}])) == \\
+    ...     [{'id': 1, 'email': 'alice@example.com'}, {'id': 2, 'email': 'bob@example.com'}]
     True
 
     This ensures that `input` is a list of dicts, each of which
@@ -84,8 +84,8 @@ class Match(object):
 
     With a more complex match schema, we can be more precise:
 
-    >>> glom(input, Match([{'id': And(M > 0, int), 'email': Regex('[^@]+@[^@]+')}])) == [
-        {'id': 1, 'email': 'alice@example.com'}, {'id': 2, 'email': 'bob@example.com'}]
+    >>> glom(input, Match([{'id': And(M > 0, int), 'email': Regex('[^@]+@[^@]+')}])) == \\
+    ...     [{'id': 1, 'email': 'alice@example.com'}, {'id': 2, 'email': 'bob@example.com'}]
     True
 
     :class:`~glom.And` allows multiple conditions to be applied
@@ -105,8 +105,8 @@ class Match(object):
     generic pass through:
 
     >>> glom([{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}],
-             Match([{'id': int, 'email': str, object: object}]) == [
-        {'id': 1, 'email': 'alice@example.com', 'extra': 'val'}]
+             Match([{'id': int, 'email': str, object: object}]) == \\
+    ...     [{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}]
     True
 
     In addition to being useful as a structure validator on its own,
