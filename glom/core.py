@@ -109,13 +109,10 @@ class GlomError(Exception):
     """
     @classmethod
     def wrap(cls, exc):
-        class GlomWrapError(type(exc), GlomError): pass
-        return GlomWrapError(*exc.args)
-        # this is another pattern, but doesn't work for C-defined exceptions
-        # (maybe if hasattr(sys.modules[type(exc).__module__], "__file__")?)
-        exc2 = copy.copy(exc)
-        exc2.__class__ = GlomWrapError
-        return exc2
+        # this approach to wrapping errors works for exceptions
+        # defined in pure-python as well as C
+        exc_wrapper_type = type("GlomWrapError", (type(exc), GlomError), {})
+        return exc_wrapper_type(*exc.args)
 
     def _finalize(self, scope):
         from . import trace
