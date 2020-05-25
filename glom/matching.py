@@ -74,6 +74,7 @@ class Match(object):
 
     Glom match can be used to ensure ths input is in its expected form:
 
+    >>> str = type('')
     >>> glom(input, Match([{'id': int, 'email': str}])) == \\
     ...     [{'id': 1, 'email': 'alice@example.com'}, {'id': 2, 'email': 'bob@example.com'}]
     True
@@ -104,7 +105,7 @@ class Match(object):
     additional keys and values in the user dict above we could add `object` as a
     generic pass through:
 
-    >>> glom([{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}],
+    >>> glom([{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}],\\
              Match([{'id': int, 'email': str, object: object}]) == \\
     ...     [{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}]
     True
