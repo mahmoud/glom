@@ -241,25 +241,21 @@ class _Bool(object):
 
 class And(_Bool):
     OP = "&"
-    __slots__ = ('children', 'chain')
+    __slots__ = ('children',)
 
     def __init__(self, *children):
-        self.children, self.chain = children, False
+        self.children = children
 
     def glomit(self, target, scope):
         # all children must match without exception
         result = target  # so that And() == True, similar to all([]) == True
         for child in self.children:
             result = scope[glom](target, child, scope)
-            if self.chain:
-                target = result
         return result
 
     def __and__(self, other):
         # reduce number of layers of spec
-        and_ = And(*(self.children + (other,)))
-        and_.chain = self.chain
-        return and_
+        return And(*(self.children + (other,)))
 
 
 class Or(_Bool):
@@ -325,10 +321,25 @@ class _M_Subspec(object):
 
 class _MType(object):
     """
-    Similar to T, but for matching
+    :attr:`~glom.M` is similar to :attr:`~glom.T`, a stand-in for the current target
 
-    M == is an escape valve for comparisons with values that would otherwise
-    be interpreted as specs by Match
+    Where :attr:`~glom.T` allows for attribute and key access and method calls,
+    :attr:`~glom.M` allows for comparison operators.
+
+    If a comparison succeeds, the target is returned unchanged.
+    If a comparison fails, :class:`~glom.GlomMatchError` is thrown.
+
+    Some examples:
+
+    >>> glom(1, M > 0)
+    1
+    >>> glom(0, M == 0)
+    0
+    >>> glom('a', M != 'b')
+    'a'
+
+    For convenience, `&` and `|` operators are overloaded to construct :attr:`~glom.And`
+    and :attr:`~glom.Or` instances.
     """
     __slots__ = ('lhs', 'op', 'rhs')
 
@@ -358,9 +369,7 @@ class _MType(object):
         return _MType(self, 'l', other)
 
     def __and__(self, other):
-        and_ = And(self, other)
-        and_.chain = True
-        return and_
+        return And(self, other)
 
     __rand__ = __and__
 

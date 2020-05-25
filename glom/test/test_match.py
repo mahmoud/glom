@@ -58,13 +58,14 @@ def test_spec_match():
 
 def test_cruddy_json():
     _chk(
-        Match({'int_id?': M & Auto(int) & (M > 0)}),
+        Match({'int_id?': Auto((int, (M > 0)))}),
         {'int_id?': '1'},
         {'int_id?': '-1'})
     # embed a build
     squished_json = Match({
-        'smooshed_json': M & Auto(json.loads) & {
-            'sub': M & Auto(json.loads) & 1 }
+        'smooshed_json': Auto(
+            (json.loads, Match({
+                'sub': Auto((json.loads, M == 1))})))
         })
     glom({'smooshed_json': json.dumps({'sub': json.dumps(1)})}, squished_json)
 
