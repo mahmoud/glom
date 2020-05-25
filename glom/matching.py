@@ -72,6 +72,7 @@ class Match(object):
     Glom match can be used to ensure ths input is in its expected form:
 
     >>> glom(input, Match([{'id': int, 'email': str}]))
+    [{'id': 1, 'email': 'alice@example.com'}, {'id': 2, 'email': 'bob@example.com'}]
 
     This ensures that `input` is a list of dicts, each of which
     has exactly two keys `'id'` and `'email'` whose values are
@@ -80,6 +81,7 @@ class Match(object):
     With a more complex match schema, we can be more precise:
 
     >>> glom(input, Match([{'id': And(M > 0, int), 'email': Regex('[^@]+@[^@]+')}]))
+    [{'id': 1, 'email': 'alice@example.com'}, {'id': 2, 'email': 'bob@example.com'}]
 
     :class:`~glom.And` allows multiple conditions to be applied
     (:class:`~glom.Or` and :class:`~glom.Not` are also available.)
@@ -97,8 +99,9 @@ class Match(object):
     additional keys and values in the user dict above we could add `object` as a
     generic pass through:
 
-    >>> glom(input,
+    >>> glom([{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}],
              Match([{'id': int, 'email': str, object: object}])
+    [{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}]
 
     In addition to being useful as a structure validator on its own,
     :class:`~glom.Match` can be embedded inside other specs in order
