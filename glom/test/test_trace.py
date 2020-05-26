@@ -8,6 +8,17 @@ from glom.trace import line_stack, short_stack, tall_stack
 
 from glom.tutorial import CONTACTS
 
+@pytest.mark.skip
+def test_trace_basic():
+    try:
+        glom({}, 'a')
+    except GlomError as ge:
+        _ge = ge
+        fmtd = traceback.format_exc()
+        import pdb;pdb.set_trace()
+        raise
+    else:
+        raise RuntimeError()
 
 def test_line_trace():
     stacklifier = ([{'data': S}],)

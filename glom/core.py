@@ -115,12 +115,18 @@ class GlomError(Exception):
         return exc_wrapper_type(*exc.args)
 
     def _finalize(self, scope):
+        # rando errors get two stacks, GlomErrors get one
         from . import trace
 
         # tried MANY approaches here -- one problem pragmatically is
         # that traceback module and sys.exc_info() see different
         # stacks here -- maybe it is something to do with running
         # under pytest
+
+        parent_exc_type = self.__class__.mro()[0]
+        is_glom_wrap_error = parent_exc_type.__name__ == 'GlomWrapError'
+        is_orig_glom_error = issubclass(parent_exc_type, GlomError)
+
         lines = traceback.format_exc().split("\n")
         limit = 0
         for line in reversed(lines):
@@ -130,8 +136,10 @@ class GlomError(Exception):
             limit += 1
 
         self.short_stack = trace.short_stack(scope)
-        self.inner_format = ("\n".join(
-            ["", trace.short_stack(scope)] + lines[-limit:]))
+        if_lines = ["", self.short_stack]
+        #if not is_orig_glom_error:
+        if_lines.extend(lines[-limit:])
+        self.inner_format = "\n".join(if_lines)
 
     def __str__(self):
         if hasattr(self, "inner_format"):
@@ -1231,6 +1239,7 @@ def _t_eval(target, _t, scope):
         cur = scope
     else:
         raise ValueError('TType instance with invalid root object')
+    pae = None
     while i < len(t_path):
         op, arg = t_path[i], t_path[i + 1]
         if type(arg) in (Spec, TType, Literal):
@@ -1240,13 +1249,11 @@ def _t_eval(target, _t, scope):
                 cur = getattr(cur, arg)
             except AttributeError as e:
                 pae = PathAccessError(e, Path(_t), i // 2)
-                raise pae if not hasattr(pae, 'with_traceback') else pae.with_traceback(None)
         elif op == '[':
             try:
                 cur = cur[arg]
             except (KeyError, IndexError, TypeError) as e:
                 pae = PathAccessError(e, Path(_t), i // 2)
-                raise pae if not hasattr(pae, 'with_traceback') else pae.with_traceback(None)
         elif op == 'P':
             # Path type stuff (fuzzy match)
             get = scope[TargetRegistry].get_handler('get', cur, path=t_path[2:i+2:2])
@@ -1254,7 +1261,6 @@ def _t_eval(target, _t, scope):
                 cur = get(cur, arg)
             except Exception as e:
                 pae = PathAccessError(e, Path(_t), i // 2)
-                raise pae if not hasattr(pae, 'with_traceback') else pae.with_traceback(None)
         elif op == '(':
             args, kwargs = arg
             scope[Path] += t_path[2:i+2:2]
@@ -1265,6 +1271,8 @@ def _t_eval(target, _t, scope):
             # if args to the call "reset" their path
             # e.g. "T.a" should mean the same thing
             # in both of these specs: T.a and T.b(T.a)
+        if pae:
+            raise pae
         i += 2
     return cur
 
