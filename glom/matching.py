@@ -1,25 +1,5 @@
 """
-Contains code associated with implementing match specs
-
-match mode tends to build expression trees by conjoining
-together matches with And / &, Or / |
-
-a "mode" provides new definitions for the meaning of
-basic python data structures inside the glom spec
-
-example use cases:
-
-filter list on condition (e.g. >= 10)
-[Coalesce(Match(int & (M >= 10)), default=SKIP)]
-
-ensure that dictionary values are all strings
-Match({DEFAULT: str})
-
-2 syntaxes for combining expressions:
-
-And(int, M > 0)
-M & int & (M > 0)
-
+Contains the code for match-mode, and match-mode adjacent helper Specs
 """
 from __future__ import unicode_literals
 
