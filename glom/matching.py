@@ -135,8 +135,8 @@ class Match(object):
 
     >>> ids = [1, None, 2, 3, None]
 
-    >>> from glom import SKIP
-    >>> glom(ids, [Or(And(M == None, SKIP), T)])
+    >>> from glom import SKIP, Literal
+    >>> glom(ids, [Or(And(M == None, Literal(SKIP)), T)])
     [1, 2, 3]
 
     The glom evaluation above has two branches.  First,
