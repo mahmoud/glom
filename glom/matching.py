@@ -110,6 +110,22 @@ class Match(object):
     ...     [{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}]
     True
 
+    The fact that `{object: object}` will match any dictionary exposes
+    the subtlety in dictionary evaluation.
+
+    For Python 3.6+ where dictionaries are ordered, keys in the target
+    are matched against keys in the spec in their insertion order.
+
+    By default, value match keys are required, and other keys
+    are optional.  For example, `'id'` and `'email'` above are
+    required because they are matched via `==`.  If either was
+    not present, it would raise `GlomMatchError`.  `object` however
+    is matched with `isinstance()`; since it is not an value-match
+    comparison, it is not required.
+
+    This default behavior can be modified with :class:`~glom.Required`
+    and :class:`~glom.Optional`.
+
     In addition to being useful as a structure validator on its own,
     :class:`~glom.Match` can be embedded inside other specs in order
     to add `pattern matching`_ functionality.
@@ -434,15 +450,21 @@ _MISSING = make_sentinel('MISSING')
 
 class Optional(object):
     """
-    mark a key as optional in a dictionary
+    Used as a `dict` key in `Match()` mode,
+    marks that a value match key which would otherwise
+    be required is optional and should not raise
+    `GlomMatchError` even if no keys match.
 
-    by default all non-exact-match type keys are optional
+    For example, `{Optional("name", default=""): str}`
+    would match `{"name": "alice"}` and also `{}`.
+
+    (In the case of `{}`, the result would be `{"name": ""}`)
     """
-    __slots__ = ('key',)
+    __slots__ = ('key', 'default')
 
-    def __init__(self, key):
+    def __init__(self, key, default=_MISSING):
         assert _precedence(key) == 0, "key must be == match"
-        self.key = key
+        self.key, self.default = key, default
 
     def glomit(self, target, scope):
         if target != self.key:
@@ -454,14 +476,23 @@ class Optional(object):
 
 class Required(object):
     """
-    mark a key as required in a dictionary
+    Used as a `dict` key in `Match()` mode,
+    marks that a non value match key which would otherwise
+    not be required should raise `GlomMatchError` if at least
+    one key in the target does not match. 
 
-    by default, only exact-match type keys are required
+    For example, `{object: object}` will match any
+    `dict`, including `{}`.  Because `object` is a type,
+    it is not an error by default if no keys match.
+
+    `{Required(object): object}` will not match `{}`,
+    because the `Required()` means `GlomMatchError` will
+    be raised if there isn't at least one key.
     """
     __slots__ = ('key',)
 
     def __init__(self, key):
-        assert _precedence(key) != 0, "== match keys are already required"
+        assert _precedence(key) != 0, "== keys are already required"
         self.key = key
 
     def glomit(self, target, scope):
@@ -502,7 +533,9 @@ def _handle_dict(target, spec, scope):
         key for key in spec_keys
         if _precedence(key) == 0 and type(key) != Optional
         or type(key) == Required}
-    result = {}
+    result = {  # pre-load result with defaults
+        key.key: key.default for key in spec_keys
+        if type(key) is Optional and key.default is not _MISSING}
     for key, val in target.items():
         for spec_key in spec_keys:
             try:

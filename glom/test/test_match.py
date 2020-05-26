@@ -252,26 +252,20 @@ def test_nested_struct():
             And(type(u''), Auto(str)),
             object)))
 
-    _defaults = lambda **kw: Merge(Fill([T]), init=lambda: dict(kw))
-
-    rule_spec = (
-        _defaults(save_as_new=False),
-        Match({
-            'rule_id': Or('', Regex(r'\d+')),
-            'rule_name': str,
-            'effect': Or('approve', 'custom_approvers'),
-            'rule_approvers': _json([{'pk': int, 'level': int}]),
-            'rule_data': _json([  # list of condition-objects
-                Auto((
-                    _defaults(value='null'),
-                    Match({
-                        'value': _json(
-                            Or(None, int, float, str, [int, float, str])),
-                        'field': Auto(int),  # id of row from FilterField
-                        'operator': str,  # corresponds to FilterOperator.display_name
-                    })))]),
-            'save_as_new': Or(str, bool),
-        }))
+    rule_spec = Match({
+        'rule_id': Or('', Regex(r'\d+')),
+        'rule_name': str,
+        'effect': Or('approve', 'custom_approvers'),
+        'rule_approvers': _json([{'pk': int, 'level': int}]),
+        'rule_data': _json([  # list of condition-objects
+            {
+                Optional('value', 'null'): _json(
+                    Or(None, int, float, str, [int, float, str])),
+                'field': Auto(int),  # id of row from FilterField
+                'operator': str,  # corresponds to FilterOperator.display_name
+            }]),
+        Optional('save_as_new', False): Or(str, bool),
+    })
 
     rule = dict(
         rule_id='1',
