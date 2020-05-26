@@ -105,8 +105,8 @@ class Match(object):
     additional keys and values in the user dict above we could add `object` as a
     generic pass through:
 
-    >>> glom([{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}],\\
-             Match([{'id': int, 'email': str, object: object}]) == \\
+    >>> input = [{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}]
+    >>> glom(input, Match([{'id': int, 'email': str, object: object}]) == \\
     ...     [{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}]
     True
 
@@ -172,6 +172,14 @@ _RE_VALID_FUNCS = set((_RE_FULLMATCH, None, re.search, re.match))
 _RE_FUNC_ERROR = ValueError("'func' must be one of %s" % (", ".join(
     sorted(e and e.__name__ or "None" for e in _RE_VALID_FUNCS))))
 
+_RE_TYPES = ()
+try:   re.match(u"", u"")
+except Exception: pass
+else:  _RE_TYPES += (type(u""),)
+try:   re.match(b"", b"")
+except Exception: pass
+else:  _RE_TYPES += (type(b""),)
+
 
 class Regex(object):
     """
@@ -202,11 +210,12 @@ class Regex(object):
         self.match_func, self.pattern = match_func, pattern
 
     def glomit(self, target, scope):
-        if type(target) is not str:
-            raise GlomMatchError("target not a string")
+        if type(target) not in _RE_TYPES:
+            raise GlomMatchError(
+                "{!r} not valid as a Regex target -- expected {!r}", type(target), _RE_TYPES)
         match = self.match_func(target)
         if not match:
-            raise GlomMatchError("target did not match pattern", target, self.pattern)
+            raise GlomMatchError("target did not match pattern {!r}", self.pattern)
         scope.update(match.groupdict())
         return target
 
@@ -424,8 +433,8 @@ class _MType(object):
     1
     >>> glom(0, M == 0)
     0
-    >>> glom('a', M != 'b')
-    'a'
+    >>> glom('a', M != 'b') == 'a'
+    True
 
     :attr:`~glom.M` by itself evaluates the current target for truthiness.
     For example, `M | Literal(None)` is a simple idiom for normalizing all falsey values to None:

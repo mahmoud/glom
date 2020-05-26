@@ -178,6 +178,8 @@ def test_sample():
 
 def test_regex():
     assert glom('abc', (Regex('(?P<test>.*)'), S['test'])) == 'abc'
+    with pytest.raises(GlomMatchError):
+        glom(1, Regex('1'))
 
 
 def test_ternary():
