@@ -135,6 +135,7 @@ class Match(object):
 
     >>> ids = [1, None, 2, 3, None]
 
+    >>> from glom import SKIP
     >>> glom(ids, [Or(And(M == None, SKIP), T)])
     [1, 2, 3]
 
@@ -447,6 +448,7 @@ class _MType(object):
     and :attr:`~glom.Or` instances.
 
     >>> glom(1.0, (M > 0) & float)
+    1.0
 
     A note on the limitations of operator overloading:
 
@@ -459,6 +461,10 @@ class _MType(object):
     ...
     TypeError: unsupported operand type(s) for &: 'int' and 'type'
 
+    Also, because ternary comparisons (`1 < M < 5`) are implemented
+    via short-circuiting evaluation, they cannot be captured by `M`.
+    For `1 < M < 5`, the Python VM evaluates `1 < M` for truthiness;
+    if `1 < M` is truthy the complete expression evaluates to `M < 5`.
     """
     __slots__ = ()
 
