@@ -439,6 +439,7 @@ class _MType(object):
     :attr:`~glom.M` by itself evaluates the current target for truthiness.
     For example, `M | Literal(None)` is a simple idiom for normalizing all falsey values to None:
 
+    >>> from glom import Literal
     >>> glom([0, False, "", None], [M | Literal(None)])
     [None, None, None, None]
 
