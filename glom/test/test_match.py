@@ -109,6 +109,10 @@ def test_reprs():
     repr(And(1, 2))
     repr(Or(1, 2))
     repr(Not(1))
+    repr(GlomMatchError("uh oh"))
+    repr(GlomTypeMatchError("uh oh {0}", dict))
+    assert repr(And(M == 1, float)) == "(M == 1) & float"
+    assert repr(eval(repr(And(M == 1, float)))) == "(M == 1) & float"
 
 
 def test_shortcircuit():
@@ -280,9 +284,3 @@ def test_nested_struct():
     glom(rule, rule_spec)
     rule['save_as_new'] = 'true'
     glom(rule, rule_spec)
-
-
-def test_repr():
-    repr(GlomMatchError("uh oh"))
-    repr(GlomTypeMatchError("uh oh {0}", dict))
-    assert repr(And(M == 1, float)) == "(M == 1) & float"

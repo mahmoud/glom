@@ -228,6 +228,18 @@ in a dict in match mode
 DEFAULT.glomit = lambda target, scope: target
 
 
+#TODO: combine this with other functionality elsewhere?
+def _bool_child_repr(child):
+    if child is M:
+        return repr(child)
+    if hasattr(child, '__module__') and child.__module__ in (
+        'builtins', '__builtin__', '__builtins__'):
+        return child.__name__
+    if isinstance(child, _MExpr):
+        return "(" + repr(child) + ")"
+    return repr(child)
+
+
 class _Bool(object):
     def __and__(self, other):
         return And(self, other)
@@ -242,7 +254,7 @@ class _Bool(object):
         """should this Or() repr as M |?"""
         if not self.children:
             return False
-        if isinstance(self.children[0], _MType):
+        if isinstance(self.children[0], (_MType, _MExpr)):
             return True
         if type(self.children[0]) in (And, Or, Not):
             return self.children[0]._m_repr()
@@ -250,9 +262,9 @@ class _Bool(object):
 
     # TODO: make builtins look good: "float", not <class 'float'>
     def __repr__(self):
-        child_reprs = [repr(c) for c in self.children]
+        child_reprs = [_bool_child_repr(c) for c in self.children]
         if self._m_repr():
-            return "(" + (") {} (".format(self.OP)).join(child_reprs) + ")"
+            return " {} ".format(self.OP).join(child_reprs)
         return self.__class__.__name__ + "(" + ", ".join(child_reprs) + ")"
 
 
@@ -352,54 +364,11 @@ class _M_Subspec(object):
         self.spec = spec
 
 
-class _MType(object):
-    """
-    :attr:`~glom.M` is similar to :attr:`~glom.T`, a stand-in for the current target
-
-    Where :attr:`~glom.T` allows for attribute and key access and method calls,
-    :attr:`~glom.M` allows for comparison operators.
-
-    If a comparison succeeds, the target is returned unchanged.
-    If a comparison fails, :class:`~glom.GlomMatchError` is thrown.
-
-    Some examples:
-
-    >>> glom(1, M > 0)
-    1
-    >>> glom(0, M == 0)
-    0
-    >>> glom('a', M != 'b')
-    'a'
-
-    For convenience, `&` and `|` operators are overloaded to construct :attr:`~glom.And`
-    and :attr:`~glom.Or` instances.
-    """
+class _MExpr(object):
     __slots__ = ('lhs', 'op', 'rhs')
 
     def __init__(self, lhs, op, rhs):
         self.lhs, self.op, self.rhs = lhs, op, rhs
-
-    def __call__(self, spec):
-        """wrap a sub-spec in order to apply comparison operators to the result"""
-        return _M_Subspec(spec)
-
-    def __eq__(self, other):
-        return _MType(self, '=', other)
-
-    def __ne__(self, other):
-        return _MType(self, '!', other)
-
-    def __gt__(self, other):
-        return _MType(self, '>', other)
-
-    def __lt__(self, other):
-        return _MType(self, '<', other)
-
-    def __ge__(self, other):
-        return _MType(self, 'g', other)
-
-    def __le__(self, other):
-        return _MType(self, 'l', other)
 
     def __and__(self, other):
         return And(self, other)
@@ -428,21 +397,104 @@ class _MType(object):
             (op == '>' and lhs > rhs) or
             (op == '<' and lhs < rhs) or
             (op == 'g' and lhs >= rhs) or
-            (op == 'l' and lhs <= rhs) or
-            (op is None and target)  # M
+            (op == 'l' and lhs <= rhs)
         )
         if matched:
             return target
         raise GlomMatchError("{!r} {} {!r}", lhs, _M_OP_MAP.get(op, op), rhs)
 
     def __repr__(self):
-        if self is M:
-            return "M"
         op = _M_OP_MAP.get(self.op, self.op)
         return "{!r} {} {!r}".format(self.lhs, op, self.rhs)
 
 
-M = _MType(None, None, None)
+class _MType(object):
+    """
+    :attr:`~glom.M` is similar to :attr:`~glom.T`, a stand-in for the current target
+
+    Where :attr:`~glom.T` allows for attribute and key access and method calls,
+    :attr:`~glom.M` allows for comparison operators.
+
+    If a comparison succeeds, the target is returned unchanged.
+    If a comparison fails, :class:`~glom.GlomMatchError` is thrown.
+
+    Some examples:
+
+    >>> glom(1, M > 0)
+    1
+    >>> glom(0, M == 0)
+    0
+    >>> glom('a', M != 'b')
+    'a'
+
+    :attr:`~glom.M` by itself evaluates the current target for truthiness.
+    For example, `M | Literal(None)` is a simple idiom for normalizing all falsey values to None:
+
+    >>> glom([0, False, "", None], [M | Literal(None)])
+    [None, None, None, None]
+
+    For convenience, `&` and `|` operators are overloaded to construct :attr:`~glom.And`
+    and :attr:`~glom.Or` instances.
+
+    >>> glom(1.0, (M > 0) & float)
+
+    A note on the limitations of operator overloading:
+
+    Because bitwise ('&', '|') operators have higher precedence
+    than comparison operators ('>', '<', etc), expressions must
+    be parenthesized.
+
+    >>> M > 0 & float
+    Traceback (most recent call last):
+    ...
+    TypeError: unsupported operand type(s) for &: 'int' and 'type'
+
+    """
+    __slots__ = ()
+
+    def __call__(self, spec):
+        """wrap a sub-spec in order to apply comparison operators to the result"""
+        return _M_Subspec(spec)
+
+    def __eq__(self, other):
+        return _MExpr(self, '=', other)
+
+    def __ne__(self, other):
+        return _MExpr(self, '!', other)
+
+    def __gt__(self, other):
+        return _MExpr(self, '>', other)
+
+    def __lt__(self, other):
+        return _MExpr(self, '<', other)
+
+    def __ge__(self, other):
+        return _MExpr(self, 'g', other)
+
+    def __le__(self, other):
+        return _MExpr(self, 'l', other)
+
+    def __and__(self, other):
+        return And(self, other)
+
+    __rand__ = __and__
+
+    def __or__(self, other):
+        return Or(self, other)
+
+    def __invert__(self):
+        return Not(self)
+
+    def __repr__(self):
+        return "M"
+
+    def glomit(self, target, spec):
+        if target:
+            return target
+        raise GlomMatchError("{!r} not truthy", target)
+
+
+M = _MType()
 
 
 _MISSING = make_sentinel('MISSING')
