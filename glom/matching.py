@@ -106,7 +106,7 @@ class Match(object):
     generic pass through:
 
     >>> input = [{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}]
-    >>> glom(input, Match([{'id': int, 'email': str, object: object}]) == \\
+    >>> glom(input, Match([{'id': int, 'email': str, object: object}])) == \\
     ...     [{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}]
     True
 
