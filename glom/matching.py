@@ -140,7 +140,7 @@ class Match(object):
     def matches(self, target):
         try:
             glom(target, self)
-        except GlomMatchError:
+        except GlomError:
             return False
         return True
 
@@ -503,7 +503,11 @@ class Optional(object):
     __slots__ = ('key', 'default')
 
     def __init__(self, key, default=_MISSING):
-        assert _precedence(key) == 0, "key must be == match"
+        if type(key) in (Required, Optional):
+            raise TypeError("double wrapping of Optional")
+        hash(key)  # ensure is a valid key
+        if _precedence(key) != 0:
+            raise ValueError("Optional() keys must be == match constants, not {!r}".format(key))
         self.key, self.default = key, default
 
     def glomit(self, target, scope):
@@ -532,7 +536,11 @@ class Required(object):
     __slots__ = ('key',)
 
     def __init__(self, key):
-        assert _precedence(key) != 0, "== keys are already required"
+        if type(key) in (Required, Optional):
+            raise TypeError("double wrapping of Required")
+        hash(key)  # ensure is a valid key
+        if _precedence(key) == 0:
+            raise ValueError("== match constants are already required: {!r}".format(key))
         self.key = key
 
     def glomit(self, target, scope):
@@ -551,8 +559,10 @@ def _precedence(match):
     """
     if type(match) in (Required, Optional):
         match = match.key
-    if type(match) in (list, tuple, set, frozenset, dict):
-        return 3
+    if type(match) in (tuple, frozenset, list):
+        if not match:
+            return 0
+        return max([_precedence(item) for item in match])
     if isinstance(match, type):
         return 2
     if hasattr(match, "glomit"):
@@ -578,7 +588,7 @@ def _handle_dict(target, spec, scope):
         for spec_key in spec_keys:
             try:
                 key = scope[glom](key, spec_key, scope)
-            except GlomMatchError:
+            except GlomError:
                 pass
             else:
                 result[key] = scope[glom](val, spec[spec_key], scope)
@@ -606,7 +616,7 @@ def _glom_match(target, spec, scope):
                 try:
                     result.append(scope[glom](item, child, scope))
                     break
-                except GlomMatchError as e:
+                except GlomError as e:
                     last_error = e
             else:  # did not break, something went wrong
                 if target and not spec:
@@ -615,6 +625,8 @@ def _glom_match(target, spec, scope):
                 # NOTE: unless error happens above, break will skip else branch
                 # so last_error will have been assigned
                 raise last_error
+        if type(spec) is not list:
+            return type(spec)(result)
         return result
     elif isinstance(spec, tuple):
         if not isinstance(target, tuple):

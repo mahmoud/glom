@@ -49,6 +49,13 @@ def test():
     Match(M > 0).verify(1.0)
 
 
+def test_sets():
+    with pytest.raises(GlomMatchError):
+        glom({1}, Match({}))
+    with pytest.raises(GlomMatchError):
+        glom(frozenset([1]), Match(frozenset()))
+
+
 def test_spec_match():
     """test that M __call__ can be used to wrap a subspec for comparison"""
     target = {}
