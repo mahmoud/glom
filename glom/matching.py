@@ -597,7 +597,7 @@ def _handle_dict(target, spec, scope):
         else:
             raise GlomMatchError("key {!r} didn't match any of {!r}", key, spec_keys)
     if required:
-        raise GlomMatchError("missing keys {} from value {}", required, target)
+        raise GlomMatchError("missing keys {} from target {}", required, target)
     return result
 
 
