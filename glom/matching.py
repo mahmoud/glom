@@ -12,7 +12,7 @@ from .core import GlomError, glom, T, Spec, MODE
 
 
 __all__ = [
-    'GlomMatchError', 'GlomTypeMatchError', 'Match', 'Regex', 'DEFAULT',
+    'GlomMatchError', 'GlomTypeMatchError', 'Match', 'Regex',
     'And', 'Or', 'Not', 'M', 'Optional', 'Required']
 
 # NOTE: it is important that GlomMatchErrors be cheap to construct,
@@ -210,14 +210,6 @@ class Regex(object):
         return "Regex" + args
 
 
-DEFAULT = make_sentinel("DEFAULT")
-DEFAULT.__doc__ = """
-DEFAULT is used to represent keys that are not otherwise matched
-in a dict in match mode
-"""
-DEFAULT.glomit = lambda target, scope: target
-
-
 #TODO: combine this with other functionality elsewhere?
 def _bool_child_repr(child):
     if child is M:
@@ -250,7 +242,6 @@ class _Bool(object):
             return self.children[0]._m_repr()
         return False
 
-    # TODO: make builtins look good: "float", not <class 'float'>
     def __repr__(self):
         child_reprs = [_bool_child_repr(c) for c in self.children]
         if self._m_repr():
@@ -292,10 +283,11 @@ class Or(_Bool):
 
     def __init__(self, *children):
         self.children = children
+        # TODO: should empty children be disallowed?
 
     def glomit(self, target, scope):
         if not self.children:  # so Or() == False, similar to any([]) == False
-            raise GlomMatchError("Or() always false")
+            raise GlomError("Or() with no argumens")
         for child in self.children[:-1]:
             try:  # one child must match without exception
                 return scope[glom](target, child, scope)
@@ -327,7 +319,7 @@ class Not(_Bool):
         except GlomError:
             return target
         else:
-            raise GlomMatchError("child shouldn't have passed", self.child)
+            raise GlomError("child shouldn't have passed", self.child)
 
     def _m_repr(self):
         if isinstance(self.child, _MType):
@@ -559,8 +551,6 @@ def _precedence(match):
     """
     if type(match) in (Required, Optional):
         match = match.key
-    if match is DEFAULT:
-        return 4
     if type(match) in (list, tuple, set, frozenset, dict):
         return 3
     if isinstance(match, type):

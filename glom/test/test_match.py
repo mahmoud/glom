@@ -5,7 +5,7 @@ import pytest
 from glom import glom, S, Literal, T, Merge, Fill, Let, Ref
 from glom.matching import (
     Match, M, GlomMatchError, GlomTypeMatchError, And, Or, Not,
-    DEFAULT, Optional, Required, Regex)
+    Optional, Required, Regex)
 from glom.core import Auto, SKIP, Ref
 
 
@@ -40,7 +40,7 @@ def test():
     with pytest.raises(GlomMatchError):
         glom("c", Match(Or("a", "b")))
     _chk(Match(Or("a", "b")), "a", "c")
-    glom({None: 1}, Match({DEFAULT: object}))
+    glom({None: 1}, Match({object: object}))
     _chk(Match((int, str)), (1, "cat"), (1, 2))
     with pytest.raises(GlomMatchError):
         glom({1: 2}, Match({(): int}))
