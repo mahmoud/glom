@@ -248,7 +248,7 @@ def test_json_ref():
             Match(Or(
                 And(dict, {Ref('json'): Ref('json')}),
                 And(list, [Ref('json')]),
-                And(0, Auto(lambda t: None)),
+                And(0, Literal(None)),
                 object)))) == {'a': {'b': [None, 1]}}
 
 
