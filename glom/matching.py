@@ -559,7 +559,7 @@ def _precedence(match):
     """
     if type(match) in (Required, Optional):
         match = match.key
-    if type(match) in (tuple, frozenset, list):
+    if type(match) in (tuple, frozenset):
         if not match:
             return 0
         return max([_precedence(item) for item in match])
