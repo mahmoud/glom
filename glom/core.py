@@ -111,7 +111,7 @@ class GlomError(Exception):
     def wrap(cls, exc):
         # this approach to wrapping errors works for exceptions
         # defined in pure-python as well as C
-        exc_wrapper_type = type("GlomWrapError", (type(exc), GlomError), {})
+        exc_wrapper_type = type("GlomError.wrap({})".format(type(exc).__name__), (type(exc), GlomError), {})
         return exc_wrapper_type(*exc.args)
 
     def _finalize(self, scope):
@@ -127,7 +127,7 @@ class GlomError(Exception):
         is_glom_wrap_error = parent_exc_type.__name__ == 'GlomWrapError'
         is_orig_glom_error = issubclass(parent_exc_type, GlomError)
 
-        lines = traceback.format_exc().split("\n")
+        lines = traceback.format_exc().strip().split("\n")
         limit = 0
         for line in reversed(lines):
             if __file__ in line and "_glom" in line:
@@ -192,7 +192,7 @@ class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
         return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.part_idx)
 
     def __str__(self):
-        return GlomError.__str__(self) + (
+        return GlomError.__str__(self) or (
             'could not access %r, part %r of %r, got error: %r'
             % (self.path.values()[self.part_idx], self.part_idx, self.path, self.exc))
 
@@ -230,6 +230,9 @@ class CoalesceError(GlomError):
         return '%s(%r, %r, %r)' % (cn, self.coal_obj, self.skipped, self.path)
 
     def __str__(self):
+        preformatted = GlomError.__str__(self)
+        if preformatted:
+            return preformatted
         missed_specs = tuple(self.coal_obj.subspecs)
         skipped_vals = [v.__class__.__name__
                         if isinstance(v, self.coal_obj.skip_exc)
@@ -289,6 +292,9 @@ class UnregisteredTarget(GlomError):
                 % (cn, self.op, self.target_type.__name__, self.type_map, self.path))
 
     def __str__(self):
+        preformatted = GlomError.__str__(self)
+        if preformatted:
+            return preformatted
         if not self.type_map:
             return ("glom() called without registering any types for operation '%s'. see"
                     " glom.register() or Glommer's constructor for details." % (self.op,))
@@ -1366,6 +1372,9 @@ class CheckError(GlomError):
         return '%s(%r, %r, %r)' % (cn, self.msgs, self.check_obj, self.path)
 
     def __str__(self):
+        preformatted = GlomError.__str__(self)
+        if preformatted:
+            return preformatted
         msg = 'target at path %s failed check,' % self.path
         if self.check_obj.spec is not T:
             msg += ' subtarget at %r' % (self.check_obj.spec,)

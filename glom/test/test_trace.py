@@ -86,7 +86,7 @@ Traceback (most recent call last):
     glom([None], spec)
   File "core.py", line ___, in glom
     raise err
-glom.core.GlomWrapError: 
+glom.core.GlomError.wrap(ZeroDivisionError): 
 -> {'results': [{'value': <function test_regular_error_stack.<locals>....
 [None]
 -> [{'value': <function test_regular_error_stack.<locals>.<lambda> at ...
@@ -98,7 +98,6 @@ None
   File "test_trace.py", line ___, in <lambda>
     assert _make_stack({'results': [{'value': lambda t: 1/0}]}) == \"""\\
 ZeroDivisionError: division by zero
-
 """
 
 
@@ -124,7 +123,6 @@ None
   File "core.py", line ___, in _t_eval
     raise pae
 glom.core.PathAccessError: could not access 'value', part 0 of Path('value'), got error: AttributeError("'NoneType' object has no attribute 'value'")
-could not access 'value', part 0 of Path('value'), got error: AttributeError("'NoneType' object has no attribute 'value'")
 """
 
 
@@ -169,6 +167,4 @@ None
   File "core.py", line ___, in _t_eval
     raise pae
 glom.core.PathAccessError: could not access 'val', part 0 of Path('val'), got error: AttributeError("'NoneType' object has no attribute 'val'")
-could not access 'val', part 0 of Path('val'), got error: AttributeError("'NoneType' object has no attribute 'val'")
-could not access 'val', part 0 of Path('val'), got error: AttributeError("'NoneType' object has no attribute 'val'")
 """

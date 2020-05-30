@@ -45,6 +45,9 @@ class PathAssignError(GlomError):
         return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.dest_name)
 
     def __str__(self):
+        preformatted = GlomError.__str__(self)
+        if preformatted:
+            return preformatted
         return ('could not assign %r on object at %r, got error: %r'
                 % (self.dest_name, self.path, self.exc))
 
