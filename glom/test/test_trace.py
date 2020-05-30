@@ -64,6 +64,7 @@ def _norm_stack(formatted_stack):
             file_name = line.split('"')[1]
             short_file_name = os.path.split(file_name.strip('"'))[1]
             line = line.replace(file_name, short_file_name)
+            line = line.partition('line')[0] + 'line ___,' + line.partition('line')[2].partition(',')[2]
         line = line.partition('0x')[0]  # scrub memory addresses
         normalized.append(line)
     return "\n".join(normalized)
@@ -81,9 +82,9 @@ def test_regular_error_stack():
     # ZeroDivisionError
     assert _make_stack({'results': [{'value': lambda t: 1/0}]}) == """\
 Traceback (most recent call last):
-  File "test_trace.py", line 74, in _make_stack
+  File "test_trace.py", line ___, in _make_stack
     glom([None], spec)
-  File "core.py", line 1893, in glom
+  File "core.py", line ___, in glom
     raise err
 glom.core.GlomWrapError: 
 -> {'results': [{'value': <function test_regular_error_stack.<locals>....
@@ -92,9 +93,9 @@ glom.core.GlomWrapError:
 -> {'value': <function test_regular_error_stack.<locals>.<lambda> at 0...
 None
 -> <function test_regular_error_stack.<locals>.<lambda> at 
-  File "core.py", line 1927, in AUTO
+  File "core.py", line ___, in AUTO
     return spec(target)
-  File "test_trace.py", line 82, in <lambda>
+  File "test_trace.py", line ___, in <lambda>
     assert _make_stack({'results': [{'value': lambda t: 1/0}]}) == \"""\\
 ZeroDivisionError: division by zero
 
@@ -105,9 +106,9 @@ def test_glom_error_stack():
     # NoneType has not attribute value
     assert _make_stack({'results': [{'value': 'value'}]}) == """\
 Traceback (most recent call last):
-  File "test_trace.py", line 74, in _make_stack
+  File "test_trace.py", line ___, in _make_stack
     glom([None], spec)
-  File "core.py", line 1893, in glom
+  File "core.py", line ___, in glom
     raise err
 glom.core.PathAccessError: 
 -> {'results': [{'value': 'value'}]}
@@ -116,11 +117,11 @@ glom.core.PathAccessError:
 -> {'value': 'value'}
 None
 -> 'value'
-  File "core.py", line 1925, in AUTO
+  File "core.py", line ___, in AUTO
     return Path.from_text(spec).glomit(target, scope)
-  File "core.py", line 422, in glomit
+  File "core.py", line ___, in glomit
     return _t_eval(target, self.path_t, scope)
-  File "core.py", line 1276, in _t_eval
+  File "core.py", line ___, in _t_eval
     raise pae
 glom.core.PathAccessError: could not access 'value', part 0 of Path('value'), got error: AttributeError("'NoneType' object has no attribute 'value'")
 could not access 'value', part 0 of Path('value'), got error: AttributeError("'NoneType' object has no attribute 'value'")
@@ -134,9 +135,9 @@ def test_double_glom_error_stack():
         return uses_another_glom()
     assert _make_stack({'results': [{'value': lambda t: wrap()}]}) == """\
 Traceback (most recent call last):
-  File "test_trace.py", line 74, in _make_stack
+  File "test_trace.py", line ___, in _make_stack
     glom([None], spec)
-  File "core.py", line 1893, in glom
+  File "core.py", line ___, in glom
     raise err
 glom.core.PathAccessError: 
 -> {'results': [{'value': <function test_double_glom_error_stack.<loca...
@@ -145,15 +146,15 @@ glom.core.PathAccessError:
 -> {'value': <function test_double_glom_error_stack.<locals>.<lambda> ...
 None
 -> <function test_double_glom_error_stack.<locals>.<lambda> at 
-  File "core.py", line 1927, in AUTO
+  File "core.py", line ___, in AUTO
     return spec(target)
-  File "test_trace.py", line 135, in <lambda>
+  File "test_trace.py", line ___, in <lambda>
     assert _make_stack({'results': [{'value': lambda t: wrap()}]}) == \"""\\
-  File "test_trace.py", line 134, in wrap
+  File "test_trace.py", line ___, in wrap
     return uses_another_glom()
-  File "test_trace.py", line 132, in uses_another_glom
+  File "test_trace.py", line ___, in uses_another_glom
     return glom([None], {'internal': ['val']})
-  File "core.py", line 1893, in glom
+  File "core.py", line ___, in glom
     raise err
 glom.core.PathAccessError: 
 -> {'internal': ['val']}
@@ -161,11 +162,11 @@ glom.core.PathAccessError:
 -> ['val']
 -> 'val'
 None
-  File "core.py", line 1925, in AUTO
+  File "core.py", line ___, in AUTO
     return Path.from_text(spec).glomit(target, scope)
-  File "core.py", line 422, in glomit
+  File "core.py", line ___, in glomit
     return _t_eval(target, self.path_t, scope)
-  File "core.py", line 1276, in _t_eval
+  File "core.py", line ___, in _t_eval
     raise pae
 glom.core.PathAccessError: could not access 'val', part 0 of Path('val'), got error: AttributeError("'NoneType' object has no attribute 'val'")
 could not access 'val', part 0 of Path('val'), got error: AttributeError("'NoneType' object has no attribute 'val'")
