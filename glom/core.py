@@ -279,6 +279,7 @@ class UnregisteredTarget(GlomError):
         self.target_type = target_type
         self.type_map = type_map
         self.path = path
+        super(UnregisteredTarget, self).__init__(op, target_type, type_map, path)
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -1884,7 +1885,7 @@ def glom(target, spec, **kwargs):
             ret = default
     except Exception as e:
         if isinstance(e, GlomError):
-            err = e
+            err = copy.copy(e)  # need to change id or else python seems to not let us shorten the stack
         else:
             err = GlomError.wrap(e)
         err._finalize(scope[ERROR_SCOPE])
