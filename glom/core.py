@@ -127,10 +127,11 @@ class GlomError(Exception):
         is_glom_wrap_error = parent_exc_type.__name__ == 'GlomWrapError'
         is_orig_glom_error = issubclass(parent_exc_type, GlomError)
 
-        lines = traceback.format_exc().strip().split("\n")
+        lines = traceback.format_exc().strip().splitlines()
         limit = 0
+        _file = __file__.rstrip('c')
         for line in reversed(lines):
-            if __file__ in line and "_glom" in line:
+            if _file in line and "_glom" in line:
                 limit -= 1
                 break
             limit += 1
@@ -186,6 +187,9 @@ class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
         self.exc = exc
         self.path = path
         self.part_idx = part_idx
+
+    def __copy__(self):
+        return type(self)(copy.copy(self.exc), self.path, self.part_idx)
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -1894,7 +1898,9 @@ def glom(target, spec, **kwargs):
             ret = default
     except Exception as e:
         if isinstance(e, GlomError):
-            err = copy.copy(e)  # need to change id or else python seems to not let us shorten the stack
+            # need to change id or else py3 seems to not let us truncate the
+            # stack trace with the explicit "raise err" below
+            err = copy.copy(e)
         else:
             err = GlomError.wrap(e)
         err._finalize(scope[ERROR_SCOPE])
