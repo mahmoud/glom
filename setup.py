@@ -47,7 +47,7 @@ setup(name='glom',
           'Programming Language :: Python :: 3.7',
           'Programming Language :: Python :: Implementation :: CPython',
           'Programming Language :: Python :: Implementation :: PyPy', ]
-      )
+     )
 
 """
 A brief checklist for release:
