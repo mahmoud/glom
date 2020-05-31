@@ -189,7 +189,8 @@ class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
         self.part_idx = part_idx
 
     def __copy__(self):
-        return type(self)(copy.copy(self.exc), self.path, self.part_idx)
+        # py27 struggles to copy PAE without this method
+        return type(self)(self.exc, self.path, self.part_idx)
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -228,6 +229,10 @@ class CoalesceError(GlomError):
         self.coal_obj = coal_obj
         self.skipped = skipped
         self.path = path
+
+    def __copy__(self):
+        # py27 struggles to copy PAE without this method
+        return type(self)(self.coal_obj, self.skipped, self.path)
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -1370,6 +1375,10 @@ class CheckError(GlomError):
         self.msgs = msgs
         self.check_obj = check
         self.path = path
+
+    def __copy__(self):
+        # py27 struggles to copy PAE without this method
+        return type(self)(self.msgs, self.check_obj, self.path)
 
     def __repr__(self):
         cn = self.__class__.__name__

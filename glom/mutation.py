@@ -40,6 +40,10 @@ class PathAssignError(GlomError):
         self.path = path
         self.dest_name = dest_name
 
+    def __copy__(self):
+        # py27 struggles to copy PAE without this method
+        return type(self)(self.exc, self.path, self.dest_name)
+
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.dest_name)

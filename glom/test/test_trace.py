@@ -71,7 +71,7 @@ def _norm_stack(formatted_stack, exc):
         # qualify python2's unqualified error type names
         exc_type_name = exc.__class__.__name__
         if exc_type_name in line:
-            mod_name = getattr(exc.__class__, '__module__', '')
+            mod_name = getattr(exc.__class__, '__module__', '') or ''
             exc_type_qual_name = exc_type_name
             if 'builtin' not in mod_name:
                 exc_type_qual_name = mod_name + '.' + exc_type_name
