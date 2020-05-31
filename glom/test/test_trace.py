@@ -93,26 +93,31 @@ def _make_stack(spec):
     return stack
 
 
+def _raise_exc(t):
+    # had to go from zerodivision to this bc ZDE message changed
+    # between 2 and 3
+    raise Exception('unique message')
+
+
 def test_regular_error_stack():
-    # ZeroDivisionError
-    assert _make_stack({'results': [{'value': lambda t: 1/0}]}) == """\
+    assert _make_stack({'results': [{'value': _raise_exc}]}) == """\
 Traceback (most recent call last):
   File "test_trace.py", line ___, in _make_stack
     glom([None], spec)
   File "core.py", line ___, in glom
     raise err
-glom.core.GlomError.wrap(ZeroDivisionError):
--> {'results': [{'value': <function test_regular_error_stack.<locals>....
+glom.core.GlomError.wrap(Exception):
+-> {'results': [{'value': <function _raise_exc at
 [None]
--> [{'value': <function test_regular_error_stack.<locals>.<lambda> at ...
--> {'value': <function test_regular_error_stack.<locals>.<lambda> at 0...
+-> [{'value': <function _raise_exc at
+-> {'value': <function _raise_exc at
 None
--> <function test_regular_error_stack.<locals>.<lambda> at
+-> <function _raise_exc at
   File "core.py", line ___, in AUTO
     return spec(target)
-  File "test_trace.py", line ___, in <lambda>
-    assert _make_stack({'results': [{'value': lambda t: 1/0}]}) == \"""\\
-ZeroDivisionError: division by zero
+  File "test_trace.py", line ___, in _raise_exc
+    raise Exception('unique message')
+Exception: unique message
 """
 
 
@@ -143,31 +148,35 @@ glom.core.PathAccessError: could not access 'value', part 0 of Path('value'), go
     assert actual == expected
 
 
+# used by the test below, but at the module level to make stack traces
+# more uniform between py2 and py3 (py3 tries to qualify lambdas and
+# other functions inside of local scopes.)
+def _uses_another_glom():
+    return glom([None], {'internal': ['val']})
+
+def _subglom_wrap(t):
+    return _uses_another_glom()
+
+
 def test_double_glom_error_stack():
-    def uses_another_glom():
-        return glom([None], {'internal': ['val']})
-    def wrap():
-        return uses_another_glom()
-    assert _make_stack({'results': [{'value': lambda t: wrap()}]}) == """\
+    assert _make_stack({'results': [{'value': _subglom_wrap}]}) == """\
 Traceback (most recent call last):
   File "test_trace.py", line ___, in _make_stack
     glom([None], spec)
   File "core.py", line ___, in glom
     raise err
 glom.core.PathAccessError:
--> {'results': [{'value': <function test_double_glom_error_stack.<loca...
+-> {'results': [{'value': <function _subglom_wrap at
 [None]
--> [{'value': <function test_double_glom_error_stack.<locals>.<lambda>...
--> {'value': <function test_double_glom_error_stack.<locals>.<lambda> ...
+-> [{'value': <function _subglom_wrap at
+-> {'value': <function _subglom_wrap at
 None
--> <function test_double_glom_error_stack.<locals>.<lambda> at
+-> <function _subglom_wrap at
   File "core.py", line ___, in AUTO
     return spec(target)
-  File "test_trace.py", line ___, in <lambda>
-    assert _make_stack({'results': [{'value': lambda t: wrap()}]}) == \"""\\
-  File "test_trace.py", line ___, in wrap
-    return uses_another_glom()
-  File "test_trace.py", line ___, in uses_another_glom
+  File "test_trace.py", line ___, in _subglom_wrap
+    return _uses_another_glom()
+  File "test_trace.py", line ___, in _uses_another_glom
     return glom([None], {'internal': ['val']})
   File "core.py", line ___, in glom
     raise err

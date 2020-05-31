@@ -109,9 +109,12 @@ class GlomError(Exception):
     """
     @classmethod
     def wrap(cls, exc):
+        # TODO: need to test this against a wide array of exception types
         # this approach to wrapping errors works for exceptions
         # defined in pure-python as well as C
-        exc_wrapper_type = type("GlomError.wrap({})".format(type(exc).__name__), (type(exc), GlomError), {})
+        exc_type = type(exc)
+        bases = (GlomError,) if issubclass(GlomError, exc_type) else (exc_type, GlomError)
+        exc_wrapper_type = type("GlomError.wrap({})".format(exc_type.__name__), bases, {})
         return exc_wrapper_type(*exc.args)
 
     def _finalize(self, scope):
