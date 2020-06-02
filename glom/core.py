@@ -355,7 +355,14 @@ class Path(object):
                     path_t = _t_child(path_t, sub_parts[i], sub_parts[i + 1])
                     i += 2
             else:
-                path_t = _t_child(path_t, 'P', part)
+                op = 'P'
+                if isinstance(part, basestring):
+                    if '?' in part[:-1]:
+                        raise ValueError('? only valid at the end of path segment')
+                    if part.endswith('?'):
+                        op = '?'
+                        part = part[:-1]
+                path_t = _t_child(path_t, op, part)
         self.path_t = path_t
 
     @classmethod
@@ -460,6 +467,8 @@ def _format_path(t_path):
     while i < len(t_path):
         op, arg = t_path[i], t_path[i + 1]
         i += 2
+        if op == '?':  # fall through below
+            op, arg = 'P', arg + '?'
         if op == 'P':
             if cur_t_path:
                 path_parts.append(cur_t_path)
@@ -1205,13 +1214,15 @@ def _t_eval(target, _t, scope):
                 cur = cur[arg]
             except (KeyError, IndexError, TypeError) as e:
                 raise PathAccessError(e, Path(_t), i // 2)
-        elif op == 'P':
+        elif op in ('P', '?'):
             # Path type stuff (fuzzy match)
             get = scope[TargetRegistry].get_handler('get', cur, path=t_path[2:i+2:2])
             try:
                 cur = get(cur, arg)
             except Exception as e:
                 raise PathAccessError(e, Path(_t), i // 2)
+            if cur is None and op == '?':
+                return None
         elif op == '(':
             args, kwargs = arg
             scope[Path] += t_path[2:i+2:2]
@@ -1271,7 +1282,7 @@ def _format_t(path, root=T):
         elif op == '(':
             args, kwargs = arg
             prepr.append(format_invocation(args=args, kwargs=kwargs, repr=bbrepr))
-        elif op == 'P':
+        elif op in ('P', '?'):
             return _format_path(path)
         i += 2
     return "".join(prepr)

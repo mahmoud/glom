@@ -180,6 +180,24 @@ def test_path_eq_t():
     assert Path(T.a.b.c) != T.a.b
 
 
+
+def test_path_null():
+    assert repr(Path.from_text('a?.b')) == "Path('a?', 'b')"
+    val = {'a': {'b': None}}
+    # null check on non-null has no effect
+    assert glom(val, 'a?.b') == glom(val, 'a.b')
+    # null check on null returns None instead of error
+    with raises(PathAccessError):
+        glom(val, 'a.b.c')
+    assert glom(val, 'a.b?.c') is None
+    # check that '?' in wrong place raises error
+    with raises(ValueError):
+        glom(val, 'a.b??')
+    # check that '?' on non-null-segment still raises error on null segment
+    with raises(PathAccessError):
+        glom(val, 'a?.b.c')
+
+
 def test_startswith():
     ref = T.a.b[1]
 
