@@ -621,6 +621,8 @@ class Path(object):
                 while i < len(sub_parts):
                     path_t = _t_child(path_t, sub_parts[i], sub_parts[i + 1])
                     i += 2
+            elif part == '*':
+                path_t = _t_child(path_t, '*', None)
             else:
                 path_t = _t_child(path_t, 'P', part)
         self.path_t = path_t
@@ -726,6 +728,14 @@ class Path(object):
 
     def __repr__(self):
         return _format_path(_T_PATHS[self.path_t][1:])
+
+
+class MultiPath(Path):
+    """
+    A MultiPath is a path that matches a list of targets instead of a single target.
+
+    MultiPaths may have * and ** as path segments.
+    """
 
 
 def _format_path(t_path):
@@ -1560,6 +1570,8 @@ def _t_eval(target, _t, scope):
                 cur = get(cur, arg)
             except Exception as e:
                 pae = PathAccessError(e, Path(_t), i // 2)
+        elif op in ('*', '%'):
+            return _t_eval_many(target, cur, t_path, scope, i)
         elif op == '(':
             args, kwargs = arg
             scope[Path] += t_path[2:i+2:2]
@@ -1616,6 +1628,67 @@ def _t_eval(target, _t, scope):
         else:  # pragma: no cover
             raise ValueError('unsupported operation for assignment')
         return target  # A should not change the target
+    return cur
+
+
+def _t_eval_many(target, cur, t_path, scope, i):
+    """only meant to be called by _t_eval"""
+    cur = [cur]
+    while i < len(t_path) and cur:
+        op, arg = t_path[i], t_path[i + 1]
+        if type(arg) in (Spec, TType, Literal):
+            arg = scope[glom](target, arg, scope)
+        nxt = []
+        if op == '.':
+            for item in cur:
+                try:
+                    nxt.append(getattr(item, arg))
+                except AttributeError:
+                    pass
+        elif op == '[':
+            for item in cur:
+                try:
+                    nxt.append(item[arg])
+                except (KeyError, IndexError, TypeError):
+                    pass
+        elif op == 'P':  # Path type stuff (fuzzy match)
+            for item in cur:
+                try:
+                    get = scope[TargetRegistry].get_handler('get', item, path=t_path[2:i+2:2])
+                except UnregisteredTarget:
+                    pass
+                else:
+                    try:
+                        nxt.append(get(item, arg))
+                    except Exception:
+                        pass
+        elif op == '*':  # increases arity of cur each time through
+            # TODO: so many try/except -- could scope[TargetRegistry] stuff be cached on type?
+            for item in cur:
+                try:  # dict or obj-like
+                    keys = scope[TargetRegistry].get_handler('keys', item)
+                    get = scope[TargetRegistry].get_handler('get', item)
+                except UnregisteredTarget:
+                    try:
+                        iterate = scope[TargetRegistry].get_handler('iterate', item)
+                    except UnregisteredTarget:
+                        pass
+                    else:
+                        try:  # list-like
+                            nxt.extend(iterate(item))
+                        except Exception:
+                            pass
+                else:
+                    try:
+                        for key in keys(item):
+                            try:
+                                nxt.append(get(item, key))
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+        cur = nxt
+        i += 2
     return cur
 
 
@@ -1812,6 +1885,13 @@ class _AbstractIterable(_AbstractIterableBase):
         return callable(getattr(C, "__iter__", None))
 
 
+class _AbstractKeys(object):
+    __metaclass__ = ABCMeta
+    @classmethod
+    def __subclasshook__(cls, C):
+        return hasattr(C, "__dict__") and hasattr(C.__dict__, "keys")
+
+
 def _get_sequence_item(target, index):
     return target[int(index)]
 
@@ -1953,9 +2033,11 @@ class TargetRegistry(object):
     def _register_default_types(self):
         self.register(object)
         self.register(dict, get=operator.getitem)
+        self.register(dict, keys=dict.keys)
         self.register(list, get=_get_sequence_item)
         self.register(tuple, get=_get_sequence_item)
         self.register(_AbstractIterable, iterate=iter)
+        self.register(_AbstractKeys, keys=lambda v: v.__dict__.keys())
 
     def _register_fuzzy_type(self, op, new_type, _type_tree=None):
         """Build a "type tree", an OrderedDict mapping registered types to

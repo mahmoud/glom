@@ -189,6 +189,16 @@ def test_path_items():
     assert Path().items() == ()
 
 
+def test_path_star():
+    val = {'a': [1, 2, 3]}
+    assert glom(val, 'a.*') == [1, 2, 3]
+    val['a'] = [{'b': v} for v in val['a']]
+    assert glom(val, 'a.*.b') == [1, 2, 3]
+    assert glom(val, Path(T['a'], '*', T['b'])) == [1, 2, 3]
+    # multi-paths eat errors
+    assert glom(val, Path('a', '*', T.b)) == []
+
+
 def test_path_eq():
     assert Path('a', 'b') == Path('a', 'b')
     assert Path('a') != Path('b')
