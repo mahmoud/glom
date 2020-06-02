@@ -197,6 +197,12 @@ def test_path_star():
     assert glom(val, Path(T['a'], '*', T['b'])) == [1, 2, 3]
     # multi-paths eat errors
     assert glom(val, Path('a', '*', T.b)) == []
+    val = [[[1]]]
+    assert glom(val, '**') == [ [[1]], [1], 1]
+    val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'c': 3}]}]}
+    assert glom(val, '**.c') == [1, 2, 3]
+    assert glom(val, 'a.**.c') == [1, 2, 3]
+    assert glom(val, 'a.*.b.*.c') == [1, 2, 3]
 
 
 def test_path_eq():

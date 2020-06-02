@@ -623,6 +623,8 @@ class Path(object):
                     i += 2
             elif part == '*':
                 path_t = _t_child(path_t, '*', None)
+            elif part == '**':
+                path_t = _t_child(path_t, '%', None)
             else:
                 path_t = _t_child(path_t, 'P', part)
         self.path_t = path_t
@@ -1634,6 +1636,7 @@ def _t_eval(target, _t, scope):
 def _t_eval_many(target, cur, t_path, scope, i):
     """only meant to be called by _t_eval"""
     cur = [cur]
+    get_handler = scope[TargetRegistry].get_handler
     while i < len(t_path) and cur:
         op, arg = t_path[i], t_path[i + 1]
         if type(arg) in (Spec, TType, Literal):
@@ -1662,34 +1665,56 @@ def _t_eval_many(target, cur, t_path, scope, i):
                         nxt.append(get(item, arg))
                     except Exception:
                         pass
+        elif op == '(':
+            args, kwargs = arg
+            scope[Path] += t_path[2:i+2:2]
+            for item in cur:
+                try:
+                    nxt.append(
+                        scope[glom](target, Call(cur, args, kwargs), scope))
+                except Exception:
+                    pass
         elif op == '*':  # increases arity of cur each time through
             # TODO: so many try/except -- could scope[TargetRegistry] stuff be cached on type?
             for item in cur:
-                try:  # dict or obj-like
-                    keys = scope[TargetRegistry].get_handler('keys', item)
-                    get = scope[TargetRegistry].get_handler('get', item)
-                except UnregisteredTarget:
-                    try:
-                        iterate = scope[TargetRegistry].get_handler('iterate', item)
-                    except UnregisteredTarget:
-                        pass
-                    else:
-                        try:  # list-like
-                            nxt.extend(iterate(item))
-                        except Exception:
-                            pass
-                else:
-                    try:
-                        for key in keys(item):
-                            try:
-                                nxt.append(get(item, key))
-                            except Exception:
-                                pass
-                    except Exception:
-                        pass
+                _extend_children(nxt, item, get_handler)
+        elif op == '%':
+            sofar = set()
+            for item in cur:
+                _extend_children(nxt, item, get_handler)
+                sofar.add(id(item))
+            for item in nxt:
+                if id(item) not in sofar:
+                    sofar.add(id(item))
+                    _extend_children(nxt, item, get_handler)
         cur = nxt
         i += 2
     return cur
+
+
+def _extend_children(children, item, get_handler):
+    try:  # dict or obj-like
+        keys = get_handler('keys', item)
+        get = get_handler('get', item)
+    except UnregisteredTarget:
+        try:
+            iterate = get_handler('iterate', item)
+        except UnregisteredTarget:
+            pass
+        else:
+            try:  # list-like
+                children.extend(iterate(item))
+            except Exception:
+                pass
+    else:
+        try:
+            for key in keys(item):
+                try:
+                    children.append(get(item, key))
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
 
 T = TType()  # target aka Mr. T aka "this"
