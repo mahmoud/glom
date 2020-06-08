@@ -276,3 +276,64 @@ Will translate to the following tuples:
     >>> etree = ElementTree.fromstring(html_text)
     >>> glom(etree, etree2tuples)
     ('html', [('head', [('title', [])]), ('body', [('p', [])])])
+
+
+Building Configs
+----------------
+
+:class:`~glom.Fill` is very good for parameterized configs.
+For example, consider a logging `dictconfig`_
+
+.. code-block:: python
+
+    {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+            },
+            'file': {
+                'level': 'DEBUG',
+                'class': 'logging.FileHandler',
+                'filename': 'debug.log',
+            },
+        },
+        'root': {
+            'handlers': ['console', 'file'],
+            'level': 'WARNING',
+        },
+    }
+
+
+This configuration is already a valid :class:`~glom.Fill` spec
+which returns itself -- so, we can simply replace the constants
+that should be dynamic with specs.
+
+.. code-block:: python
+
+
+    CONFIGSPEC = Fill({
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+            },
+            'file': {
+                'level': 'DEBUG',
+                'class': 'logging.FileHandler',
+                'filename': Format('{log_path}/debug.log'),
+            },
+        },
+        'root': {
+            'handlers': ['console', 'file'],
+            'level': T.get('level', WARNING'),
+        },
+    })
+
+    def init_logging(log_path, level):
+        return glom(dict(log_path=log_path, level=level), CONFIGSPEC)
+
+
+.. _dictconfig: https://docs.python.org/3/library/logging.config.html#logging-config-dictschema

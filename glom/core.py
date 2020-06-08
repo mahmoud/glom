@@ -2019,13 +2019,25 @@ def _fill(target, spec, scope):
 
 class Format(object):
     """
-    deferred call to fmt_str.format(**current target)
+    Format(fmt_str) is a deferred call to fmt_str.format().
 
-    optionally, a spec may be used to specify something
-    other than the current target to be **'d into fmt_str.format()
+    That is, Format(string) is equivalent to lambda t: string.format(**t)
 
-    for example, Format(fmt_str, S) could be used to pull variables
-    from the scope
+    An optional second parameter can be used to pass something other
+    than the current target to fmr_str.format()
+
+    For example, the subspec can be used to build a dictionary:
+
+    >>> from glom import glom, Format
+    >>> target = {'data': [0, 1]}
+    >>> glom(target, Format("first {data0} second {data1}", {'data0': 'data.0', 'data1': 'data.1'}))
+    "first 0 second 1"
+
+    As another example, :class:`~glom.Let` and :attr:`~glom.S` can be used:
+
+    >>> from glom import Let, S
+    >>> glom(target, (Let(data0='data.0', data1='data.1'), Format("first {data0} second {data1}", S))
+    "first 0 second 1"
     """
     def __init__(self, fmt_str, spec=T):
         self.fmt_str, self.spec = fmt_str, spec
