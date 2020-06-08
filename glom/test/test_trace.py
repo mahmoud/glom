@@ -29,24 +29,28 @@ def test_short_trace():
     stacklifier = ([{'data': S}],)
     scope = glom([1], stacklifier)[0]['data']
     fmtd_stack = short_stack(scope)
-    exp_lines = ["-> ([{'data': S}],)",
-                 "[1]",
-                 "-> [{'data': S}]",
-                 "-> {'data': S}",
-                 "1",
-                 "-> S"]
+    exp_lines = [
+        "target: [1]",
+        "spec: ([{'data': S}],)",
+        "spec: [{'data': S}]",
+        "target: 1",
+        "spec: {'data': S}",
+        "spec: S",
+    ]
     assert fmtd_stack.splitlines() == exp_lines
 
 def test_tall_trace():
     stacklifier = ([{'data': S}],)
     scope = glom([1], stacklifier)[0]['data']
     fmtd_stack = tall_stack(scope)
-    exp_lines = ["-> ([{'data': S}],)",
-                 "[1]",
-                 "-> [{'data': S}]",
-                 "-> {'data': S}",
-                 "1",
-                 "-> S"]
+    exp_lines = [
+        "target: [1]",
+        "spec: ([{'data': S}],)",
+        "spec: [{'data': S}]",
+        "target: 1",
+        "spec: {'data': S}",
+        "spec: S",
+    ]
     assert fmtd_stack.splitlines() == exp_lines
 
 
@@ -107,12 +111,12 @@ Traceback (most recent call last):
   File "core.py", line ___, in glom
     raise err
 glom.core.GlomError.wrap(Exception):
--> {'results': [{'value': <function _raise_exc at
-[None]
--> [{'value': <function _raise_exc at
--> {'value': <function _raise_exc at
-None
--> <function _raise_exc at
+target: [None]
+spec: {'results': [{'value': <function _raise_exc at
+spec: [{'value': <function _raise_exc at
+target: None
+spec: {'value': <function _raise_exc at
+spec: <function _raise_exc at
   File "core.py", line ___, in AUTO
     return spec(target)
   File "test_trace.py", line ___, in _raise_exc
@@ -130,12 +134,12 @@ Traceback (most recent call last):
   File "core.py", line ___, in glom
     raise err
 glom.core.PathAccessError:
--> {'results': [{'value': 'value'}]}
-[None]
--> [{'value': 'value'}]
--> {'value': 'value'}
-None
--> 'value'
+target: [None]
+spec: {'results': [{'value': 'value'}]}
+spec: [{'value': 'value'}]
+target: None
+spec: {'value': 'value'}
+spec: 'value'
   File "core.py", line ___, in AUTO
     return Path.from_text(spec).glomit(target, scope)
   File "core.py", line ___, in glomit
@@ -166,12 +170,12 @@ Traceback (most recent call last):
   File "core.py", line ___, in glom
     raise err
 glom.core.PathAccessError:
--> {'results': [{'value': <function _subglom_wrap at
-[None]
--> [{'value': <function _subglom_wrap at
--> {'value': <function _subglom_wrap at
-None
--> <function _subglom_wrap at
+target: [None]
+spec: {'results': [{'value': <function _subglom_wrap at
+spec: [{'value': <function _subglom_wrap at
+target: None
+spec: {'value': <function _subglom_wrap at
+spec: <function _subglom_wrap at
   File "core.py", line ___, in AUTO
     return spec(target)
   File "test_trace.py", line ___, in _subglom_wrap
@@ -181,11 +185,11 @@ None
   File "core.py", line ___, in glom
     raise err
 glom.core.PathAccessError:
--> {'internal': ['val']}
-[None]
--> ['val']
--> 'val'
-None
+target: [None]
+spec: {'internal': ['val']}
+spec: ['val']
+target: None
+spec: 'val'
   File "core.py", line ___, in AUTO
     return Path.from_text(spec).glomit(target, scope)
   File "core.py", line ___, in glomit

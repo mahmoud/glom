@@ -62,17 +62,19 @@ def line_stack(scope):
     return "".join(segments)
 
 
-def short_stack(scope, width=70):
+def short_stack(scope, width=110):
     """
     unpack a scope into a multi-line but short summary
     """
     segments = []
     prev_target = _NO_TARGET
+    target_width = width - len("target: ")
+    spec_width = width - len("spec: ")
     for scope, spec, target in _unpack_stack(scope):
-        segments.append("-> " + _format_value(spec, 67))
         if target != prev_target:
-            segments.append(_format_value(target, 70))
+            segments.append("target: "+ _format_value(target, target_width))
         prev_target = target
+        segments.append("spec: " + _format_value(spec, spec_width))
     return "\n".join(segments)
 
 
@@ -83,10 +85,10 @@ def tall_stack(scope):
     segments = []
     prev_target = _NO_TARGET
     for scope, spec, target in _unpack_stack(scope):
-        segments.append("-> " + repr(spec))
         if target != prev_target:
-            segments.append(repr(target))
+            segments.append("target: "+ repr(target))
         prev_target = target
+        segments.append("spec: " + repr(spec))
     return "\n".join(segments)
 
 
