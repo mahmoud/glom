@@ -97,14 +97,23 @@ def _make_stack(spec):
     return stack
 
 
-def _raise_exc(t):
-    # had to go from zerodivision to this bc ZDE message changed
-    # between 2 and 3
-    raise Exception('unique message')
+# quick way to get a function in this file, which doesn't have a glom
+# package file path prefix on it. this prevents the function getting
+# removed in the stack flattening.
+from boltons.funcutils import FunctionBuilder
+fb = FunctionBuilder(name='_raise_exc',
+                     body='raise Exception("unique message")',
+                     args=['t'])
+_raise_exc = fb.get_func()
+
+# NB: if we keep this approach, eventually
+# boltons.funcutils.FunctionBuilder will put lines into the linecache,
+# and comparisons may break
 
 
 def test_regular_error_stack():
-    assert _make_stack({'results': [{'value': _raise_exc}]}) == """\
+    actual = _make_stack({'results': [{'value': _raise_exc}]})
+    expected = """\
 Traceback (most recent call last):
   File "test_trace.py", line ___, in _make_stack
     glom([None], spec)
@@ -117,12 +126,13 @@ glom.core.GlomError.wrap(Exception):
    target: None
    spec: {'value': <function _raise_exc at
    spec: <function _raise_exc at
-  File "core.py", line ___, in AUTO
-    return spec(target)
-  File "test_trace.py", line ___, in _raise_exc
-    raise Exception('unique message')
+  File "<boltons.funcutils.FunctionBuilder-0>", line ___, in _raise_exc
 Exception: unique message
 """
+    # _raise_exc being present in the second-to-last line above tests
+    # that errors in user-defined functions result in frames being
+    # visible
+    assert actual == expected
 
 
 def test_glom_error_stack():
@@ -140,12 +150,6 @@ glom.core.PathAccessError:
    target: None
    spec: {'value': 'value'}
    spec: 'value'
-  File "core.py", line ___, in AUTO
-    return Path.from_text(spec).glomit(target, scope)
-  File "core.py", line ___, in glomit
-    return _t_eval(target, self.path_t, scope)
-  File "core.py", line ___, in _t_eval
-    raise pae
 glom.core.PathAccessError: could not access 'value', part 0 of Path('value'), got error: AttributeError("'NoneType' object has no attribute 'value'")
 """
     actual = _make_stack({'results': [{'value': 'value'}]})
@@ -155,6 +159,7 @@ glom.core.PathAccessError: could not access 'value', part 0 of Path('value'), go
 # used by the test below, but at the module level to make stack traces
 # more uniform between py2 and py3 (py3 tries to qualify lambdas and
 # other functions inside of local scopes.)
+
 def _uses_another_glom():
     return glom([None], {'internal': ['val']})
 
@@ -163,7 +168,8 @@ def _subglom_wrap(t):
 
 
 def test_double_glom_error_stack():
-    assert _make_stack({'results': [{'value': _subglom_wrap}]}) == """\
+    actual = _make_stack({'results': [{'value': _subglom_wrap}]})
+    expected = """\
 Traceback (most recent call last):
   File "test_trace.py", line ___, in _make_stack
     glom([None], spec)
@@ -176,25 +182,13 @@ glom.core.PathAccessError:
    target: None
    spec: {'value': <function _subglom_wrap at
    spec: <function _subglom_wrap at
-  File "core.py", line ___, in AUTO
-    return spec(target)
-  File "test_trace.py", line ___, in _subglom_wrap
-    return _uses_another_glom()
-  File "test_trace.py", line ___, in _uses_another_glom
-    return glom([None], {'internal': ['val']})
-  File "core.py", line ___, in glom
-    raise err
 glom.core.PathAccessError:
    target: [None]
    spec: {'internal': ['val']}
    spec: ['val']
    target: None
    spec: 'val'
-  File "core.py", line ___, in AUTO
-    return Path.from_text(spec).glomit(target, scope)
-  File "core.py", line ___, in glomit
-    return _t_eval(target, self.path_t, scope)
-  File "core.py", line ___, in _t_eval
-    raise pae
 glom.core.PathAccessError: could not access 'val', part 0 of Path('val'), got error: AttributeError("'NoneType' object has no attribute 'val'")
 """
+    # no lines above beca
+    assert actual == expected

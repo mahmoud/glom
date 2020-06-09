@@ -22,9 +22,10 @@ semantics.
 
 from __future__ import print_function
 
-import copy
+import os
 import sys
 import pdb
+import copy
 import weakref
 import operator
 from abc import ABCMeta
@@ -99,6 +100,8 @@ ERROR_SCOPE.__doc__ = """
 from which an exception was raised when processing fails.
 """
 
+_PKG_DIR_PATH = os.path.dirname(os.path.abspath(__file__))
+
 class GlomError(Exception):
     """The base exception for all the errors that might be raised from
     :func:`glom` processing logic.
@@ -132,18 +135,18 @@ class GlomError(Exception):
 
         lines = traceback.format_exc().strip().splitlines()
         limit = 0
-        _file = __file__.rstrip('c')
+        #_file = __file__.rstrip('c')  # normalize py/pyc extension
         for line in reversed(lines):
-            if _file in line and "_glom" in line:
+            #if _file in line and "_glom" in line:
+            if _PKG_DIR_PATH in line:
                 limit -= 1
                 break
             limit += 1
 
         self.short_stack = trace.short_stack(scope)
-        if_lines = ["", self.short_stack]
-        #if not is_orig_glom_error:
-        if_lines.extend(lines[-limit:])
-        self.inner_format = "\n".join(if_lines)
+        inner_lines = ["", self.short_stack]
+        inner_lines.extend(lines[-limit:])
+        self.inner_format = "\n".join(inner_lines)
 
     def __str__(self):
         if hasattr(self, "inner_format"):
