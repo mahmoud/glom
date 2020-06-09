@@ -11,7 +11,7 @@ scope[SCOPE_POS] -- spec cursor (for dict + tuple type specs)
 """
 from __future__ import print_function
 
-from .core import Spec, T, UP, Path, TType
+from .core import Spec, T, UP, Path, TType, bbrepr
 
 
 _NO_TARGET = object()
@@ -29,7 +29,7 @@ def _unpack_stack(scope):
 # TODO: get fancier here and replace repr()
 # with something that only recurses one level
 def _format_value(value, maxlen):
-    s = repr(value)
+    s = bbrepr(value)
     if len(s) > maxlen:
         s = s[:maxlen] + '...'
     return s
@@ -47,7 +47,7 @@ def line_stack(scope):
     for scope, spec, target in _unpack_stack(scope):
         segments.append('/')
         if type(spec) in (TType, Path):
-            segments.append(repr(spec))
+            segments.append(bbrepr(spec))
         else:
             segments.append(type(spec).__name__)
         if target != prev_target:
@@ -86,9 +86,9 @@ def tall_stack(scope):
     prev_target = _NO_TARGET
     for scope, spec, target in _unpack_stack(scope):
         if target != prev_target:
-            segments.append("   target: "+ repr(target))
+            segments.append("   target: "+ bbrepr(target))
         prev_target = target
-        segments.append("   spec: " + repr(spec))
+        segments.append("   spec: " + bbrepr(spec))
     return "\n".join(segments)
 
 

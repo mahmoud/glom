@@ -351,7 +351,7 @@ def format_invocation(name='', args=(), kwargs=None, **kw):
     kw_func(a=1, b=2)
 
     """
-    _repr = kw.pop('repr', repr)
+    _repr = kw.pop('repr', bbrepr)
     if kw:
         raise TypeError('unexpected keyword args: %r' % ', '.join(kw.keys()))
     kwargs = kwargs or {}
@@ -1143,9 +1143,9 @@ class Ref(object):
 
     def __repr__(self):
         if self.subspec is _MISSING:
-            args = repr(self.name)
+            args = bbrepr(self.name)
         else:
-            args = repr((self.name, self.subspec))[1:-1]
+            args = bbrepr((self.name, self.subspec))[1:-1]
         return "Ref(" + args + ")"
 
 
@@ -1574,7 +1574,7 @@ class Auto(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        rpr = '' if self.spec is None else repr(self.spec)
+        rpr = '' if self.spec is None else bbrepr(self.spec)
         return '%s(%s)' % (cn, rpr)
 
 
