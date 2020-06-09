@@ -68,13 +68,13 @@ def short_stack(scope, width=110):
     """
     segments = []
     prev_target = _NO_TARGET
-    target_width = width - len("target: ")
-    spec_width = width - len("spec: ")
+    target_width = width - len("   target: ")
+    spec_width = width - len("   spec: ")
     for scope, spec, target in _unpack_stack(scope):
         if target != prev_target:
-            segments.append("target: "+ _format_value(target, target_width))
+            segments.append("   target: "+ _format_value(target, target_width))
         prev_target = target
-        segments.append("spec: " + _format_value(spec, spec_width))
+        segments.append("   spec: " + _format_value(spec, spec_width))
     return "\n".join(segments)
 
 
@@ -86,9 +86,9 @@ def tall_stack(scope):
     prev_target = _NO_TARGET
     for scope, spec, target in _unpack_stack(scope):
         if target != prev_target:
-            segments.append("target: "+ repr(target))
+            segments.append("   target: "+ repr(target))
         prev_target = target
-        segments.append("spec: " + repr(spec))
+        segments.append("   spec: " + repr(spec))
     return "\n".join(segments)
 
 
