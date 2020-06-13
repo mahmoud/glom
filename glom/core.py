@@ -46,6 +46,8 @@ else:
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
     from collections import ChainMap
 
+GLOM_DEBUG = os.getenv('GLOM_DEBUG', '').strip().lower()
+GLOM_DEBUG = False if (GLOM_DEBUG in ('', '0', 'false')) else True
 
 _type_type = type
 
@@ -1892,6 +1894,7 @@ def glom(target, spec, **kwargs):
     # TODO: check spec up front
     default = kwargs.pop('default', None if 'skip_exc' in kwargs else _MISSING)
     skip_exc = kwargs.pop('skip_exc', () if default is _MISSING else GlomError)
+    glom_debug = kwargs.pop('glom_debug', GLOM_DEBUG)
     scope = _DEFAULT_SCOPE.new_child({
         Path: kwargs.pop('path', []),
         Inspect: kwargs.pop('inspector', None),
@@ -1912,6 +1915,8 @@ def glom(target, spec, **kwargs):
                 raise
             ret = default
     except Exception as e:
+        if glom_debug:
+            raise
         if isinstance(e, GlomError):
             # need to change id or else py3 seems to not let us truncate the
             # stack trace with the explicit "raise err" below
@@ -1919,6 +1924,7 @@ def glom(target, spec, **kwargs):
         else:
             err = GlomError.wrap(e)
         err._finalize(scope[ERROR_SCOPE])
+
     if err:
         raise err
     return ret
