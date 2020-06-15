@@ -123,43 +123,41 @@ class GlomError(Exception):
         return exc_wrapper_type(*exc.args)
 
     def _finalize(self, scope):
-        # rando errors get two stacks, GlomErrors get one
-        from . import trace
-
-        # tried MANY approaches here -- one problem pragmatically is
-        # that traceback module and sys.exc_info() see different
-        # stacks here -- maybe it is something to do with running
-        # under pytest
-
-        parent_exc_type = self.__class__.mro()[0]
-        is_glom_wrap_error = parent_exc_type.__name__ == 'GlomWrapError'
-        is_orig_glom_error = issubclass(parent_exc_type, GlomError)
-
-        lines = traceback.format_exc().strip().splitlines()
+        # careful when changing how this functionality works; pytest seems to mess with
+        # the traceback module or sys.exc_info(). we saw different stacks when originally
+        # developing this in June 2020.
+        etype, evalue, _ = sys.exc_info()
+        tb_lines = traceback.format_exc().strip().splitlines()
         limit = 0
-        #_file = __file__.rstrip('c')  # normalize py/pyc extension
-        for line in reversed(lines):
-            #if _file in line and "_glom" in line:
+        for line in reversed(tb_lines):
             if _PKG_DIR_PATH in line:
                 limit -= 1
                 break
             limit += 1
-
-        self.short_stack = trace.short_stack(scope)
-        inner_lines = ["", self.short_stack]
-        inner_lines.extend(lines[-limit:])
-        self.inner_format = "\n".join(inner_lines)
+        self._tb_lines = tb_lines[-limit:]
+        self._scope = scope
 
     def __str__(self):
-        if hasattr(self, "inner_format"):
-            return self.inner_format
-        return ""
+        if getattr(self, '_finalized_str', None):
+            return self._finalized_str
+        elif getattr(self, '_scope', None) is not None:
+            self._short_stack = short_stack(self._scope)
+            parts = ["error raised while processing.",
+                     "  Trace and error detail (most recent target-spec last):",
+                     self._short_stack]
+            parts.extend(self._tb_lines)
+            self._finalized_str = "\n".join(parts)
+            return self._finalized_str
 
-    def __repr__(self):
-        return str(self)
+        # else, not finalized
+        try:
+            exc_get_message = self.get_message
+        except AttributeError:
+            exc_get_message = super(GlomError, self).__str__
+        return exc_get_message()
 
 
-class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
+class PathAccessError(GlomError, AttributeError, KeyError, IndexError):
     """This :exc:`GlomError` subtype represents a failure to access an
     attribute as dictated by the spec. The most commonly-seen error
     when using glom, it maintains a copy of the original exception and
@@ -200,14 +198,14 @@ class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
         # py27 struggles to copy PAE without this method
         return type(self)(self.exc, self.path, self.part_idx)
 
+    def get_message(self):
+        path_part = self.path.values()[self.part_idx]
+        return ('could not access %r, part %r of %r, got error: %r'
+                % (path_part, self.part_idx, self.path, self.exc))
+
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.part_idx)
-
-    def __str__(self):
-        return GlomError.__str__(self) or (
-            'could not access %r, part %r of %r, got error: %r'
-            % (self.path.values()[self.part_idx], self.part_idx, self.path, self.exc))
 
 
 class CoalesceError(GlomError):
@@ -246,10 +244,7 @@ class CoalesceError(GlomError):
         cn = self.__class__.__name__
         return '%s(%r, %r, %r)' % (cn, self.coal_obj, self.skipped, self.path)
 
-    def __str__(self):
-        preformatted = GlomError.__str__(self)
-        if preformatted:
-            return preformatted
+    def get_message(self):
         missed_specs = tuple(self.coal_obj.subspecs)
         skipped_vals = [v.__class__.__name__
                         if isinstance(v, self.coal_obj.skip_exc)
@@ -308,10 +303,7 @@ class UnregisteredTarget(GlomError):
         return ('%s(%r, <type %r>, %r, %r)'
                 % (cn, self.op, self.target_type.__name__, self.type_map, self.path))
 
-    def __str__(self):
-        preformatted = GlomError.__str__(self)
-        if preformatted:
-            return preformatted
+    def get_message(self):
         if not self.type_map:
             return ("glom() called without registering any types for operation '%s'. see"
                     " glom.register() or Glommer's constructor for details." % (self.op,))
@@ -1384,18 +1376,7 @@ class CheckError(GlomError):
         self.check_obj = check
         self.path = path
 
-    def __copy__(self):
-        # py27 struggles to copy PAE without this method
-        return type(self)(self.msgs, self.check_obj, self.path)
-
-    def __repr__(self):
-        cn = self.__class__.__name__
-        return '%s(%r, %r, %r)' % (cn, self.msgs, self.check_obj, self.path)
-
-    def __str__(self):
-        preformatted = GlomError.__str__(self)
-        if preformatted:
-            return preformatted
+    def get_message(self):
         msg = 'target at path %s failed check,' % self.path
         if self.check_obj.spec is not T:
             msg += ' subtarget at %r' % (self.check_obj.spec,)
@@ -1404,6 +1385,14 @@ class CheckError(GlomError):
         else:
             msg += ' got %s errors: %r' % (len(self.msgs), self.msgs)
         return msg
+
+    def __copy__(self):
+        # py27 struggles to copy PAE without this method
+        return type(self)(self.msgs, self.check_obj, self.path)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r, %r, %r)' % (cn, self.msgs, self.check_obj, self.path)
 
 
 RAISE = make_sentinel('RAISE')  # flag object for "raise on check failure"
@@ -2129,3 +2118,131 @@ def FILL(target, spec, scope):
     if callable(spec):
         return spec(target)
     return spec
+
+
+## TRACE MOVED HERE BC CIRCULAR
+
+"""
+this module contains helpers for building glom data
+structure stack traces from glom scopes
+
+there are a few cursors that are extracted from each level of the
+scope; these cursors say which path down from a target and spec
+was being processed
+
+scope[Path] -- target cursor
+scope[SCOPE_POS] -- spec cursor (for dict + tuple type specs)
+"""
+
+_NO_TARGET = object()
+
+
+def _unpack_stack(scope):
+    """
+    convert scope to [(scope, spec, target)]
+    """
+    # root glom call generates two scopes up at the top that aren't part
+    # of execution
+    return [(scope, scope[Spec], scope[T]) for scope in list(reversed(scope.maps[:-2]))]
+
+
+def _format_value(value, maxlen):
+    s = bbrepr(value)  # TODO: integrate bbrepr with an option for reprlib
+    if len(s) > maxlen:
+        try:
+            suffix = '... (len=%s)' % len(value)
+        except Exception:
+            suffix = '...'
+        s = s[:maxlen - len(suffix)] + suffix
+    return s
+
+
+def line_stack(scope):
+    """
+    unpack a scope into a single line summary
+    (shortest summary possible)
+    """
+    # the goal here is to do a kind of delta-compression --
+    # if the target is the same, don't repeat it
+    segments = []
+    prev_target = _NO_TARGET
+    for scope, spec, target in _unpack_stack(scope):
+        segments.append('/')
+        if type(spec) in (TType, Path):
+            segments.append(bbrepr(spec))
+        else:
+            segments.append(type(spec).__name__)
+        if target != prev_target:
+            segments.append('!')
+            segments.append(type(target).__name__)
+        if Path in scope:
+            segments.append('<')
+            segments.append('->'.join([str(p) for p in scope[Path]]))
+            segments.append('>')
+        prev_target = target
+
+    return "".join(segments)
+
+
+def short_stack(scope, width=110):
+    """
+    unpack a scope into a multi-line but short summary
+    """
+    segments = []
+    prev_target = _NO_TARGET
+    target_width = width - len("   target: ")
+    spec_width = width - len("   spec: ")
+    for scope, spec, target in _unpack_stack(scope):
+        if target != prev_target:
+            segments.append("   target: "+ _format_value(target, target_width))
+        prev_target = target
+        segments.append("   spec: " + _format_value(spec, spec_width))
+    return "\n".join(segments)
+
+
+def tall_stack(scope):
+    """
+    unpack a scope into the most detailed information
+    """
+    segments = []
+    prev_target = _NO_TARGET
+    for scope, spec, target in _unpack_stack(scope):
+        if target != prev_target:
+            segments.append("   target: "+ bbrepr(target))
+        prev_target = target
+        segments.append("   spec: " + bbrepr(spec))
+    return "\n".join(segments)
+
+
+"""
+# doodling around with a glom spec to help with generating traces
+# for dogfooding purposes; not QUITE there, but very close
+_STACK_SPEC = Ref("Seg",
+    {
+        'spec': T[Spec],
+        'target': T[T],
+        'target_pos': Or(T[Path], SKIP),
+        'spec_pos': Or(T[SPEC_POS], SKIP),
+        'parent': Or(And(M(T[Spec]) != T, (T[Spec], Ref("Seg"))), SKIP),
+    })
+
+
+_STACK_UNWIND = (
+    Let(stack=[]),
+    Ref('scope', (
+        S['stack'].append(T),
+    )),
+    S['stack'],
+    reversed
+)
+
+TODO: in the future consider having a handle for SPECs to dump their state
+
+
+SPEC_POS = make_sentinel('SPEC_POS')
+SPEC_POS.__doc__ = '''
+``SPEC_POS`` is used to keep track of the current position
+within a spec -- e.g. key of dict, index of tuple -- for
+the purposes of debugging
+'''
+"""

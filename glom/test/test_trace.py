@@ -4,7 +4,7 @@ import traceback
 import pytest
 
 from glom import glom, S, Coalesce, GlomError
-from glom.trace import line_stack, short_stack, tall_stack
+from glom.core import line_stack, short_stack, tall_stack
 
 
 @pytest.mark.skip
@@ -89,9 +89,11 @@ def _norm_stack(formatted_stack, exc):
     return stack
 
 
-def _make_stack(spec):
+def _make_stack(spec, **kwargs):
+    target = kwargs.pop('target', [None])
+    assert not kwargs
     try:
-        glom([None], spec)
+        glom(target, spec)
     except GlomError as e:
         stack = _norm_stack(traceback.format_exc(), e)
     return stack
@@ -116,10 +118,11 @@ def test_regular_error_stack():
     expected = """\
 Traceback (most recent call last):
   File "test_trace.py", line ___, in _make_stack
-    glom([None], spec)
+    glom(target, spec)
   File "core.py", line ___, in glom
     raise err
-glom.core.GlomError.wrap(Exception):
+glom.core.GlomError.wrap(Exception): error raised while processing.
+  Trace and error detail (most recent target-spec last):
    target: [None]
    spec: {'results': [{'value': <function _raise_exc at
    spec: [{'value': <function _raise_exc at
@@ -140,10 +143,11 @@ def test_glom_error_stack():
     expected = """\
 Traceback (most recent call last):
   File "test_trace.py", line ___, in _make_stack
-    glom([None], spec)
+    glom(target, spec)
   File "core.py", line ___, in glom
     raise err
-glom.core.PathAccessError:
+glom.core.PathAccessError: error raised while processing.
+  Trace and error detail (most recent target-spec last):
    target: [None]
    spec: {'results': [{'value': 'value'}]}
    spec: [{'value': 'value'}]
@@ -152,6 +156,8 @@ glom.core.PathAccessError:
    spec: 'value'
 glom.core.PathAccessError: could not access 'value', part 0 of Path('value'), got error: AttributeError("'NoneType' object has no attribute 'value'")
 """
+    #import glom.core
+    #glom.core.GLOM_DEBUG = True
     actual = _make_stack({'results': [{'value': 'value'}]})
     assert actual == expected
 
@@ -161,7 +167,11 @@ glom.core.PathAccessError: could not access 'value', part 0 of Path('value'), go
 # other functions inside of local scopes.)
 
 def _uses_another_glom():
-    return glom([None], {'internal': ['val']})
+    try:
+        ret = glom(['Nested'], {'internal': ['val']})
+    except Exception as exc:
+        raise
+    return ret
 
 def _subglom_wrap(t):
     return _uses_another_glom()
@@ -172,23 +182,32 @@ def test_double_glom_error_stack():
     expected = """\
 Traceback (most recent call last):
   File "test_trace.py", line ___, in _make_stack
-    glom([None], spec)
+    glom(target, spec)
   File "core.py", line ___, in glom
     raise err
-glom.core.PathAccessError:
+glom.core.PathAccessError: error raised while processing.
+  Trace and error detail (most recent target-spec last):
    target: [None]
    spec: {'results': [{'value': <function _subglom_wrap at
    spec: [{'value': <function _subglom_wrap at
    target: None
    spec: {'value': <function _subglom_wrap at
    spec: <function _subglom_wrap at
-glom.core.PathAccessError:
-   target: [None]
+glom.core.PathAccessError: error raised while processing.
+  Trace and error detail (most recent target-spec last):
+   target: ['Nested']
    spec: {'internal': ['val']}
    spec: ['val']
-   target: None
+   target: 'Nested'
    spec: 'val'
-glom.core.PathAccessError: could not access 'val', part 0 of Path('val'), got error: AttributeError("'NoneType' object has no attribute 'val'")
+glom.core.PathAccessError: could not access 'val', part 0 of Path('val'), got error: AttributeError("'str' object has no attribute 'val'")
 """
     # no lines above beca
     assert actual == expected
+
+
+def test_long_target_repr():
+    import glom as glom_mod
+    assert not glom_mod.core.GLOM_DEBUG
+    actual = _make_stack(target=[None] * 1000, spec='1001')
+    assert '(len=1000)' in actual
