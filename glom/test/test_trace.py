@@ -3,32 +3,21 @@ import traceback
 
 import pytest
 
-from glom import glom, S, Coalesce, GlomError
-from glom.core import line_stack, short_stack, tall_stack
+from glom import glom, S, GlomError
+from glom.core import format_oneline_trace, format_target_spec_trace
 
-
-@pytest.mark.skip
-def test_trace_basic():
-    try:
-        glom({}, 'a')
-    except GlomError as ge:
-        _ge = ge
-        fmtd = traceback.format_exc()
-        raise
-    else:
-        raise RuntimeError()
 
 def test_line_trace():
     stacklifier = ([{'data': S}],)
     scope = glom([1], stacklifier)[0]['data']
-    fmtd_stack = line_stack(scope)
+    fmtd_stack = format_oneline_trace(scope)
     assert fmtd_stack == '/tuple!list/list<0>/dict!int/S'
 
 
 def test_short_trace():
     stacklifier = ([{'data': S}],)
     scope = glom([1], stacklifier)[0]['data']
-    fmtd_stack = short_stack(scope)
+    fmtd_stack = format_target_spec_trace(scope)
     exp_lines = [
         "   target: [1]",
         "   spec: ([{'data': S}],)",
@@ -38,26 +27,6 @@ def test_short_trace():
         "   spec: S",
     ]
     assert fmtd_stack.splitlines() == exp_lines
-
-def test_tall_trace():
-    stacklifier = ([{'data': S}],)
-    scope = glom([1], stacklifier)[0]['data']
-    fmtd_stack = tall_stack(scope)
-    exp_lines = [
-        "   target: [1]",
-        "   spec: ([{'data': S}],)",
-        "   spec: [{'data': S}]",
-        "   target: 1",
-        "   spec: {'data': S}",
-        "   spec: S",
-    ]
-    assert fmtd_stack.splitlines() == exp_lines
-
-
-def _err(inp, depth=3):
-    if depth == 0:
-        raise ValueError(inp)
-    _err(inp, depth - 1)
 
 
 def _norm_stack(formatted_stack, exc):
@@ -202,7 +171,6 @@ glom.core.PathAccessError: error raised while processing.
    spec: 'val'
 glom.core.PathAccessError: could not access 'val', part 0 of Path('val'), got error: AttributeError("'str' object has no attribute 'val'")
 """
-    # no lines above beca
     assert actual == expected
 
 
@@ -211,3 +179,11 @@ def test_long_target_repr():
     assert not glom_mod.core.GLOM_DEBUG
     actual = _make_stack(target=[None] * 1000, spec='1001')
     assert '(len=1000)' in actual
+
+    class ObjectWithLongRepr(object):
+        def __repr__(self):
+            return '<%s %s>' % (self.__class__.__name__, 'w' + ('ooooo' * 250))
+
+    actual = _make_stack(target=ObjectWithLongRepr(), spec='badattr')
+    assert '...' in actual
+    assert '(len=' not in actual  # no length on a single object
