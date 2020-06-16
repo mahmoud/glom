@@ -115,7 +115,7 @@ Traceback (most recent call last):
   File "core.py", line ___, in glom
     raise err
 glom.core.GlomError.wrap(Exception): error raised while processing.
-  Trace and error detail (most recent target-spec last):
+ Target-spec trace, with error detail (most recent last):
    target: [None]
    spec: {'results': [{'value': <function _raise_exc at
    spec: [{'value': <function _raise_exc at
@@ -140,7 +140,7 @@ Traceback (most recent call last):
   File "core.py", line ___, in glom
     raise err
 glom.core.PathAccessError: error raised while processing.
-  Trace and error detail (most recent target-spec last):
+ Target-spec trace, with error detail (most recent last):
    target: [None]
    spec: {'results': [{'value': 'value'}]}
    spec: [{'value': 'value'}]
@@ -179,7 +179,7 @@ Traceback (most recent call last):
   File "core.py", line ___, in glom
     raise err
 glom.core.PathAccessError: error raised while processing.
-  Trace and error detail (most recent target-spec last):
+ Target-spec trace, with error detail (most recent last):
    target: [None]
    spec: {'results': [{'value': <function _subglom_wrap at
    spec: [{'value': <function _subglom_wrap at
@@ -187,7 +187,7 @@ glom.core.PathAccessError: error raised while processing.
    spec: {'value': <function _subglom_wrap at
    spec: <function _subglom_wrap at
 glom.core.PathAccessError: error raised while processing.
-  Trace and error detail (most recent target-spec last):
+ Target-spec trace, with error detail (most recent last):
    target: ['Nested']
    spec: {'internal': ['val']}
    spec: ['val']

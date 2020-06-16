@@ -146,7 +146,7 @@ class GlomError(Exception):
         elif getattr(self, '_scope', None) is not None:
             self._target_spec_trace = format_target_spec_trace(self._scope)
             parts = ["error raised while processing.",
-                     "  Trace and error detail (most recent target-spec last):",
+                     " Target-spec trace, with error detail (most recent last):",
                      self._target_spec_trace]
             parts.extend(self._tb_lines)
             self._finalized_str = "\n".join(parts)
