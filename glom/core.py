@@ -33,6 +33,7 @@ from pprint import pprint
 from collections import OrderedDict
 import traceback
 
+from face.helpers import get_wrap_width
 from boltons.typeutils import make_sentinel
 from boltons.iterutils import is_iterable
 #from boltons.funcutils import format_invocation
@@ -48,6 +49,8 @@ else:
 
 GLOM_DEBUG = os.getenv('GLOM_DEBUG', '').strip().lower()
 GLOM_DEBUG = False if (GLOM_DEBUG in ('', '0', 'false')) else True
+
+TRACE_WIDTH = max(get_wrap_width(max_width=110), 50)   # min width
 
 _type_type = type
 
@@ -173,7 +176,7 @@ def _unpack_stack(scope):
     return [(scope, scope[Spec], scope[T]) for scope in list(reversed(scope.maps[:-2]))]
 
 
-def _format_value(value, maxlen):
+def _format_trace_value(value, maxlen):
     s = bbrepr(value)  # TODO: integrate bbrepr with an option for reprlib
     if len(s) > maxlen:
         try:
@@ -184,7 +187,7 @@ def _format_value(value, maxlen):
     return s
 
 
-def format_target_spec_trace(scope, width=110):
+def format_target_spec_trace(scope, width=TRACE_WIDTH):
     """
     unpack a scope into a multi-line but short summary
     """
@@ -194,9 +197,9 @@ def format_target_spec_trace(scope, width=110):
     spec_width = width - len("   spec: ")
     for scope, spec, target in _unpack_stack(scope):
         if target != prev_target:
-            segments.append("   target: "+ _format_value(target, target_width))
+            segments.append("   target: "+ _format_trace_value(target, target_width))
         prev_target = target
-        segments.append("   spec: " + _format_value(spec, spec_width))
+        segments.append("   spec: " + _format_trace_value(spec, spec_width))
     return "\n".join(segments)
 
 
