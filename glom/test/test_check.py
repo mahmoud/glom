@@ -61,7 +61,7 @@ def test_check_basic():
             glom(target, check)
 
         if msg is not None:
-            assert str(exc_info.value) == msg
+            assert str(exc_info.value).find(msg) != -1
         assert repr(exc_info.value)
 
 

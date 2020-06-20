@@ -57,7 +57,9 @@ def test_types_bare():
     with pytest.raises(UnregisteredTarget) as exc_info:
         glommer.glom(object(), {'object_repr': '__class__.__name__'})
     assert repr(exc_info.value) == "UnregisteredTarget('get', <type 'object'>, OrderedDict(), ('__class__',))"
-    assert str(exc_info.value) == "glom() called without registering any types for operation 'get'. see glom.register() or Glommer's constructor for details."
+    assert str(exc_info.value).find(
+        "glom() called without registering any types for operation 'get'."
+        " see glom.register() or Glommer's constructor for details.") != -1
 
     with pytest.raises(UnregisteredTarget, match='without registering') as exc_info:
         glommer.glom([{'hi': 'hi'}], ['hi'])
@@ -71,7 +73,9 @@ def test_types_bare():
     with pytest.raises(UnregisteredTarget) as exc_info:
         glommer.glom({'test': [{'hi': 'hi'}]}, ('test', ['hi']))
     # feel free to update the "(at ['test'])" part to improve path display
-    assert str(exc_info.value) == "target type 'list' not registered for 'iterate', expected one of registered types: (dict) (at ['test'])"
+    assert str(exc_info.value).find(
+        "target type 'list' not registered for 'iterate', "
+        "expected one of registered types: (dict) (at ['test'])") != -1
     return
 
 
