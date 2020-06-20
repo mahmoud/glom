@@ -35,8 +35,14 @@ import ast
 import sys
 import json
 
-from face import Command, Flag, face_middleware, PosArgSpec, PosArgDisplay
-from face.command import CommandLineError
+from face import (Command,
+                  Flag,
+                  face_middleware,
+                  PosArgSpec,
+                  PosArgDisplay,
+                  CommandLineError,
+                  UsageError)
+from face.utils import isatty
 
 import glom
 from glom import Path, GlomError, Inspect
@@ -67,7 +73,7 @@ def glom_cli(target, spec, indent, debug, inspect):
     return
 
 
-def main(argv):
+def get_command():
     posargs = PosArgSpec(str, max_count=2, display={'label': '[spec [target]]'})
     cmd = Command(glom_cli, posargs=posargs, middlewares=[mw_get_target])
     cmd.add('--target-file', str, missing=None, doc='path to target data source')
@@ -82,7 +88,11 @@ def main(argv):
 
     cmd.add('--debug', parse_as=True, doc='interactively debug any errors that come up')
     cmd.add('--inspect', parse_as=True, doc='interactively explore the data')
+    return cmd
 
+
+def main(argv):
+    cmd = get_command()
     return cmd.run(argv) or 0
 
 
@@ -97,11 +107,6 @@ def console_main():
             import pdb;pdb.post_mortem()
         raise
 
-
-def _error(msg):
-    # TODO: build this functionality into face
-    print('error:', msg)
-    raise CommandLineError(msg)
 
 def mw_handle_target(target_text, target_format):
     """ Handles reading in a file specified in cli command.
@@ -118,24 +123,28 @@ def mw_handle_target(target_text, target_format):
         return {}
     target = {}
     if target_format == 'json':
-        try:
-            target = json.loads(target_text)
-        except Exception as e:
-            _error('could not load target data, got: %s' % e)
+        load_func = json.loads
     elif target_format in ('yaml', 'yml'):
         try:
             import yaml
-            try:
-                target = yaml.load(target_text)
-            except Exception as e:
-                _error('could not load target data, got: %s' % e)
+            load_func = yaml.load
         except ImportError:
-            _error('No YAML package found. To process yaml files, run: pip install PyYAML')
+            raise UsageError('No YAML package found. To process yaml files, run: pip install PyYAML')
     elif target_format == 'python':
-        target = ast.literal_eval(target_text)
+        load_func = ast.literal_eval
     else:
-        _error('expected target-format to be one of python, json, or yaml')
+        raise UsageError('expected target-format to be one of python, json, or yaml')
+
+
+    try:
+        target = load_func(target_text)
+    except Exception as e:
+        raise UsageError('could not load target data, got: %s: %s'
+                         % (e.__class__.__name__, e))
+
+
     return target
+
 
 @face_middleware(provides=['spec', 'target'])
 def mw_get_target(next_, posargs_, target_file, target_format, spec_file, spec_format):
@@ -146,13 +155,13 @@ def mw_get_target(next_, posargs_, target_file, target_format, spec_file, spec_f
         spec_text, target_text = posargs_[0], None
 
     if spec_text and spec_file:
-        _error('expected spec file or spec argument, not both')
+        raise UsageError('expected spec file or spec argument, not both')
     elif spec_file:
         try:
             with open(spec_file, 'r') as f:
                 spec_text = f.read()
         except IOError as ose:
-            _error('could not read spec file %r, got: %s' % (spec_file, ose))
+            raise UsageError('could not read spec file %r, got: %s' % (spec_file, ose))
 
     if not spec_text:
         spec = Path()
@@ -166,21 +175,19 @@ def mw_get_target(next_, posargs_, target_file, target_format, spec_file, spec_f
     elif spec_format == 'python-full':
         spec = _eval_python_full_spec(spec_text)
     else:
-        _error('expected spec-format to be one of json, python, or python-full')
+        raise UsageError('expected spec-format to be one of json, python, or python-full')
 
     if target_text and target_file:
-        _error('expected target file or target argument, not both')
+        raise UsageError('expected target file or target argument, not both')
     elif target_text == '-' or target_file == '-':
-        with sys.stdin as f:
-            target_text = f.read()
+        target_text = sys.stdin.read()
     elif target_file:
         try:
             target_text = open(target_file, 'r').read()
         except IOError as ose:
-            _error('could not read target file %r, got: %s' % (target_file, ose))
-    elif not target_text and not os.isatty(sys.stdin.fileno()):
-        with sys.stdin as f:
-            target_text = f.read()
+            raise UsageError('could not read target file %r, got: %s' % (target_file, ose))
+    elif not target_text and not isatty(sys.stdin):
+        target_text = sys.stdin.read()
 
     target = mw_handle_target(target_text, target_format)
 

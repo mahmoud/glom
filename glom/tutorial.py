@@ -23,7 +23,11 @@ What does nested data looks like? In its most basic form::
 Pretty simple right? On a good day, it certainly can be. But other
 days, a value might not be set::
 
-  >>> data2 = {'a': {'b': None}}
+  >>> data2 = {
+  ...     'a': {
+  ...         'b': None
+  ...     }
+  ... }
   >>> data2['a']['b']['c']
   Traceback (most recent call last):
   ...
@@ -39,8 +43,9 @@ If only there were a more semantically powerful accessor.
 
 .. _access-granted:
 
-Access Granted
-==============
+Accessing Nested Data
+=====================
+*AKA "Access Granted"*
 
 After years of research and countless iterations, the glom team landed
 on this simple construct::
@@ -81,7 +86,13 @@ With ``output = glom(target, spec)`` committed to memory, we're ready for some n
 
 Let's follow some astronomers on their journey exploring the solar system.
 
-  >>> target = {'galaxy': {'system': {'planet': 'jupiter'}}}
+  >>> target = {
+  ...     'galaxy': {
+  ...         'system': {
+  ...             'planet': 'jupiter'
+  ...         }
+  ...     }
+  ... }
   >>> spec = 'galaxy.system.planet'
   >>> glom(target, spec)
   'jupiter'
@@ -89,16 +100,31 @@ Let's follow some astronomers on their journey exploring the solar system.
 Our astronomers want to focus in on the Solar system, and represent planets as a list.
 Let's restructure the data to make a list of names:
 
-  >>> target = {'system': {'planets': [{'name': 'earth'}, {'name': 'jupiter'}]}}
+  >>> target = {
+  ...     'system': {
+  ...         'planets': [
+  ...             {'name': 'earth'},
+  ...             {'name': 'jupiter'}
+  ...         ]
+  ...     }
+  ... }
   >>> glom(target, ('system.planets', ['name']))
   ['earth', 'jupiter']
 
 And let's say we want to capture a parallel list of moon counts with the names as well:
 
-  >>> target = {'system': {'planets': [{'name': 'earth', 'moons': 1},
-  ...                                  {'name': 'jupiter', 'moons': 69}]}}
-  >>> spec = {'names': ('system.planets', ['name']),
-  ...         'moons': ('system.planets', ['moons'])}
+  >>> target = {
+  ...     'system': {
+  ...         'planets': [
+  ...             {'name': 'earth', 'moons': 1},
+  ...             {'name': 'jupiter', 'moons': 69}
+  ...         ]
+  ...     }
+  ... }
+  >>> spec = {
+  ...     'names': ('system.planets', ['name']),
+  ...     'moons': ('system.planets', ['moons'])
+  ... }
   >>> pprint(glom(target, spec))
   {'moons': [1, 69], 'names': ['earth', 'jupiter']}
 
@@ -115,14 +141,32 @@ to the list, and ``subpath`` is the path within each element of the list. What's
 lists within lists (within lists ...)? Then just repeat the pattern, replacing ``subpath`` with another
 ``(path, [subpath])`` tuple. For example, say we have information about each planet's moons like so:
 
-  >>> target = {'system': {'planets': [{'name': 'earth', 'moons': [{'name': 'luna'}]},
-  ...                                  {'name': 'jupiter', 'moons': [{'name': 'io'},
-  ...                                                                {'name': 'europa'}]}]}}
+  >>> target = {
+  ...     'system': {
+  ...         'planets': [
+  ...             {
+  ...                 'name': 'earth',
+  ...                 'moons': [
+  ...                     {'name': 'luna'}
+  ...                 ]
+  ...             },
+  ...             {
+  ...                 'name': 'jupiter',
+  ...                 'moons': [
+  ...                     {'name': 'io'},
+  ...                     {'name': 'europa'}
+  ...                 ]
+  ...             }
+  ...         ]
+  ...     }
+  ... }
 
 We can get the names of each moon from our nested lists by nesting our subpath specs:
 
-  >>> spec = {'planet_names': ('system.planets', ['name']),
-  ...         'moon_names': ('system.planets', [('moons', ['name'])])}
+  >>> spec = {
+  ...     'planet_names': ('system.planets', ['name']),
+  ...     'moon_names': ('system.planets', [('moons', ['name'])])
+  ... }
   >>> pprint(glom(target, spec))
   {'moon_names': [['luna'], ['io', 'europa']], 'planet_names': ['earth', 'jupiter']}
 
@@ -132,7 +176,7 @@ Changing Requirements
 Unfortunately, data in the real world is messy. You might be expecting a certain format and end up getting something
 completely different. No worries, glom to the rescue.
 
-Coalesce is a glom construct that allows you to specify fallback behavior for a list of subspecs.
+**Coalesce** is a glom construct that allows you to specify fallback behavior for a list of subspecs.
 Subspecs are passed as positional arguments, while defaults can be set using keyword arguments.
 
 Let's say our astronomers recently got a new update in their systems, and sometimes ``system`` will contain
@@ -140,22 +184,65 @@ Let's say our astronomers recently got a new update in their systems, and someti
 
 To handle this, we can define the ``dwarf_planets`` subspec as a Coalesce fallback.
 
-  >>> target = {'system': {'planets': [{'name': 'earth', 'moons': 1},
-  ...                                  {'name': 'jupiter', 'moons': 69}]}}
-  >>> spec = {'names': (Coalesce('system.planets', 'system.dwarf_planets'), ['name']),
-  ...         'moons': (Coalesce('system.planets', 'system.dwarf_planets'), ['moons'])}
+  >>> from glom import Coalesce
+  >>> target = {
+  ...     'system': {
+  ...         'planets': [
+  ...             {'name': 'earth', 'moons': 1},
+  ...             {'name': 'jupiter', 'moons': 69}
+  ...         ]
+  ...     }
+  ... }
+  >>> spec = {
+  ...     'planets': (Coalesce('system.planets', 'system.dwarf_planets'), ['name']),
+  ...     'moons': (Coalesce('system.planets', 'system.dwarf_planets'), ['moons'])
+  ... }
   >>> pprint(glom(target, spec))
-  {'moons': [1, 69], 'names': ['earth', 'jupiter']}
+  {'moons': [1, 69], 'planets': ['earth', 'jupiter']}
 
 You can see here we get the expected results, but say our target changes...
 
-  >>> target = {'system': {'dwarf_planets': [{'name': 'pluto', 'moons': 5},
-  ...                                        {'name': 'ceres', 'moons': 0}]}}
+  >>> target = {
+  ...     'system': {
+  ...         'dwarf_planets': [
+  ...             {'name': 'pluto', 'moons': 5},
+  ...             {'name': 'ceres', 'moons': 0}
+  ...         ]
+  ...     }
+  ... }
   >>> pprint(glom(target, spec))
-  {'moons': [5, 0], 'names': ['pluto', 'ceres']}
+  {'moons': [5, 0], 'planets': ['pluto', 'ceres']}
 
 Voila, the target can still be parsed and we can elegantly handle changes in our data formats.
 
+Data-Driven Assignment
+======================
+
+Quite often APIs deliver data in dictionaries without constant key values.
+They use parts of the data itself as a key. This we call data-driven assignment.
+
+The following example shows you a way to handle this situation.
+It extracts the moon count from a dictionary that has the planet names as a key.
+
+  >>> from glom import glom, T, Merge, Iter, Coalesce
+  >>> target = {
+  ...    "pluto": {"moons": 6, "population": None},
+  ...    "venus": {"population": {"aliens": 5}},
+  ...    "earth": {"moons": 1, "population": {"humans": 7700000000, "aliens": 1}},
+  ... }
+  >>> spec = {
+  ...     "moons": (
+  ...          T.items(),
+  ...          Iter({T[0]: (T[1], Coalesce("moons", default=0))}),
+  ...          Merge(),
+  ...     )
+  ... }
+  >>> pprint(glom(target, spec))
+  {'moons': {'earth': 1, 'pluto': 6, 'venus': 0}}
+
+Don't worry if you do not fully understand how this works at this
+point. If you would like to learn more, look up :class:`~glom.Iter()`,
+:data:`~glom.T`, or :class:`~glom.Merge` in the glom API reference.
 
 True Python Native
 ==================
@@ -165,8 +252,14 @@ glom makes no such sacrifices of practicality, harnessing the full power of Pyth
 
 Going back to our example, let's say we wanted to get an aggregate moon count:
 
-  >>> target = {'system': {'planets': [{'name': 'earth', 'moons': 1},
-  ...                                  {'name': 'jupiter', 'moons': 69}]}}
+  >>> target = {
+  ...     'system': {
+  ...         'planets': [
+  ...             {'name': 'earth', 'moons': 1},
+  ...             {'name': 'jupiter', 'moons': 69}
+  ...         ]
+  ...     }
+  ... }
   >>> pprint(glom(target, {'moon_count': ('system.planets', ['moons'], sum)}))
   {'moon_count': 70}
 
@@ -181,8 +274,9 @@ Interactive Planetary Templating
    <iframe height="400px" width="100%" src="https://repl.it/@mhashemi/glom-planetary-templating?lite=true" scrolling="no" frameborder="no" allowtransparency="true" allowfullscreen="true" sandbox="allow-forms allow-pointer-lock allow-popups allow-same-origin allow-scripts allow-modals"></iframe>
 
 
-Point of Contact
-================
+Practical Production Use
+========================
+*AKA "Point of Contact"*
 
 glom is a practical tool for production use. To best demonstrate how
 you can use it, we'll be building an API response. We're implementing
@@ -190,7 +284,8 @@ a Contacts web service, like an address book, but backed by an
 ORM/database and compatible with web and mobile frontends.
 
 Let's create a Contact to familiarize ourselves with our test data:
-
+pri
+  >>> from glom.tutorial import *  # import the tutorial module members
   >>> contact = Contact('Julian',
   ...                   emails=[Email(email='jlahey@svtp.info')],
   ...                   location='Canada')

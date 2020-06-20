@@ -256,8 +256,7 @@ register_op('assign', auto_func=_assign_autodiscover, exact=False)
 
 
 class Delete(object):
-    """*New in glom 19.11.0*
-
+    """
     In addition to glom's core "deep-get" and ``Assign``'s "deep-set",
     the ``Delete`` specifier type performs a "deep-del", which can
     remove items from larger data structures by key, attribute, and
@@ -281,6 +280,7 @@ class Delete(object):
     (like lists). Additional types can be registered through
     :func:`~glom.register()` using the ``"delete"`` operation name.
 
+    .. versionadded:: 20.5.0
     """
     def __init__(self, path, ignore_missing=False):
         if isinstance(path, basestring):
@@ -344,8 +344,7 @@ class Delete(object):
 
 
 def delete(obj, path, ignore_missing=False):
-    """*New in glom 19.11.0*
-
+    """
     The ``delete()`` function provides "deep del" functionality,
     modifying nested data structures in-place::
 
@@ -363,6 +362,7 @@ def delete(obj, path, ignore_missing=False):
     For more information and examples, see the :class:`~glom.Delete`
     specifier type, which this convenience function wraps.
 
+    .. versionadded:: 20.5.0
     """
     return glom(obj, Delete(path, ignore_missing=ignore_missing))
 
