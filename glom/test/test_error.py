@@ -180,7 +180,7 @@ def _uses_another_glom():
         ret = glom(['Nested'], {'internal': ['val']})
     except Exception as exc:
         raise
-    return ret
+
 
 def _subglom_wrap(t):
     return _uses_another_glom()
