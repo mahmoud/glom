@@ -1,10 +1,17 @@
+
 import os
+import re
 import traceback
 
 import pytest
 
 from glom import glom, S, T, GlomError
 from glom.core import format_oneline_trace, format_target_spec_trace, bbrepr
+
+try:
+    unicode
+except NameError:
+    unicode = str  # py3
 
 # basic tests:
 
@@ -42,33 +49,41 @@ def test_short_trace():
     scope = glom([1], stacklifier)[0]['data']
     fmtd_stack = format_target_spec_trace(scope)
     exp_lines = [
-        "   target: [1]",
-        "   spec: ([{'data': S}],)",
-        "   spec: [{'data': S}]",
-        "   target: 1",
-        "   spec: {'data': S}",
-        "   spec: S",
+        " - Target: [1]",
+        " - Spec: ([{'data': S}],)",
+        " - Spec: [{'data': S}]",
+        " - Target: 1",
+        " - Spec: {'data': S}",
+        " - Spec: S",
     ]
     assert fmtd_stack.splitlines() == exp_lines
 
 # full traceback testing:
 
 def _norm_stack(formatted_stack, exc):
+
+    if not isinstance(formatted_stack, unicode):
+        # lil hack for py2
+        # note that we only support the one unicode character
+        formatted_stack = formatted_stack.decode('utf8') .replace(r'\xc3\xa9', u'é')
+        formatted_stack = re.sub(r'\bu"', '"', formatted_stack)
+        formatted_stack = re.sub(r"\bu'", "'", formatted_stack)
+
     normalized = []
-    for line in formatted_stack.split('\n'):
-        if line.strip().startswith('File'):
-            file_name = line.split('"')[1]
-            short_file_name = os.path.split(file_name.strip('"'))[1]
+    for line in formatted_stack.splitlines():
+        if line.strip().startswith(u'File'):
+            file_name = line.split(u'"')[1]
+            short_file_name = os.path.split(file_name.strip(u'"'))[1]
             line = line.replace(file_name, short_file_name)
-            line = line.partition('line')[0] + 'line ___,' + line.partition('line')[2].partition(',')[2]
-        line = line.partition('0x')[0]  # scrub memory addresses
+            line = line.partition(u'line')[0] + u'line ___,' + line.partition(u'line')[2].partition(u',')[2]
+        line = line.partition(u'0x')[0]  # scrub memory addresses
 
         line = line.rstrip()  # trailing whitespace shouldn't matter
 
         # qualify python2's unqualified error type names
         exc_type_name = exc.__class__.__name__
         if exc_type_name in line:
-            mod_name = getattr(exc.__class__, '__module__', '') or ''
+            mod_name = unicode(getattr(exc.__class__, '__module__', '') or '')
             exc_type_qual_name = exc_type_name
             if 'builtin' not in mod_name:
                 exc_type_qual_name = mod_name + '.' + exc_type_name
@@ -77,8 +92,8 @@ def _norm_stack(formatted_stack, exc):
 
         normalized.append(line)
 
-    stack = "\n".join(normalized)
-    stack = stack.replace(',)', ')')  # py37 likes to do Exception('msg',)
+    stack = u"\n".join(normalized) + u'\n'
+    stack = stack.replace(u',)', u')')  # py37 likes to do Exception('msg',)
     return stack
 
 
@@ -116,24 +131,24 @@ Traceback (most recent call last):
     raise err
 glom.core.GlomError.wrap(Exception): error raised while processing.
  Target-spec trace, with error detail (most recent last):
-   target: [None]
-   spec: {'results': [{'value': <function _raise_exc at
-   spec: [{'value': <function _raise_exc at
-   target: None
-   spec: {'value': <function _raise_exc at
-   spec: <function _raise_exc at
+ - Target: [None]
+ - Spec: {'results': [{'value': <function _raise_exc at
+ - Spec: [{'value': <function _raise_exc at
+ - Target: None
+ - Spec: {'value': <function _raise_exc at
+ - Spec: <function _raise_exc at
   File "<boltons.funcutils.FunctionBuilder-0>", line ___, in _raise_exc
 Exception: unique message
 """
     # _raise_exc being present in the second-to-last line above tests
     # that errors in user-defined functions result in frames being
     # visible
-    assert actual == expected
+    assert expected == actual
 
 
 def test_glom_error_stack():
     # NoneType has not attribute value
-    expected = """\
+    expected = u"""\
 Traceback (most recent call last):
   File "test_error.py", line ___, in _make_stack
     glom(target, spec)
@@ -141,18 +156,19 @@ Traceback (most recent call last):
     raise err
 glom.core.PathAccessError: error raised while processing.
  Target-spec trace, with error detail (most recent last):
-   target: [None]
-   spec: {'results': [{'value': 'value'}]}
-   spec: [{'value': 'value'}]
-   target: None
-   spec: {'value': 'value'}
-   spec: 'value'
+ - Target: [None]
+ - Spec: {'results': [{'valué': 'value'}]}
+ - Spec: [{'valué': 'value'}]
+ - Target: None
+ - Spec: {'valué': 'value'}
+ - Spec: 'value'
 glom.core.PathAccessError: could not access 'value', part 0 of Path('value'), got error: AttributeError("'NoneType' object has no attribute 'value'")
 """
     #import glom.core
     #glom.core.GLOM_DEBUG = True
-    actual = _make_stack({'results': [{'value': 'value'}]})
-    assert actual == expected
+    actual = _make_stack({'results': [{u'valué': u'value'}]})
+    print(actual)
+    assert expected == actual
 
 
 # used by the test below, but at the module level to make stack traces
@@ -170,7 +186,7 @@ def _subglom_wrap(t):
     return _uses_another_glom()
 
 
-def test_double_glom_error_stack():
+def test_glom_error_double_stack():
     actual = _make_stack({'results': [{'value': _subglom_wrap}]})
     expected = """\
 Traceback (most recent call last):
@@ -180,22 +196,22 @@ Traceback (most recent call last):
     raise err
 glom.core.PathAccessError: error raised while processing.
  Target-spec trace, with error detail (most recent last):
-   target: [None]
-   spec: {'results': [{'value': <function _subglom_wrap at
-   spec: [{'value': <function _subglom_wrap at
-   target: None
-   spec: {'value': <function _subglom_wrap at
-   spec: <function _subglom_wrap at
+ - Target: [None]
+ - Spec: {'results': [{'value': <function _subglom_wrap at
+ - Spec: [{'value': <function _subglom_wrap at
+ - Target: None
+ - Spec: {'value': <function _subglom_wrap at
+ - Spec: <function _subglom_wrap at
 glom.core.PathAccessError: error raised while processing.
  Target-spec trace, with error detail (most recent last):
-   target: ['Nested']
-   spec: {'internal': ['val']}
-   spec: ['val']
-   target: 'Nested'
-   spec: 'val'
+ - Target: ['Nested']
+ - Spec: {'internal': ['val']}
+ - Spec: ['val']
+ - Target: 'Nested'
+ - Spec: 'val'
 glom.core.PathAccessError: could not access 'val', part 0 of Path('val'), got error: AttributeError("'str' object has no attribute 'val'")
 """
-    assert actual == expected
+    assert expected == actual
 
 
 def test_long_target_repr():

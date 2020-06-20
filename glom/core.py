@@ -152,7 +152,7 @@ class GlomError(Exception):
                      " Target-spec trace, with error detail (most recent last):",
                      self._target_spec_trace]
             parts.extend(self._tb_lines)
-            self._finalized_str = "\n".join(parts)
+            self._finalized_str = u"\n".join(parts)
             return self._finalized_str
 
         # else, not finalized
@@ -196,14 +196,14 @@ def format_target_spec_trace(scope, width=TRACE_WIDTH):
     """
     segments = []
     prev_target = _MISSING
-    target_width = width - len("   target: ")
-    spec_width = width - len("   spec: ")
+    target_width = width - len(" - Target: ")
+    spec_width = width - len(" - Spec: ")
     for scope, spec, target in _unpack_stack(scope):
-        if target != prev_target:
-            segments.append("   target: "+ _format_trace_value(target, target_width))
+        if target is not prev_target:
+            segments.append(u" - Target: " + _format_trace_value(target, target_width))
         prev_target = target
-        segments.append("   spec: " + _format_trace_value(spec, spec_width))
-    return "\n".join(segments)
+        segments.append(u" - Spec: " + _format_trace_value(spec, spec_width))
+    return u"\n".join(segments)
 
 
 # TODO: not used (yet)
