@@ -323,3 +323,18 @@ def test_all_public_errors():
     untested_types = set(err_types) - set(tested_types)
 
     assert not untested_types, "did not test all public exception types"
+
+
+def test_glom_dev_debug():
+    with pytest.raises(GlomError) as exc_info:
+        glom({'a': 'yesandno'}, 'a.b.c')
+
+    assert ' - Target:' in str(exc_info.value)
+    assert 'yesandno' in str(exc_info.value)
+    assert len(exc_info.traceback) == 2
+
+    with pytest.raises(GlomError) as exc_info:
+        glom({'a': 'yesandno'}, 'a.b.c', glom_debug=True)
+
+    assert ' - Target:' not in str(exc_info.value)
+    assert len(exc_info.traceback) > 2
