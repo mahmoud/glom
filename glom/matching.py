@@ -23,7 +23,7 @@ class GlomMatchError(GlomError):
     def __init__(self, fmt, *args):
         super(GlomMatchError, self).__init__(fmt, *args)
 
-    def __repr__(self):
+    def get_message(self):
         fmt, args = self.args[0], self.args[1:]
         return "{}({})".format(self.__class__.__name__, fmt.format(*args))
 
@@ -32,6 +32,11 @@ class GlomTypeMatchError(GlomMatchError, TypeError):
     def __init__(self, actual, expected):
         super(GlomTypeMatchError, self).__init__(
             "expected type {!r}, not {!r}", expected, actual)
+
+    def __copy__(self):
+        # __init__ args = (actual, expected)
+        # self.args = (fmt_str, expected, actual)
+        return GlomTypeMatchError(self.args[2], self.args[1])
 
 
 class Match(object):
