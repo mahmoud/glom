@@ -211,3 +211,39 @@ def test_long_target_repr():
     actual = _make_stack(target=ObjectWithLongRepr(), spec='badattr')
     assert '...' in actual
     assert '(len=' not in actual  # no length on a single object
+
+
+ERROR_CLASSES = (
+    ValueError, NameError, AttributeError, ZeroDivisionError, SyntaxError, ImportError)
+
+def test_error_types():
+    """test that try / except work normally through glom"""
+    for err_class in ERROR_CLASSES:
+        def err_raise(t):
+            raise err_class()
+        with pytest.raises(err_class):
+            glom(None, err_raise)
+
+
+def test_fallback():
+    """
+    test that in cases of weird badly behaved exception types,
+    the handler falls back from wrapping to just letting the exception
+    through
+    """
+    class BadExc(Exception):
+        def __init__(self, first):
+            if not first:
+                1/0
+            self.first = False
+            super(BadExc, self).__init__(self.first)
+    
+    bad_exc = BadExc(True)
+
+    def raise_bad(t):
+        raise bad_exc
+
+    try:
+        glom(None, raise_bad)
+    except Exception as e:
+        assert e is bad_exc

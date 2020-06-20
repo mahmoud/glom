@@ -123,7 +123,10 @@ class GlomError(Exception):
         exc_type = type(exc)
         bases = (GlomError,) if issubclass(GlomError, exc_type) else (exc_type, GlomError)
         exc_wrapper_type = type("GlomError.wrap({})".format(exc_type.__name__), bases, {})
-        return exc_wrapper_type(*exc.args)
+        try:
+            return exc_wrapper_type(*exc.args)
+        except Exception:  # maybe exception can't be re-created
+            return exc
 
     def _finalize(self, scope):
         # careful when changing how this functionality works; pytest seems to mess with
@@ -1986,7 +1989,10 @@ def glom(target, spec, **kwargs):
             err = copy.copy(e)
         else:
             err = GlomError.wrap(e)
-        err._finalize(scope[ERROR_SCOPE])
+        if isinstance(err, GlomError):
+            err._finalize(scope[ERROR_SCOPE])
+        else:  # wrapping failed, fall back to default behavior
+            raise
 
     if err:
         raise err
