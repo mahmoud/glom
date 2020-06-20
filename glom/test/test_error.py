@@ -213,6 +213,7 @@ def test_long_target_repr():
     assert '(len=' not in actual  # no length on a single object
 
 
+
 ERROR_CLASSES = (
     ValueError, NameError, AttributeError, ZeroDivisionError, SyntaxError, ImportError)
 
@@ -237,7 +238,7 @@ def test_fallback():
                 1/0
             self.first = False
             super(BadExc, self).__init__(self.first)
-    
+
     bad_exc = BadExc(True)
 
     def raise_bad(t):
@@ -247,3 +248,59 @@ def test_fallback():
         glom(None, raise_bad)
     except Exception as e:
         assert e is bad_exc
+
+
+def test_all_public_errors():
+    """test that all errors importable from the top-level glom module
+    pass a basic set of standards.
+
+    When adding a new public error type, this test will be fail unless
+    that type is also tested below.
+    """
+    import glom
+    import copy
+
+    err_types = [t for t in
+                 [getattr(glom, name) for name in dir(glom)]
+                 if isinstance(t, type) and issubclass(t, Exception)]
+    non_glomerrors = [t for t in err_types if not issubclass(t, glom.GlomError)]
+    assert not non_glomerrors, "expected all public exception types to subclass GlomError"
+
+    err_types = sorted([t for t in err_types if not t is glom.GlomError],
+                       key=lambda t: t.__name__)
+
+    excs = []
+
+    def _test_exc(exc_type, target, spec):
+        with pytest.raises(exc_type) as exc_info:
+            glom.glom(target, spec)
+        excs.append(exc_info.value)
+        return exc_info.value
+
+    _test_exc(glom.CheckError, {}, glom.Check(equal_to=[]))
+
+    _test_exc(glom.FoldError, 2, glom.Flatten())
+
+    _test_exc(glom.BadSpec, range(5), glom.grouping.Group([{T: T}]))
+
+    _test_exc(glom.PathAccessError, {}, 'a.b.c')
+
+    _test_exc(glom.UnregisteredTarget, 'kurt', [glom.T])
+
+    _test_exc(glom.CoalesceError, {}, glom.Coalesce('a', 'b'))
+
+    _test_exc(glom.PathAssignError, object(), glom.Assign('a', 'b'))
+
+    _test_exc(glom.PathDeleteError, object(), glom.Delete('a'))
+
+    for exc in excs:
+        assert copy.copy(exc) is not exc
+        exc_str = str(exc)
+        exc_type_name = exc.__class__.__name__
+        assert exc_type_name in exc_str
+        assert repr(exc).startswith(exc_type_name)
+
+    tested_types = [type(exc) for exc in excs]
+    untested_types = set(err_types) - set(tested_types)
+
+    assert not untested_types, "did not test all public exception types"
