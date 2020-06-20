@@ -4,7 +4,7 @@ import traceback
 import pytest
 
 from glom import glom, S, T, GlomError
-from glom.core import format_oneline_trace, format_target_spec_trace
+from glom.core import format_oneline_trace, format_target_spec_trace, bbrepr
 
 # basic tests:
 
@@ -269,12 +269,12 @@ def test_all_public_errors():
     err_types = sorted([t for t in err_types if not t is glom.GlomError],
                        key=lambda t: t.__name__)
 
-    excs = []
+    results = []
 
     def _test_exc(exc_type, target, spec):
         with pytest.raises(exc_type) as exc_info:
             glom.glom(target, spec)
-        excs.append(exc_info.value)
+        results.append((target, spec, exc_info.value))
         return exc_info.value
 
     _test_exc(glom.CheckError, {}, glom.Check(equal_to=[]))
@@ -293,14 +293,17 @@ def test_all_public_errors():
 
     _test_exc(glom.PathDeleteError, object(), glom.Delete('a'))
 
-    for exc in excs:
+    for (target, spec, exc) in results:
         assert copy.copy(exc) is not exc
         exc_str = str(exc)
         exc_type_name = exc.__class__.__name__
         assert exc_type_name in exc_str
-        assert repr(exc).startswith(exc_type_name)
+        assert bbrepr(exc).startswith(exc_type_name)
 
-    tested_types = [type(exc) for exc in excs]
+        assert bbrepr(target)[:80] in exc_str
+        assert bbrepr(spec)[:80] in exc_str
+
+    tested_types = [type(exc) for _, _, exc in results]
     untested_types = set(err_types) - set(tested_types)
 
     assert not untested_types, "did not test all public exception types"
