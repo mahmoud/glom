@@ -22,14 +22,18 @@ semantics.
 
 from __future__ import print_function
 
+import os
 import sys
 import pdb
+import copy
 import weakref
 import operator
 from abc import ABCMeta
 from pprint import pprint
 from collections import OrderedDict
+import traceback
 
+from face.helpers import get_wrap_width
 from boltons.typeutils import make_sentinel
 from boltons.iterutils import is_iterable
 #from boltons.funcutils import format_invocation
@@ -43,6 +47,10 @@ else:
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
     from collections import ChainMap
 
+GLOM_DEBUG = os.getenv('GLOM_DEBUG', '').strip().lower()
+GLOM_DEBUG = False if (GLOM_DEBUG in ('', '0', 'false')) else True
+
+TRACE_WIDTH = max(get_wrap_width(max_width=110), 50)   # min width
 
 _type_type = type
 
@@ -91,6 +99,13 @@ similar to tuple.
 """
 MODE =  make_sentinel('MODE')
 
+ERROR_SCOPE = make_sentinel('ERROR_SCOPE')
+ERROR_SCOPE.__doc__ = """
+``ERROR_SCOPE`` is used by glom internals to store the scope
+from which an exception was raised when processing fails.
+"""
+
+_PKG_DIR_PATH = os.path.dirname(os.path.abspath(__file__))
 
 class GlomError(Exception):
     """The base exception for all the errors that might be raised from
@@ -100,10 +115,126 @@ class GlomError(Exception):
     (e.g., ``len``, ``sum``, any ``lambda``) will not be wrapped in a
     GlomError.
     """
-    pass
+    @classmethod
+    def wrap(cls, exc):
+        # TODO: need to test this against a wide array of exception types
+        # this approach to wrapping errors works for exceptions
+        # defined in pure-python as well as C
+        exc_type = type(exc)
+        bases = (GlomError,) if issubclass(GlomError, exc_type) else (exc_type, GlomError)
+        exc_wrapper_type = type("GlomError.wrap({})".format(exc_type.__name__), bases, {})
+        try:
+            return exc_wrapper_type(*exc.args)
+        except Exception:  # maybe exception can't be re-created
+            return exc
+
+    def _finalize(self, scope):
+        # careful when changing how this functionality works; pytest seems to mess with
+        # the traceback module or sys.exc_info(). we saw different stacks when originally
+        # developing this in June 2020.
+        etype, evalue, _ = sys.exc_info()
+        tb_lines = traceback.format_exc().strip().splitlines()
+        limit = 0
+        for line in reversed(tb_lines):
+            if _PKG_DIR_PATH in line:
+                limit -= 1
+                break
+            limit += 1
+        self._tb_lines = tb_lines[-limit:]
+        self._scope = scope
+
+    def __str__(self):
+        if getattr(self, '_finalized_str', None):
+            return self._finalized_str
+        elif getattr(self, '_scope', None) is not None:
+            self._target_spec_trace = format_target_spec_trace(self._scope)
+            parts = ["error raised while processing.",
+                     " Target-spec trace, with error detail (most recent last):",
+                     self._target_spec_trace]
+            parts.extend(self._tb_lines)
+            self._finalized_str = "\n".join(parts)
+            return self._finalized_str
+
+        # else, not finalized
+        try:
+            exc_get_message = self.get_message
+        except AttributeError:
+            exc_get_message = super(GlomError, self).__str__
+        return exc_get_message()
 
 
-class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
+def _unpack_stack(scope):
+    """
+    convert scope to [(scope, spec, target)]
+    """
+    # impl notes:
+    # the spec and target are extracted from each level of the
+    # scope using cursors.
+    #
+    # scope[T] -- target cursor
+    # scope[Spec] -- spec cursor (for dict + tuple type specs)
+    #
+    # root glom call generates two scopes up at the top that aren't part
+    # of execution
+    return [(scope, scope[Spec], scope[T]) for scope in list(reversed(scope.maps[:-2]))]
+
+
+def _format_trace_value(value, maxlen):
+    s = bbrepr(value)  # TODO: integrate bbrepr with an option for reprlib
+    if len(s) > maxlen:
+        try:
+            suffix = '... (len=%s)' % len(value)
+        except Exception:
+            suffix = '...'
+        s = s[:maxlen - len(suffix)] + suffix
+    return s
+
+
+def format_target_spec_trace(scope, width=TRACE_WIDTH):
+    """
+    unpack a scope into a multi-line but short summary
+    """
+    segments = []
+    prev_target = _MISSING
+    target_width = width - len(" - Target: ")
+    spec_width = width - len(" - Spec: ")
+    for scope, spec, target in _unpack_stack(scope):
+        if target is not prev_target:
+            segments.append(" - Target: " + _format_trace_value(target, target_width))
+        prev_target = target
+        segments.append(" - Spec: " + _format_trace_value(spec, spec_width))
+    return "\n".join(segments)
+
+
+# TODO: not used (yet)
+def format_oneline_trace(scope):
+    """
+    unpack a scope into a single line summary
+    (shortest summary possible)
+    """
+    # the goal here is to do a kind of delta-compression --
+    # if the target is the same, don't repeat it
+    segments = []
+    prev_target = _MISSING
+    for scope, spec, target in _unpack_stack(scope):
+        segments.append('/')
+        if type(spec) in (TType, Path):
+            segments.append(bbrepr(spec))
+        else:
+            segments.append(type(spec).__name__)
+        if target != prev_target:
+            segments.append('!')
+            segments.append(type(target).__name__)
+        if Path in scope:
+            segments.append('<')
+            segments.append('->'.join([str(p) for p in scope[Path]]))
+            segments.append('>')
+        prev_target = target
+
+    return "".join(segments)
+
+
+class PathAccessError(GlomError, AttributeError, KeyError, IndexError):
     """This :exc:`GlomError` subtype represents a failure to access an
     attribute as dictated by the spec. The most commonly-seen error
     when using glom, it maintains a copy of the original exception and
@@ -140,13 +271,18 @@ class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
         self.path = path
         self.part_idx = part_idx
 
+    def __copy__(self):
+        # py27 struggles to copy PAE without this method
+        return type(self)(self.exc, self.path, self.part_idx)
+
+    def get_message(self):
+        path_part = self.path.values()[self.part_idx]
+        return ('could not access %r, part %r of %r, got error: %r'
+                % (path_part, self.part_idx, self.path, self.exc))
+
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.part_idx)
-
-    def __str__(self):
-        return ('could not access %r, part %r of %r, got error: %r'
-                % (self.path.values()[self.part_idx], self.part_idx, self.path, self.exc))
 
 
 class CoalesceError(GlomError):
@@ -177,11 +313,15 @@ class CoalesceError(GlomError):
         self.skipped = skipped
         self.path = path
 
+    def __copy__(self):
+        # py27 struggles to copy PAE without this method
+        return type(self)(self.coal_obj, self.skipped, self.path)
+
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r, %r, %r)' % (cn, self.coal_obj, self.skipped, self.path)
 
-    def __str__(self):
+    def get_message(self):
         missed_specs = tuple(self.coal_obj.subspecs)
         skipped_vals = [v.__class__.__name__
                         if isinstance(v, self.coal_obj.skip_exc)
@@ -231,6 +371,7 @@ class UnregisteredTarget(GlomError):
         self.target_type = target_type
         self.type_map = type_map
         self.path = path
+        super(UnregisteredTarget, self).__init__(op, target_type, type_map, path)
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -239,7 +380,7 @@ class UnregisteredTarget(GlomError):
         return ('%s(%r, <type %r>, %r, %r)'
                 % (cn, self.op, self.target_type.__name__, self.type_map, self.path))
 
-    def __str__(self):
+    def get_message(self):
         if not self.type_map:
             return ("glom() called without registering any types for operation '%s'. see"
                     " glom.register() or Glommer's constructor for details." % (self.op,))
@@ -284,7 +425,7 @@ def format_invocation(name='', args=(), kwargs=None, **kw):
     kw_func(a=1, b=2)
 
     """
-    _repr = kw.pop('repr', repr)
+    _repr = kw.pop('repr', bbrepr)
     if kw:
         raise TypeError('unexpected keyword args: %r' % ', '.join(kw.keys()))
     kwargs = kwargs or {}
@@ -1076,9 +1217,9 @@ class Ref(object):
 
     def __repr__(self):
         if self.subspec is _MISSING:
-            args = repr(self.name)
+            args = bbrepr(self.name)
         else:
-            args = repr((self.name, self.subspec))[1:-1]
+            args = bbrepr((self.name, self.subspec))[1:-1]
         return "Ref(" + args + ")"
 
 
@@ -1191,6 +1332,7 @@ def _t_eval(target, _t, scope):
         cur = scope
     else:
         raise ValueError('TType instance with invalid root object')
+    pae = None
     while i < len(t_path):
         op, arg = t_path[i], t_path[i + 1]
         if type(arg) in (Spec, TType, Literal):
@@ -1199,19 +1341,19 @@ def _t_eval(target, _t, scope):
             try:
                 cur = getattr(cur, arg)
             except AttributeError as e:
-                raise PathAccessError(e, Path(_t), i // 2)
+                pae = PathAccessError(e, Path(_t), i // 2)
         elif op == '[':
             try:
                 cur = cur[arg]
             except (KeyError, IndexError, TypeError) as e:
-                raise PathAccessError(e, Path(_t), i // 2)
+                pae = PathAccessError(e, Path(_t), i // 2)
         elif op == 'P':
             # Path type stuff (fuzzy match)
             get = scope[TargetRegistry].get_handler('get', cur, path=t_path[2:i+2:2])
             try:
                 cur = get(cur, arg)
             except Exception as e:
-                raise PathAccessError(e, Path(_t), i // 2)
+                pae = PathAccessError(e, Path(_t), i // 2)
         elif op == '(':
             args, kwargs = arg
             scope[Path] += t_path[2:i+2:2]
@@ -1222,6 +1364,8 @@ def _t_eval(target, _t, scope):
             # if args to the call "reset" their path
             # e.g. "T.a" should mean the same thing
             # in both of these specs: T.a and T.b(T.a)
+        if pae:
+            raise pae
         i += 2
     return cur
 
@@ -1309,11 +1453,7 @@ class CheckError(GlomError):
         self.check_obj = check
         self.path = path
 
-    def __repr__(self):
-        cn = self.__class__.__name__
-        return '%s(%r, %r, %r)' % (cn, self.msgs, self.check_obj, self.path)
-
-    def __str__(self):
+    def get_message(self):
         msg = 'target at path %s failed check,' % self.path
         if self.check_obj.spec is not T:
             msg += ' subtarget at %r' % (self.check_obj.spec,)
@@ -1322,6 +1462,14 @@ class CheckError(GlomError):
         else:
             msg += ' got %s errors: %r' % (len(self.msgs), self.msgs)
         return msg
+
+    def __copy__(self):
+        # py27 struggles to copy PAE without this method
+        return type(self)(self.msgs, self.check_obj, self.path)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r, %r, %r)' % (cn, self.msgs, self.check_obj, self.path)
 
 
 RAISE = make_sentinel('RAISE')  # flag object for "raise on check failure"
@@ -1497,7 +1645,7 @@ class Auto(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        rpr = '' if self.spec is None else repr(self.spec)
+        rpr = '' if self.spec is None else bbrepr(self.spec)
         return '%s(%s)' % (cn, rpr)
 
 
@@ -1812,6 +1960,7 @@ def glom(target, spec, **kwargs):
     # TODO: check spec up front
     default = kwargs.pop('default', None if 'skip_exc' in kwargs else _MISSING)
     skip_exc = kwargs.pop('skip_exc', () if default is _MISSING else GlomError)
+    glom_debug = kwargs.pop('glom_debug', GLOM_DEBUG)
     scope = _DEFAULT_SCOPE.new_child({
         Path: kwargs.pop('path', []),
         Inspect: kwargs.pop('inspector', None),
@@ -1821,14 +1970,32 @@ def glom(target, spec, **kwargs):
     scope[ROOT] = scope
     scope[T] = target
     scope.update(kwargs.pop('scope', {}))
+    err = None
     if kwargs:
         raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
     try:
-        ret = _glom(target, spec, scope)
-    except skip_exc:
-        if default is _MISSING:
+        try:
+            ret = _glom(target, spec, scope)
+        except skip_exc:
+            if default is _MISSING:
+                raise
+            ret = default
+    except Exception as e:
+        if glom_debug:
             raise
-        ret = default
+        if isinstance(e, GlomError):
+            # need to change id or else py3 seems to not let us truncate the
+            # stack trace with the explicit "raise err" below
+            err = copy.copy(e)
+        else:
+            err = GlomError.wrap(e)
+        if isinstance(err, GlomError):
+            err._finalize(scope[ERROR_SCOPE])
+        else:  # wrapping failed, fall back to default behavior
+            raise
+
+    if err:
+        raise err
     return ret
 
 
@@ -1840,12 +2007,16 @@ def _glom(target, spec, scope):
     scope[Spec] = spec
     scope[UP] = parent
 
-    if isinstance(spec, TType):  # must go first, due to callability
-        return _t_eval(target, spec, scope)
-    elif callable(getattr(spec, 'glomit', None)):
-        return spec.glomit(target, scope)
+    try:
+        if isinstance(spec, TType):  # must go first, due to callability
+            return _t_eval(target, spec, scope)
+        elif callable(getattr(spec, 'glomit', None)):
+            return spec.glomit(target, scope)
 
-    return scope[MODE](target, spec, scope)
+        return scope[MODE](target, spec, scope)
+    except Exception:
+        scope[ROOT].setdefault(ERROR_SCOPE, scope)
+        raise
 
 
 def AUTO(target, spec, scope):

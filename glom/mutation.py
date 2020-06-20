@@ -40,13 +40,18 @@ class PathAssignError(GlomError):
         self.path = path
         self.dest_name = dest_name
 
+    def __copy__(self):
+        # py27 struggles to copy PAE without this method
+        return type(self)(self.exc, self.path, self.dest_name)
+
+    def get_message(self):
+        return ('could not assign %r on object at %r, got error: %r'
+                % (self.dest_name, self.path, self.exc))
+
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.dest_name)
 
-    def __str__(self):
-        return ('could not assign %r on object at %r, got error: %r'
-                % (self.dest_name, self.path, self.exc))
 
 
 class PathDeleteError(PathAssignError):
@@ -65,7 +70,7 @@ class PathDeleteError(PathAssignError):
     ``@property`` or exception being raised inside a ``__delattr__()``.
 
     """
-    def __str__(self):
+    def get_message(self):
         return ('could not delete %r on object at %r, got error: %r'
                 % (self.dest_name, self.path, self.exc))
 
