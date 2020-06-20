@@ -338,3 +338,10 @@ def test_glom_dev_debug():
 
     assert ' - Target:' not in str(exc_info.value)
     assert len(exc_info.traceback) > 2
+
+
+def test_unicode_stack():
+    val = {u'resumé': u'beyoncé'}
+    stack = _make_stack(target=val, spec=u'a.é.i.o')
+    assert 'beyonc' in stack
+    assert u'é' in stack
