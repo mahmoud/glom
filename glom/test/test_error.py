@@ -7,7 +7,7 @@ import pytest
 
 from glom import glom, S, T, GlomError
 from glom.core import format_oneline_trace, format_target_spec_trace, bbrepr
-from glom.matching import M, GlomMatchError, GlomTypeMatchError, Match
+from glom.matching import M, MatchError, TypeMatchError, Match
 
 try:
     unicode
@@ -310,9 +310,9 @@ def test_all_public_errors():
 
     _test_exc(glom.PathDeleteError, object(), glom.Delete('a'))
 
-    _test_exc(GlomMatchError, 1, M == 2)
-    
-    _test_exc(GlomTypeMatchError, 1, Match(str))
+    _test_exc(MatchError, 1, M == 2)
+
+    _test_exc(TypeMatchError, 1, Match(str))
 
     for (target, spec, exc) in results:
         assert copy.copy(exc) is not exc

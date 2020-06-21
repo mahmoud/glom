@@ -4,14 +4,14 @@ import pytest
 
 from glom import glom, S, Literal, T, Merge, Fill, Let, Ref
 from glom.matching import (
-    Match, M, GlomMatchError, GlomTypeMatchError, And, Or, Not,
+    Match, M, MatchError, TypeMatchError, And, Or, Not,
     Optional, Required, Regex)
 from glom.core import Auto, SKIP, Ref
 
 
 def _chk(spec, good_target, bad_target):
     glom(good_target, spec)
-    with pytest.raises(GlomMatchError):
+    with pytest.raises(MatchError):
         glom(bad_target, spec)
 
 def test():
@@ -21,7 +21,7 @@ def test():
     _chk(Match([int]), [1], ["1"])
     _chk(Match({int}), {1}, [1])
     _chk(Match(frozenset({float})), frozenset({}), frozenset({"1"}))
-    with pytest.raises(GlomMatchError):
+    with pytest.raises(MatchError):
         glom([1], Match([]))  # empty shouldn't match
     glom({"a": 1, "b": 2}, Match({str: int}))
     glom(2, M == 2)
@@ -34,25 +34,25 @@ def test():
     glom(1.0, (M > 0) & float)
     glom(1.0, (M > 100) | float)
     # test idiom for enum
-    with pytest.raises(GlomMatchError):
+    with pytest.raises(MatchError):
         glom("c", Match("a"))
     glom("c", Not(Match("a")))
-    with pytest.raises(GlomMatchError):
+    with pytest.raises(MatchError):
         glom("c", Match(Or("a", "b")))
     _chk(Match(Or("a", "b")), "a", "c")
     glom({None: 1}, Match({object: object}))
     _chk(Match((int, str)), (1, "cat"), (1, 2))
-    with pytest.raises(GlomMatchError):
+    with pytest.raises(MatchError):
         glom({1: 2}, Match({(): int}))
-    with pytest.raises(GlomMatchError):
+    with pytest.raises(MatchError):
         glom(1, Match({}))
     Match(M > 0).verify(1.0)
 
 
 def test_sets():
-    with pytest.raises(GlomMatchError):
+    with pytest.raises(MatchError):
         glom({1}, Match({}))
-    with pytest.raises(GlomMatchError):
+    with pytest.raises(MatchError):
         glom(frozenset([1]), Match(frozenset()))
 
 
@@ -61,7 +61,7 @@ def test_spec_match():
     target = {}
     target['a'] = target
     assert glom(target, M == M('a'))
-    
+
 
 def test_cruddy_json():
     _chk(
@@ -116,8 +116,8 @@ def test_reprs():
     repr(And(1, 2))
     repr(Or(1, 2))
     repr(Not(1))
-    repr(GlomMatchError("uh oh"))
-    repr(GlomTypeMatchError("uh oh {0}", dict))
+    repr(MatchError("uh oh"))
+    repr(TypeMatchError("uh oh {0}", dict))
     assert repr(And(M == 1, float)) == "(M == 1) & float"
     assert repr(eval(repr(And(M == 1, float)))) == "(M == 1) & float"
 
@@ -126,7 +126,7 @@ def test_shortcircuit():
     assert glom(False, Fill(M | "default")) == "default"
     assert glom(True, Fill(M | "default")) == True
     assert glom(True, Fill(M & "default")) == "default"
-    with pytest.raises(GlomMatchError):
+    with pytest.raises(MatchError):
         glom(False, Fill(M & "default"))
     assert glom(False, ~M) == False
     assert glom(True, Fill(~M | "default")) == "default"
@@ -154,7 +154,7 @@ def test_sample():
     def good():
         glom(data, spec)
     def bad():
-        with pytest.raises(GlomMatchError):
+        with pytest.raises(MatchError):
             glom(data, spec)
 
     good()  # should match
@@ -185,7 +185,7 @@ def test_sample():
 
 def test_regex():
     assert glom('abc', (Regex('(?P<test>.*)'), S['test'])) == 'abc'
-    with pytest.raises(GlomMatchError):
+    with pytest.raises(MatchError):
         glom(1, Regex('1'))
 
 
@@ -208,7 +208,7 @@ def test_sky():
 
     assert glom(None, none_or('abc')) == None
     assert glom('abc', none_or('abc')) == 'abc'
-    with pytest.raises(GlomMatchError):
+    with pytest.raises(MatchError):
         glom(123, none_or('abc'))
 
     def in_range(sub_schema, _min, _max):
@@ -217,7 +217,7 @@ def test_sky():
         # TODO: make _min < M < _max work
 
     assert glom(1, in_range(int, 0, 2))
-    with pytest.raises(GlomMatchError):
+    with pytest.raises(MatchError):
         glom(-1, in_range(int, 0, 2))
 
     def default_if_none(sub_schema, default_factory):
@@ -232,7 +232,7 @@ def test_sky():
 
     assert glom(None, nullable_list_of(str)) == []
     assert glom(['a'], nullable_list_of(str)) == ['a']
-    with pytest.raises(GlomMatchError):
+    with pytest.raises(MatchError):
         glom([1], nullable_list_of(str))
 
 

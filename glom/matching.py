@@ -12,31 +12,31 @@ from .core import GlomError, glom, T, Spec, MODE, bbrepr
 
 
 __all__ = [
-    'GlomMatchError', 'GlomTypeMatchError', 'Match', 'Regex',
+    'MatchError', 'TypeMatchError', 'Match', 'Regex',
     'And', 'Or', 'Not', 'M', 'Optional', 'Required']
 
-# NOTE: it is important that GlomMatchErrors be cheap to construct,
+# NOTE: it is important that MatchErrors be cheap to construct,
 # because negative matches are part of normal control flow
 # (e.g. often it is idiomatic to cascade from one possible match
 # to the next and take the first one that works)
-class GlomMatchError(GlomError):
+class MatchError(GlomError):
     def __init__(self, fmt, *args):
-        super(GlomMatchError, self).__init__(fmt, *args)
+        super(MatchError, self).__init__(fmt, *args)
 
     def get_message(self):
         fmt, args = self.args[0], self.args[1:]
         return "{}({})".format(self.__class__.__name__, fmt.format(*args))
 
 
-class GlomTypeMatchError(GlomMatchError, TypeError):
+class TypeMatchError(MatchError, TypeError):
     def __init__(self, actual, expected):
-        super(GlomTypeMatchError, self).__init__(
+        super(TypeMatchError, self).__init__(
             "expected type {!r}, not {!r}", expected, actual)
 
     def __copy__(self):
         # __init__ args = (actual, expected)
         # self.args = (fmt_str, expected, actual)
-        return GlomTypeMatchError(self.args[2], self.args[1])
+        return TypeMatchError(self.args[2], self.args[1])
 
 
 class Match(object):
@@ -104,7 +104,7 @@ class Match(object):
     By default, value match keys are required, and other keys
     are optional.  For example, `'id'` and `'email'` above are
     required because they are matched via `==`.  If either was
-    not present, it would raise `GlomMatchError`.  `object` however
+    not present, it would raise `MatchError`.  `object` however
     is matched with `isinstance()`; since it is not an value-match
     comparison, it is not required.
 
@@ -171,7 +171,7 @@ class Regex(object):
     """
     checks that target is a string which matches the passed regex pattern
 
-    raises GlomMatchError if there isn't a match; returns Target if match
+    raises MatchError if there isn't a match; returns Target if match
 
     variables captures in regex are added to the scope so they can
     be used by downstream processes
@@ -197,11 +197,11 @@ class Regex(object):
 
     def glomit(self, target, scope):
         if type(target) not in _RE_TYPES:
-            raise GlomMatchError(
+            raise MatchError(
                 "{!r} not valid as a Regex target -- expected {!r}", type(target), _RE_TYPES)
         match = self.match_func(target)
         if not match:
-            raise GlomMatchError("target did not match pattern {!r}", self.pattern)
+            raise MatchError("target did not match pattern {!r}", self.pattern)
         scope.update(match.groupdict())
         return target
 
@@ -281,7 +281,7 @@ class Or(_Bool):
     """
     Tries to apply the first child spec to the target, and return the result.
     If `GlomError` is raised, try the next child spec until there are no
-    all child specs have been tried, then raise `GlomMatchError`.
+    all child specs have been tried, then raise `MatchError`.
     """
     OP = "|"
     __slots__ = ('children',)
@@ -310,7 +310,7 @@ class Not(_Bool):
     Inverts the child -- child spec will be expected to raise
     `GlomError`, in which case the target will be returned.
 
-    If the child spec does not raise `GlomError`, `GlomMatchError`
+    If the child spec does not raise `GlomError`, `MatchError`
     will be raised.
     """
     __slots__ = ('child',)
@@ -388,7 +388,7 @@ class _MExpr(object):
         )
         if matched:
             return target
-        raise GlomMatchError("{!r} {} {!r}", lhs, _M_OP_MAP.get(op, op), rhs)
+        raise MatchError("{!r} {} {!r}", lhs, _M_OP_MAP.get(op, op), rhs)
 
     def __repr__(self):
         op = _M_OP_MAP.get(self.op, self.op)
@@ -403,7 +403,7 @@ class _MType(object):
     :attr:`~glom.M` allows for comparison operators.
 
     If a comparison succeeds, the target is returned unchanged.
-    If a comparison fails, :class:`~glom.GlomMatchError` is thrown.
+    If a comparison fails, :class:`~glom.MatchError` is thrown.
 
     Some examples:
 
@@ -484,13 +484,13 @@ class _MType(object):
     def glomit(self, target, spec):
         if target:
             return target
-        raise GlomMatchError("{!r} not truthy", target)
+        raise MatchError("{!r} not truthy", target)
 
 
 M = _MType()
 
 
-_MISSING = make_sentinel('MISSING')
+_MISSING = make_sentinel('_MISSING')
 
 
 class Optional(object):
@@ -498,7 +498,7 @@ class Optional(object):
     Used as a `dict` key in `Match()` mode,
     marks that a value match key which would otherwise
     be required is optional and should not raise
-    `GlomMatchError` even if no keys match.
+    `MatchError` even if no keys match.
 
     For example, `{Optional("name", default=""): str}`
     would match `{"name": "alice"}` and also `{}`.
@@ -517,7 +517,7 @@ class Optional(object):
 
     def glomit(self, target, scope):
         if target != self.key:
-            raise GlomMatchError("target {} != spec {}", target, self.key)
+            raise MatchError("target {} != spec {}", target, self.key)
 
     def __repr__(self):
         return 'Optional({!r})'.format(self.key)
@@ -527,7 +527,7 @@ class Required(object):
     """
     Used as a `dict` key in `Match()` mode,
     marks that a non value match key which would otherwise
-    not be required should raise `GlomMatchError` if at least
+    not be required should raise `MatchError` if at least
     one key in the target does not match.
 
     For example, `{object: object}` will match any
@@ -535,7 +535,7 @@ class Required(object):
     it is not an error by default if no keys match.
 
     `{Required(object): object}` will not match `{}`,
-    because the `Required()` means `GlomMatchError` will
+    because the `Required()` means `MatchError` will
     be raised if there isn't at least one key.
     """
     __slots__ = ('key',)
@@ -577,7 +577,7 @@ def _precedence(match):
 
 def _handle_dict(target, spec, scope):
     if not isinstance(target, dict):
-        raise GlomTypeMatchError(type(target), dict)
+        raise TypeMatchError(type(target), dict)
     spec_keys = spec  # cheating a little bit here, list-vs-dict, but saves an object copy sometimes
     if sys.version_info < (3, 6):
         # apply a deterministic precedence if the python version itself does not guarantee ordering
@@ -600,21 +600,21 @@ def _handle_dict(target, spec, scope):
                 required.discard(spec_key)
                 break
         else:
-            raise GlomMatchError("key {!r} didn't match any of {!r}", key, spec_keys)
+            raise MatchError("key {!r} didn't match any of {!r}", key, spec_keys)
     if required:
-        raise GlomMatchError("missing keys {} from target {}", required, target)
+        raise MatchError("missing keys {} from target {}", required, target)
     return result
 
 
 def _glom_match(target, spec, scope):
     if isinstance(spec, type):
         if not isinstance(target, spec):
-            raise GlomTypeMatchError(type(target), spec)
+            raise TypeMatchError(type(target), spec)
     elif isinstance(spec, dict):
         return _handle_dict(target, spec, scope)
     elif isinstance(spec, (list, set, frozenset)):
         if not isinstance(target, type(spec)):
-            raise GlomTypeMatchError(type(target), type(spec))
+            raise TypeMatchError(type(target), type(spec))
         result = []
         for item in target:
             for child in spec:
@@ -625,7 +625,7 @@ def _glom_match(target, spec, scope):
                     last_error = e
             else:  # did not break, something went wrong
                 if target and not spec:
-                    raise GlomMatchError(
+                    raise MatchError(
                         "{!r} does not match empty {}", target, type(spec).__name__)
                 # NOTE: unless error happens above, break will skip else branch
                 # so last_error will have been assigned
@@ -635,13 +635,13 @@ def _glom_match(target, spec, scope):
         return result
     elif isinstance(spec, tuple):
         if not isinstance(target, tuple):
-            raise GlomTypeMatchError(type(target), tuple)
+            raise TypeMatchError(type(target), tuple)
         if len(target) != len(spec):
-            raise GlomMatchError("{!r} does not match {!r}", target, spec)
+            raise MatchError("{!r} does not match {!r}", target, spec)
         result = []
         for sub_target, sub_spec in zip(target, spec):
             result.append(scope[glom](sub_target, sub_spec, scope))
         return tuple(result)
     elif target != spec:
-        raise GlomMatchError("{!r} does not match {!r}", target, spec)
+        raise MatchError("{!r} does not match {!r}", target, spec)
     return target
