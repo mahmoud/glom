@@ -74,7 +74,7 @@ Stream processing iterables with Iter
 Combining iterables with Flatten and friends
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-*New in glom 19.1.0*
+.. versionadded:: 19.1.0
 
 Got lists of lists? Sets of tuples? A sequence of dicts (but only want
 one)? Do you find yourself reaching for Python's builtin :func:`sum`
@@ -116,7 +116,7 @@ type.
 Wrapping callables with Invoke
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-*New in glom 19.10.0*
+.. versionadded:: 19.10.0
 
 From calling functions to constructing objects, it's hardly Python if
 you're not invoking callables. By default, single-argument functions
@@ -139,7 +139,7 @@ Alternative approach to functions: Call
 An earlier, more primitive approach to callables in glom was the Call
 specifier type.
 
-.. note::
+.. warning::
 
    Given superiority of its successor, :class:`Invoke`,
    the :class:`Call` type may be deprecated in a future release.
@@ -154,15 +154,54 @@ glom's shortest-named feature may be its most powerful.
 
 .. autodata:: glom.T
 
-.. _check-specifier:
+Validation with Match and ``M``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Validation with Check
-^^^^^^^^^^^^^^^^^^^^^
+.. versionadded:: 20.6.0
 
 Sometimes you want to confirm that your target data matches your
 code's assumptions. With glom, you don't need a separate validation
 step, you can do these checks inline with your glom spec, using
-``Check``.
+``Match`` and friends.
+
+.. autoclass:: glom.Match
+
+.. autodata:: glom.M
+
+Boolean operators and matching
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+While ``M`` is an easy way to construct expressions, sometimes a more
+object-oriented approach can be more suitable.
+
+.. autoclass:: glom.Or
+
+.. autoclass:: glom.And
+
+.. autoclass:: glom.Not
+
+Optional matching
+~~~~~~~~~~~~~~~~~
+
+.. autoclass:: glom.Optional
+
+.. autoclass:: glom.Required
+
+String matching
+~~~~~~~~~~~~~~~
+
+.. autoclass:: glom.Regex
+
+.. _check-specifier:
+
+Validation with Check
+~~~~~~~~~~~~~~~~~~~~~
+
+.. warning::
+
+   Given the suite of tools introduced with :class:`Match`, the
+   :class:`Check` specifier type may be deprecated in a future
+   release.
 
 .. autoclass:: glom.Check
 
@@ -187,6 +226,10 @@ other standard Python exceptions as appropriate.
 
 .. autoclass:: glom.CoalesceError
 
+.. autoclass:: glom.MatchError
+
+.. autoclass:: glom.TypeMatchError
+
 .. autoclass:: glom.CheckError
 
 .. autoclass:: glom.UnregisteredTarget
@@ -198,6 +241,7 @@ other standard Python exceptions as appropriate.
 .. autoclass:: glom.GlomError
 
 .. _debugging:
+
 
 Debugging
 ---------

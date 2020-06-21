@@ -16,6 +16,9 @@ from .core import GlomError, glom, T, MODE, bbrepr
 # (e.g. often it is idiomatic to cascade from one possible match
 # to the next and take the first one that works)
 class MatchError(GlomError):
+    """
+    Raised when a :class:`Match` fails.
+    """
     def __init__(self, fmt, *args):
         super(MatchError, self).__init__(fmt, *args)
 
@@ -25,6 +28,10 @@ class MatchError(GlomError):
 
 
 class TypeMatchError(MatchError, TypeError):
+    """:exc:`MatchError` subtype raised when a
+    :class:`Match` fails a type check.
+    """
+
     def __init__(self, actual, expected):
         super(TypeMatchError, self).__init__(
             "expected type {!r}, not {!r}", expected, actual)
@@ -37,13 +44,14 @@ class TypeMatchError(MatchError, TypeError):
 
 class Match(object):
     """
-    Match mode of glom provides pattern matching functionality.
+    glom's ``Match`` specifier type enables a new mode of glom usage: pattern matching.
 
     Patterns are evaluated similar to `schema`_:
-    * Specs are evaluated (this always has highest precendence in glom)
-    * a type matches instances of that type
-    * dicts, lists, tuples, sets, and frozensets are matched recursively
-    * any other values are compared to the target with ==
+
+      * Spec objects are always evaluated first
+      * Types match instances of that type
+      * Instances of dict, list, tuple, set, and frozenset are matched recursively
+      * Any other values are compared to the target with ==
 
     By itself, this allows to assert that structures match certain patterns.
 
@@ -296,10 +304,10 @@ class Or(_Bool):
 
 class Not(_Bool):
     """
-    Inverts the child -- child spec will be expected to raise
-    `GlomError`, in which case the target will be returned.
+    Inverts the *child*. Child spec will be expected to raise
+    :exc:`GlomError` (or subtype), in which case the target will be returned.
 
-    If the child spec does not raise `GlomError`, `MatchError`
+    If the child spec does not raise :exc:`GlomError`, :exc:`MatchError`
     will be raised.
     """
     __slots__ = ('child',)
