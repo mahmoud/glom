@@ -8,7 +8,7 @@ import sys
 
 from boltons.typeutils import make_sentinel
 
-from .core import GlomError, glom, T, Spec, MODE
+from .core import GlomError, glom, T, Spec, MODE, bbrepr
 
 
 __all__ = [
@@ -150,7 +150,7 @@ class Match(object):
         return True
 
     def __repr__(self):
-        return 'Match({!r})'.format(self.spec)
+        return 'Match({})'.format(bbrepr(self.spec))
 
 
 _RE_FULLMATCH = getattr(re, "fullmatch", None)
@@ -208,9 +208,9 @@ class Regex(object):
     def __repr__(self):
         args = '(' + repr(self.pattern)
         if self.flags:
-            args += ', flags=' + repr(flags)
+            args += ', flags=' + bbrepr(self.flags)
         if self.func is not None:
-            args += ', func=' + func.__name__
+            args += ', func=' + self.func.__name__
         args += ')'
         return "Regex" + args
 
@@ -223,8 +223,8 @@ def _bool_child_repr(child):
         'builtins', '__builtin__', '__builtins__'):
         return child.__name__
     if isinstance(child, _MExpr):
-        return "(" + repr(child) + ")"
-    return repr(child)
+        return "(" + bbrepr(child) + ")"
+    return bbrepr(child)
 
 
 class _Bool(object):
@@ -337,8 +337,8 @@ class Not(_Bool):
         if self.child is M:
             return '~M'
         if self._m_repr():  # is in M repr
-            return "~(" + repr(self.child) + ")"
-        return "Not(" + repr(self.child) + ")"
+            return "~(" + bbrepr(self.child) + ")"
+        return "Not(" + bbrepr(self.child) + ")"
 
 
 _M_OP_MAP = {'=': '==', '!': '!=', 'g': '>=', 'l': '<='}
@@ -528,7 +528,7 @@ class Required(object):
     Used as a `dict` key in `Match()` mode,
     marks that a non value match key which would otherwise
     not be required should raise `GlomMatchError` if at least
-    one key in the target does not match. 
+    one key in the target does not match.
 
     For example, `{object: object}` will match any
     `dict`, including `{}`.  Because `object` is a type,
