@@ -513,7 +513,7 @@ class Optional(object):
             raise MatchError("target {} != spec {}", target, self.key)
 
     def __repr__(self):
-        return 'Optional({!r})'.format(self.key)
+        return '%s(%s)' % (self.__class__.__name__, bbrepr(self.key))
 
 
 class Required(object):
@@ -538,14 +538,14 @@ class Required(object):
             raise TypeError("double wrapping of Required")
         hash(key)  # ensure is a valid key
         if _precedence(key) == 0:
-            raise ValueError("== match constants are already required: {!r}".format(key))
+            raise ValueError("== match constants are already required: " + bbrepr(key))
         self.key = key
 
     def glomit(self, target, scope):
         return scope[glom](target, self.key, scope)
 
     def __repr__(self):
-        return 'Required({!r})'.format(self.key)
+        return '%s(%s)' % (self.__class__.__name__, bbrepr(self.key))
 
 
 def _precedence(match):
