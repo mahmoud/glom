@@ -160,10 +160,10 @@ _RE_FUNC_ERROR = ValueError("'func' must be one of %s" % (", ".join(
 
 _RE_TYPES = ()
 try:   re.match(u"", u"")
-except Exception: pass
+except Exception: pass  # pragma: no cover
 else:  _RE_TYPES += (type(u""),)
 try:   re.match(b"", b"")
-except Exception: pass
+except Exception: pass  # pragma: no cover
 else:  _RE_TYPES += (type(b""),)
 
 
@@ -338,10 +338,29 @@ _M_OP_MAP = {'=': '==', '!': '!=', 'g': '>=', 'l': '<='}
 
 
 class _M_Subspec(object):
+    """used by MType.__call__ to wrap a sub-spec for comparison"""
     __slots__ = ('spec')
 
     def __init__(self, spec):
         self.spec = spec
+
+    def __eq__(self, other):
+        return _MExpr(self, '=', other)
+
+    def __ne__(self, other):
+        return _MExpr(self, '!', other)
+
+    def __gt__(self, other):
+        return _MExpr(self, '>', other)
+
+    def __lt__(self, other):
+        return _MExpr(self, '<', other)
+
+    def __ge__(self, other):
+        return _MExpr(self, 'g', other)
+
+    def __le__(self, other):
+        return _MExpr(self, 'l', other)
 
 
 class _MExpr(object):

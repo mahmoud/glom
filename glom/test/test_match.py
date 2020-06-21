@@ -50,9 +50,6 @@ def test_basic():
 
     assert Match(And() & And()).matches(True) is True
 
-    assert repr(Not(M < 3)) == '~(M < 3)'
-    assert repr(~(M < 4)) == '~(M < 4)'
-
     _chk(Match(Or("a", "b")), "a", "c")
     glom({None: 1}, Match({object: object}))
     _chk(Match((int, str)), (1, "cat"), (1, 2))
@@ -64,6 +61,19 @@ def test_basic():
 
     assert Match(M).matches(False) is False
     assert Match(M).matches(True) is True
+
+
+def test_match_expressions():
+    assert glom(1, M == M) == 1
+    assert glom(None, M(Literal(1)) == 1) is None
+    assert glom(None, M(Literal(1)) >= 1) is None
+    assert glom(None, M(Literal(1)) <= 1) is None
+    with pytest.raises(MatchError):
+        glom(None, M(Literal(1)) > 1)
+    with pytest.raises(MatchError):
+        glom(None, M(Literal(1)) < 1)
+    with pytest.raises(MatchError):
+        glom(None, M(Literal(1)) != 1)
 
 
 def test_double_wrapping():
@@ -88,7 +98,19 @@ def test_spec_match():
     """test that M __call__ can be used to wrap a subspec for comparison"""
     target = {}
     target['a'] = target
-    assert glom(target, M == M('a'))
+    assert glom(target, M == M('a')) == target
+    assert glom(target, M('a') == M) == target
+
+
+def test_precedence():
+    """test corner cases of dict key precedence"""
+    glom({(0, 1): 3},
+        Match({
+            (0, 1): Literal(1),  # this should match
+            (0, int): Literal(2),  # optional
+            (0, M == 1): Literal(3),  # optional
+        })
+    )
 
 
 def test_cruddy_json():
@@ -153,6 +175,11 @@ def test_reprs():
     assert repr(Regex('[ab]')) == "Regex('[ab]')"
     assert repr(Regex('[ab]', flags=1)) == "Regex('[ab]', flags=1)"
     assert 'search' in repr(Regex('[ab]', func=re.search))
+    assert repr(And()) == 'And()'
+    assert repr(~And(1)) == 'Not(And(1))'
+    assert repr(~Or(M) & Or(M)) == '~(M) & M'
+    assert repr(Not(M < 3)) == '~(M < 3)'
+    assert repr(~(M < 4)) == '~(M < 4)'
 
 
 def test_shortcircuit():
@@ -218,8 +245,15 @@ def test_sample():
 
 def test_regex():
     assert glom('abc', (Regex('(?P<test>.*)'), S['test'])) == 'abc'
+    # test wrong target type failure path
     with pytest.raises(MatchError):
         glom(1, Regex('1'))
+    # test invalid arg path
+    with pytest.raises(ValueError):
+        Regex(1, func=lambda v: True)
+    # test explicit re match func and target value failure path
+    with pytest.raises(MatchError):
+        glom('aabcc', Regex('abc', func=re.match))
 
 
 def test_ternary():
