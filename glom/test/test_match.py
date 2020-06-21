@@ -1,3 +1,5 @@
+
+import re
 import json
 
 import pytest
@@ -107,6 +109,7 @@ def test_examples():
     assert glom(range(10), [(M > 7) & Literal(7) | T]) == [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]
     assert glom(range(10), [(M > 7) & Literal(SKIP) | T]) == [0, 1, 2, 3, 4, 5, 6, 7]
 
+
 def test_reprs():
     repr(M)
     repr(M == 1)
@@ -120,6 +123,10 @@ def test_reprs():
     repr(TypeMatchError("uh oh {0}", dict))
     assert repr(And(M == 1, float)) == "(M == 1) & float"
     assert repr(eval(repr(And(M == 1, float)))) == "(M == 1) & float"
+
+    assert repr(Regex('[ab]')) == "Regex('[ab]')"
+    assert repr(Regex('[ab]', flags=1)) == "Regex('[ab]', flags=1)"
+    assert 'search' in repr(Regex('[ab]', func=re.search))
 
 
 def test_shortcircuit():
