@@ -16,7 +16,7 @@ def _chk(spec, good_target, bad_target):
     with pytest.raises(MatchError):
         glom(bad_target, spec)
 
-def test():
+def test_basic():
     _chk(Match(1), 1, 2)
     _chk(Match(int), 1, 1.0)
     # test unordered sequence comparisons
@@ -35,12 +35,24 @@ def test():
     glom(1.0, M != None)
     glom(1.0, (M > 0) & float)
     glom(1.0, (M > 100) | float)
+
+    assert Match(('a', 'b')).matches(('a', 'b', 'c')) is False
+
     # test idiom for enum
     with pytest.raises(MatchError):
         glom("c", Match("a"))
     glom("c", Not(Match("a")))
     with pytest.raises(MatchError):
         glom("c", Match(Or("a", "b")))
+
+    with pytest.raises(MatchError):
+        glom("", Match(Or() | Or()))
+
+    assert Match(And() & And()).matches(True) is True
+
+    assert repr(Not(M < 3)) == '~(M < 3)'
+    assert repr(~(M < 4)) == '~(M < 4)'
+
     _chk(Match(Or("a", "b")), "a", "c")
     glom({None: 1}, Match({object: object}))
     _chk(Match((int, str)), (1, "cat"), (1, 2))
@@ -49,6 +61,20 @@ def test():
     with pytest.raises(MatchError):
         glom(1, Match({}))
     Match(M > 0).verify(1.0)
+
+    assert Match(M).matches(False) is False
+    assert Match(M).matches(True) is True
+
+
+def test_double_wrapping():
+    for outer in (Required, Optional):
+        with pytest.raises(TypeError):
+            outer(Optional('key'))
+
+    with pytest.raises(ValueError):
+        Required('key')
+
+    return
 
 
 def test_sets():

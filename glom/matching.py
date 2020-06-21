@@ -285,7 +285,7 @@ class Or(_Bool):
 
     def glomit(self, target, scope):
         if not self.children:  # so Or() == False, similar to any([]) == False
-            raise GlomError("Or() with no arguments")
+            raise MatchError("Or() with no arguments")
         for child in self.children[:-1]:
             try:  # one child must match without exception
                 return scope[glom](target, child, scope)
@@ -320,7 +320,7 @@ class Not(_Bool):
             raise GlomError("child shouldn't have passed", self.child)
 
     def _m_repr(self):
-        if isinstance(self.child, _MType):
+        if isinstance(self.child, (_MType, _MExpr)):
             return True
         if type(self.child) not in (And, Or, Not):
             return False
