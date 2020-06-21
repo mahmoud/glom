@@ -206,7 +206,7 @@ class Regex(object):
         return target
 
     def __repr__(self):
-        args = '(' + repr(self.pattern)
+        args = '(' + bbrepr(self.pattern)
         if self.flags:
             args += ', flags=' + bbrepr(self.flags)
         if self.func is not None:
@@ -219,15 +219,15 @@ class Regex(object):
 def _bool_child_repr(child):
     if child is M:
         return repr(child)
-    if hasattr(child, '__module__') and child.__module__ in (
-        'builtins', '__builtin__', '__builtins__'):
-        return child.__name__
-    if isinstance(child, _MExpr):
+    elif isinstance(child, _MExpr):
         return "(" + bbrepr(child) + ")"
     return bbrepr(child)
 
 
 class _Bool(object):
+    def __init__(self, *children):
+        self.children = children
+
     def __and__(self, other):
         return And(self, other)
 
@@ -262,9 +262,6 @@ class And(_Bool):
     OP = "&"
     __slots__ = ('children',)
 
-    def __init__(self, *children):
-        self.children = children
-
     def glomit(self, target, scope):
         # all children must match without exception
         result = target  # so that And() == True, similar to all([]) == True
@@ -286,13 +283,9 @@ class Or(_Bool):
     OP = "|"
     __slots__ = ('children',)
 
-    def __init__(self, *children):
-        self.children = children
-        # TODO: should empty children be disallowed?
-
     def glomit(self, target, scope):
         if not self.children:  # so Or() == False, similar to any([]) == False
-            raise GlomError("Or() with no argumens")
+            raise GlomError("Or() with no arguments")
         for child in self.children[:-1]:
             try:  # one child must match without exception
                 return scope[glom](target, child, scope)
