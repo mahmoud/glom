@@ -8,12 +8,8 @@ import sys
 
 from boltons.typeutils import make_sentinel
 
-from .core import GlomError, glom, T, Spec, MODE, bbrepr
+from .core import GlomError, glom, T, MODE, bbrepr
 
-
-__all__ = [
-    'MatchError', 'TypeMatchError', 'Match', 'Regex',
-    'And', 'Or', 'Not', 'M', 'Optional', 'Required']
 
 # NOTE: it is important that MatchErrors be cheap to construct,
 # because negative matches are part of normal control flow

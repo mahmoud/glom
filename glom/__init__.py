@@ -29,7 +29,16 @@ from glom.core import (glom,
                        T, S)
 
 from glom.reduction import Sum, Fold, Flatten, flatten, FoldError, Merge, merge
-from glom.matching import *
+from glom.matching import (M,
+                           Or,
+                           And,
+                           Not,
+                           Match,
+                           MatchError,
+                           TypeMatchError,
+                           Regex,
+                           Optional,
+                           Required)
 from glom.mutation import Assign, Delete, assign, delete, PathAssignError, PathDeleteError
 
 # there's no -ion word that really fits what "streaming" means.
