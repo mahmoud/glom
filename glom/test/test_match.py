@@ -111,6 +111,8 @@ def test_precedence():
             (0, M == 1): Literal(3),  # optional
         })
     )
+    with pytest.raises(ValueError):
+        Optional(int)  # int is already optional so not valid to wrap
 
 
 def test_cruddy_json():
@@ -250,7 +252,7 @@ def test_regex():
         glom(1, Regex('1'))
     # test invalid arg path
     with pytest.raises(ValueError):
-        Regex(1, func=lambda v: True)
+        Regex(1, func="invalid")
     # test explicit re match func and target value failure path
     with pytest.raises(MatchError):
         glom('aabcc', Regex('abc', func=re.match))
