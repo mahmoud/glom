@@ -1,5 +1,5 @@
-attrs==17.4.0
-boltons==20.0.0
+attrs==19.1.0
+boltons>=20.2.0
 coverage
 face>=20.1.1
 pytest==4.1.1
