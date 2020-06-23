@@ -166,6 +166,11 @@ step, you can do these checks inline with your glom spec, using
 
 .. autoclass:: glom.Match
 
+``M`` Expressions
+~~~~~~~~~~~~~~~~~
+
+The most concise way to express validation.
+
 .. autodata:: glom.M
 
 Boolean operators and matching

@@ -412,11 +412,10 @@ class _MExpr(object):
 
 
 class _MType(object):
-    """
-    :attr:`~glom.M` is similar to :attr:`~glom.T`, a stand-in for the current target
-
-    Where :attr:`~glom.T` allows for attribute and key access and method calls,
-    :attr:`~glom.M` allows for comparison operators.
+    """:attr:`~glom.M` is similar to :attr:`~glom.T`, a stand-in for the
+    current target, but where :attr:`~glom.T` allows for attribute and
+    key access and method calls, :attr:`~glom.M` allows for comparison
+    operators.
 
     If a comparison succeeds, the target is returned unchanged.
     If a comparison fails, :class:`~glom.MatchError` is thrown.
@@ -437,27 +436,31 @@ class _MType(object):
     >>> glom([0, False, "", None], [M | Literal(None)])
     [None, None, None, None]
 
-    For convenience, `&` and `|` operators are overloaded to construct :attr:`~glom.And`
-    and :attr:`~glom.Or` instances.
+    For convenience, ``&`` and ``|`` operators are overloaded to
+    construct :attr:`~glom.And` and :attr:`~glom.Or` instances.
 
     >>> glom(1.0, (M > 0) & float)
     1.0
 
-    A note on the limitations of operator overloading:
+    .. note::
 
-    Because bitwise ('&', '|') operators have higher precedence
-    than comparison operators ('>', '<', etc), expressions must
-    be parenthesized.
+       Python's operator overloading may make for concise code,
+       but it has its limits.
 
-    >>> M > 0 & float
-    Traceback (most recent call last):
-    ...
-    TypeError: unsupported operand type(s) for &: 'int' and 'type'
+       Because bitwise operators (``&`` and ``|``) have higher precedence
+       than comparison operators (``>``, ``<``, etc.), expressions must
+       be parenthesized.
 
-    Also, because ternary comparisons (`1 < M < 5`) are implemented
-    via short-circuiting evaluation, they cannot be captured by `M`.
-    For `1 < M < 5`, the Python VM evaluates `1 < M` for truthiness;
-    if `1 < M` is truthy the complete expression evaluates to `M < 5`.
+       >>> M > 0 & float
+       Traceback (most recent call last):
+       ...
+       TypeError: unsupported operand type(s) for &: 'int' and 'type'
+
+       Similarly, because of special handling around ternary
+       comparisons (``1 < M < 5``) are implemented via
+       short-circuiting evaluation, they also cannot be captured by
+       :data:`M`.
+
     """
     __slots__ = ()
 
