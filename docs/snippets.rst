@@ -301,17 +301,18 @@ Will translate to the following tuples:
     ('html', [('head', [('title', [])]), ('body', [('p', [])])])
 
 
-Stringify Parsed JSON
----------------------
+Fix Up Strings in Parsed JSON
+-----------------------------
 
-Tree-walking with `Ref()` combines very powerfully with pattern matching
-from `Match()`.
+Tree-walking with :class:`~glom.Ref()` combines powerfully with
+pattern matching from :class:`~glom.Match()`.
 
-In this case, consider that we want to transform parsed JSON recursively
+In this case, consider that we want to transform parsed JSON recursively,
 such that all unicodes are converted to native strings.
 
 
 .. code-block:: python
+
     glom(json.loads(data),
         Ref('json',
             Match(Or(
@@ -321,13 +322,14 @@ such that all unicodes are converted to native strings.
                 object))))
 
 
-`Match()` above splits the `Ref()` evaluation into 4 cases:
+:class:`~glom.Match()` above splits the :class:`~glom.Ref()` evaluation into 4 cases:
 
-* on `dict`, use `Ref()` to recurse for all keys and values
-* on `list`, use `Ref()` to recurse on each item
-* on `type(u'')` -- py3 `str` or py2 `unicode` -- transform the target with `str`
-* for all other values, pass them through
+* on :class:`dict`, use :class:`~glom.Ref()` to recurse for all keys and values
+* on :class:`list`, use :class:`~glom.Ref()` to recurse on each item
+* on text objects (``type(u'')``) -- py3 :class:`str` or py2
+  :class:`unicode` -- transform the target with :class:`str`
+* for all other values (``object``), pass them through
 
-As motivation for why this might come up, attributes, class names,
-function names, and identifiers must be byte-strings in python 2 and
-unicode in python 3.
+As motivation for why this might come up: attributes, class names,
+function names, and identifiers must be the native string type for a
+given Python, i.e., bytestrings in Python 2 and unicode in Python 3.
