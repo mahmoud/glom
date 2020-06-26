@@ -6,3 +6,5 @@ pytest==4.1.1
 tox==3.7.0
 virtualenv==15.1.0
 PyYAML==3.13
+mypy==0.780
+pytest-mypy-plugins==1.2.0
