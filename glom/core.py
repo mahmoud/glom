@@ -1323,6 +1323,25 @@ def _t_child(parent, operation, arg):
     return t
 
 
+def _s_first_magic(scope, key, _t):
+    """
+    enable S.a to do S['a'] or S['a'].val as a special
+    case for accessing user defined string variables
+    """
+    pae = None
+    try:
+        cur = scope[key]
+    except (KeyError, IndexError, TypeError) as e:
+        pae = PathAccessError(e, Path(_t), 0)
+    if isinstance(cur, _Val):
+        cur = cur.val
+        if cur is _UNDEFINED:
+            raise GlomError('var referenced before assignment')
+    if pae:
+        raise pae
+    return cur
+
+
 def _t_eval(target, _t, scope):
     t_path = _T_PATHS[_t]
     i = 1
@@ -1330,6 +1349,9 @@ def _t_eval(target, _t, scope):
         cur = target
     elif t_path[0] is S:
         cur = scope
+        if len(t_path) > 1 and t_path[1] == '.':
+            cur = _s_first_magic(cur, t_path[2], _t)
+            i += 2
     else:
         raise ValueError('TType instance with invalid root object')
     pae = None
@@ -1379,30 +1401,6 @@ UP = make_sentinel('UP')
 ROOT = make_sentinel('ROOT')
 
 
-class Let(object):
-    """
-    This specifier type assigns variables to the scope.
-
-    >>> target = {'data': {'val': 9}}
-    >>> spec = (Let(value=T['data']['val']), {'val': S['value']})
-    >>> glom(target, spec)
-    {'val': 9}
-    """
-    def __init__(self, **kw):
-        if not kw:
-            raise TypeError('expected at least one keyword argument')
-        self._binding = kw
-
-    def glomit(self, target, scope):
-        scope.update({
-            k: scope[glom](target, v, scope) for k, v in self._binding.items()})
-        return target
-
-    def __repr__(self):
-        cn = self.__class__.__name__
-        return format_invocation(cn, kwargs=self._binding, repr=bbrepr)
-
-
 def _format_t(path, root=T):
     prepr = ['T' if root is T else 'S']
     i = 0
@@ -1419,6 +1417,75 @@ def _format_t(path, root=T):
             return _format_path(path)
         i += 2
     return "".join(prepr)
+
+
+class Var(object):
+    """
+    Used to declare a variable inside a Let spec.
+    """
+    def __init__(self, final=False):
+        self.final = final
+
+
+_UNDEFINED =  make_sentinel('UNDEFINED')
+
+
+class _Val(object):
+    """
+    Used to store the value assigned to a Var.
+    """
+    def __init__(self, var):
+        self.var = var
+        self.val = _UNDEFINED
+
+
+class Let(object):
+    """
+    This specifier type assigns variables to the scope.
+
+    >>> target = {'data': {'val': 9}}
+    >>> spec = (Let(value=T['data']['val']), {'val': S['value']})
+    >>> glom(target, spec)
+    {'val': 9}
+    """
+    def __init__(self, **kw):
+        if not kw:
+            raise TypeError('expected at least one keyword argument')
+        self._binding = {k: v for k, v in kw.items() if not isinstance(v, Var)}
+        self._vars = {k: v for k, v in kw.items() if isinstance(v, Var)}
+
+    def glomit(self, target, scope):
+        scope.update({
+            k: scope[glom](target, v, scope) for k, v in self._binding.items()})
+        scope.update({k: _Val(v) for k, v in self._vars.items()})
+        return target
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return format_invocation(cn, kwargs=self._binding, repr=bbrepr)
+
+
+class LetVar(object):
+    """
+    Used to assign values to variables declared with Let(name=Var())
+    """
+    def __init__(self, **kw):
+        if not kw:
+            raise TypeError('expected at least one keyword argument')
+        self._binding = kw
+
+    def glomit(self, target, scope):
+        for k, spec in self._binding.items():
+            if not isinstance(scope.get(k), _Val):
+                raise GlomError("tried to assign to undeclared variable")
+            if scope[k].val is not _UNDEFINED and scope[k].var.final:
+                raise GlomError("assigned more than once to final variable")
+            scope[k].val = scope[glom](target, spec, scope)
+        return target
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return format_invocation(cn, kwargs=self._binding, repr=bbrepr)
 
 
 class CheckError(GlomError):

@@ -5,10 +5,10 @@ from xml.etree import cElementTree as ElementTree
 import pytest
 
 from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S, Invoke, Spec, Ref
-from glom import Auto, Fill, Iter
+from glom import Auto, Fill, Iter, Let, Var, LetVar
 
 import glom.core as glom_core
-from glom.core import UP, ROOT, Let
+from glom.core import UP, ROOT
 
 from glom import OMIT  # backwards compat
 
@@ -410,6 +410,8 @@ def test_let():
         Let('posarg')
     with pytest.raises(TypeError):
         Let()
+
+    assert glom([[None]], (Let(a=Var()), [[LetVar(a=Literal(1))]], S.a)) == 1
 
     assert repr(Let(a=T.a.b)) == 'Let(a=T.a.b)'
 
