@@ -1333,7 +1333,7 @@ def _s_first_magic(scope, key, _t):
         cur = scope[key]
     except (KeyError, IndexError, TypeError) as e:
         pae = PathAccessError(e, Path(_t), 0)
-    if isinstance(cur, _Val):
+    if isinstance(cur, _VarVal):
         cur = cur.val
         if cur is _UNDEFINED:
             raise GlomError('var referenced before assignment')
@@ -1419,6 +1419,31 @@ def _format_t(path, root=T):
     return "".join(prepr)
 
 
+class Val(object):
+    """Val objects are specs which evaluate to the wrapped value.
+
+    >>> target = {'a': {'b': 'c'}}
+    >>> spec = {'a': 'a.b', 'readability': Val('counts')}
+    >>> pprint(glom(target, spec))
+    {'a': 'c', 'readability': 'counts'}
+
+    Instead of accessing ``'counts'`` as a key like it did with
+    ``'a.b'``, :func:`~glom.glom` just unwrapped the Val and
+    included the value.
+
+    :class:`~glom.Val` takes one argument, the value to be returned.
+    """
+    def __init__(self, val):
+        self.val = val
+
+    def glomit(self, target, scope):
+        return self.val
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%s)' % (cn, bbrepr(self.val))
+
+
 class Var(object):
     """
     Used to declare a variable inside a Let spec.
@@ -1430,7 +1455,7 @@ class Var(object):
 _UNDEFINED =  make_sentinel('UNDEFINED')
 
 
-class _Val(object):
+class _VarVal(object):
     """
     Used to store the value assigned to a Var.
     """
@@ -1457,7 +1482,7 @@ class Let(object):
     def glomit(self, target, scope):
         scope.update({
             k: scope[glom](target, v, scope) for k, v in self._binding.items()})
-        scope.update({k: _Val(v) for k, v in self._vars.items()})
+        scope.update({k: _VarVal(v) for k, v in self._vars.items()})
         return target
 
     def __repr__(self):
@@ -1476,7 +1501,7 @@ class LetVar(object):
 
     def glomit(self, target, scope):
         for k, spec in self._binding.items():
-            if not isinstance(scope.get(k), _Val):
+            if not isinstance(scope.get(k), _VarVal):
                 raise GlomError("tried to assign to undeclared variable")
             if scope[k].val is not _UNDEFINED and scope[k].var.final:
                 raise GlomError("assigned more than once to final variable")
