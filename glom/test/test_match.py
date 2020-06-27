@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from glom import glom, S, Literal, T, Merge, Fill, Let, Ref
+from glom import glom, S, Literal, T, Merge, Fill, Let, Ref, Coalesce, STOP
 from glom.matching import (
     Match, M, MatchError, TypeMatchError, And, Or, Not,
     Optional, Required, Regex)
@@ -368,3 +368,20 @@ def test_nested_struct():
     glom(rule, rule_spec)
     rule['save_as_new'] = 'true'
     glom(rule, rule_spec)
+
+
+def test_check_ported_tests():
+    target = [{'id': 0}, {'id': 1}, {'id': 2}]
+
+    # check that skipping non-passing values works
+    assert glom(target, [Coalesce(M('id') == 0, default=SKIP)]) == [{'id': 0}]
+    assert glom(target, [Coalesce(M(T['id']) == 0, default=SKIP)]) == [{'id': 0}]
+    # TODO: should M(subspec, default='') work? I lean no.
+    # NB: this is not a very idiomatic use of Match, just brought over for Check reasons
+    assert glom(target, [Match({'id': And(int, M == 1)}, default=SKIP)]) == [{'id': 1}]
+    assert glom(target, [Match({'id': And(int, M <= 1)}, default=STOP)]) == [{'id': 0}, {'id': 1}]
+
+    # check that stopping chain execution on non-passing values works
+    spec = (Or(M(len), Literal(STOP)), T[0])
+    assert glom('hello', spec, glom_debug=True) == 'h'
+    assert glom('', spec) == ''  # would fail with IndexError if STOP didn't work

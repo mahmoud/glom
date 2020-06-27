@@ -162,7 +162,7 @@ class Match(object):
         return True
 
     def __repr__(self):
-        return 'Match({})'.format(bbrepr(self.spec))
+        return '%s(%s)' % (self.__class__.__name__, bbrepr(self.spec))
 
 
 _RE_FULLMATCH = getattr(re, "fullmatch", None)
@@ -373,6 +373,15 @@ class _M_Subspec(object):
 
     def __le__(self, other):
         return _MExpr(self, 'l', other)
+
+    def __repr__(self):
+        return 'M(%s)' % (bbrepr(self.spec),)
+
+    def glomit(self, target, scope):
+        match = scope[glom](target, self.spec, scope)
+        if match:
+            return target
+        raise MatchError('expected truthy value from {!r}, got {!r}', self.spec, match)
 
 
 class _MExpr(object):
