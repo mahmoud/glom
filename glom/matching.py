@@ -10,6 +10,8 @@ from boltons.typeutils import make_sentinel
 
 from .core import GlomError, glom, T, MODE, bbrepr, format_invocation, Path
 
+_MISSING = make_sentinel('_MISSING')
+
 # NOTE: it is important that MatchErrors be cheap to construct,
 # because negative matches are part of normal control flow
 # (e.g. often it is idiomatic to cascade from one possible match
@@ -135,12 +137,19 @@ class Match(object):
     .. _schema: https://github.com/keleshev/schema
     .. _pattern matching: https://en.wikipedia.org/wiki/Pattern_matching
     """
-    def __init__(self, spec):
+    def __init__(self, spec, default=_MISSING):
         self.spec = spec
+        self.default = default
 
     def glomit(self, target, scope):
         scope[MODE] = _glom_match
-        return scope[glom](target, self.spec, scope)
+        try:
+            ret = scope[glom](target, self.spec, scope)
+        except GlomError:
+            if self.default is _MISSING:
+                raise
+            ret = self.default
+        return ret
 
     def verify(self, target):
         return glom(target, self)
@@ -507,8 +516,6 @@ class _MType(object):
 
 M = _MType()
 
-
-_MISSING = make_sentinel('_MISSING')
 
 
 class Optional(object):

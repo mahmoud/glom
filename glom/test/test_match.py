@@ -76,6 +76,12 @@ def test_match_expressions():
         glom(None, M(Literal(1)) != 1)
 
 
+def test_match_default():
+    default = []
+    res = glom(None, Match(list, default=default))
+    assert res is default
+
+
 def test_double_wrapping():
     for outer in (Required, Optional):
         with pytest.raises(TypeError):
