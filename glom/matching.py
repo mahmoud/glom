@@ -841,12 +841,6 @@ class CheckError(GlomError):
     messages through the ``msgs`` attribute on the ``CheckError``
     instance.
 
-    .. note::
-
-       As of 2018-07-05 (glom v18.2.0), the validation subsystem is
-       still very new. Exact error message formatting may be enhanced
-       in future releases.
-
     """
     def __init__(self, msgs, check, path):
         self.msgs = msgs
