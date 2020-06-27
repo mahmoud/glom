@@ -4,7 +4,6 @@ results incrementally so that they can be applied to targets which
 are themselves streaming (e.g. chunks of rows from a database, lines
 from a file) without excessive memory usage.
 """
-from __future__ import unicode_literals
 
 from itertools import islice, dropwhile, takewhile, chain
 from functools import partial
