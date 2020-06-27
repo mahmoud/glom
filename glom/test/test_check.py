@@ -3,6 +3,11 @@ from pytest import raises
 
 from glom import glom, Check, CheckError, Coalesce, SKIP, STOP, T
 
+try:
+    unicode
+except NameError:
+    unicode = str
+
 
 def test_check_basic():
     assert glom([0, SKIP], [T]) == [0]  # sanity check SKIP
@@ -27,11 +32,11 @@ def test_check_basic():
     assert repr(Check(instance_of=dict)) == 'Check(instance_of=dict)'
     assert repr(Check(T(len), validate=sum)) == 'Check(T(len), validate=sum)'
 
-    target = [1, 'a']
-    assert glom(target, [Check(type=str, default=SKIP)]) == ['a']
-    assert glom(target, [Check(type=(str, int))]) == [1, 'a']
-    assert glom(target, [Check(instance_of=str, default=SKIP)]) == ['a']
-    assert glom(target, [Check(instance_of=(str, int))]) == [1, 'a']
+    target = [1, u'a']
+    assert glom(target, [Check(type=unicode, default=SKIP)]) == ['a']
+    assert glom(target, [Check(type=(unicode, int))]) == [1, 'a']
+    assert glom(target, [Check(instance_of=unicode, default=SKIP)]) == ['a']
+    assert glom(target, [Check(instance_of=(unicode, int))]) == [1, 'a']
 
     target = ['1']
     assert glom(target, [Check(validate=(int, float))])
@@ -41,9 +46,9 @@ def test_check_basic():
                        '''target at path ['a', 'b'] failed check, got error: "expected type to be 'str', found type 'int'"'''),
                       ({'a': {'b': 1}}, {'a': ('a', Check('b', type=str))},
                        '''target at path ['a'] failed check, subtarget at 'b' got error: "expected type to be 'str', found type 'int'"'''),
-                      (1, Check(type=(str, bool))),
-                      (1, Check(instance_of=str)),
-                      (1, Check(instance_of=(str, bool))),
+                      (1, Check(type=(unicode, bool))),
+                      (1, Check(instance_of=unicode)),
+                      (1, Check(instance_of=(unicode, bool))),
                       (1, Check(equal_to=0)),
                       (1, Check(one_of=(0,))),
                       (1, Check(one_of=(0, 2))),

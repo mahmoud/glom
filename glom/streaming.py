@@ -18,8 +18,8 @@ except ImportError:
 from boltons.iterutils import split_iter, chunked_iter, windowed_iter, unique_iter, first
 from boltons.funcutils import FunctionBuilder
 
-from .core import glom, T, STOP, SKIP, Check, _MISSING, Path, TargetRegistry, Call, Spec, S, bbrepr, format_invocation
-
+from .core import glom, T, STOP, SKIP, _MISSING, Path, TargetRegistry, Call, Spec, S, bbrepr, format_invocation
+from .matching import Check
 
 class Iter(object):
     """``Iter()`` is glom's counterpart to the built-in :func:`iter()`
