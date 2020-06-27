@@ -206,3 +206,18 @@ def test_from_t_identity():
 def test_t_dict_key():
     target = {'a': 'A'}
     assert glom(target, {T['a']: 'a'}) == {'A': 'A'}
+
+
+def test_t_arithmetic():
+    t = 2
+    assert glom(t, T + T) == 4
+    assert glom(t, T * T) == 4
+    assert glom(t, T ** T) == 4
+    assert glom(t, T / 1) == 2
+    assert glom(t, T % 1) == 0
+    assert glom(t, T - 1) == 1
+    assert glom(t, T & T) == 2
+    assert glom(t, T | 1) == 3
+    assert glom(t, T ^ T) == 0
+    assert glom(2, ~T) == -3
+    assert glom(t, -T) == -2

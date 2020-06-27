@@ -1302,7 +1302,46 @@ class TType(object):
     def __call__(self, *args, **kwargs):
         return _t_child(self, '(', (args, kwargs))
 
+    def __add__(self, arg):
+        return _t_child(self, '+', arg)
+
+    def __sub__(self, arg):
+        return _t_child(self, '-', arg)
+
+    def __mul__(self, arg):
+        return _t_child(self, '*', arg)
+
+    def __floordiv__(self, arg):
+        return _t_child(self, '#', arg)
+
+    def __truediv__(self, arg):
+        return _t_child(self, '/', arg)
+
+    __div__ = __truediv__
+
+    def __mod__(self, arg):
+        return _t_child(self, '%', arg)
+
+    def __pow__(self, arg):
+        return _t_child(self, ':', arg)
+
+    def __and__(self, arg):
+        return _t_child(self, '&', arg)
+
+    def __or__(self, arg):
+        return _t_child(self, '|', arg)
+
+    def __xor__(self, arg):
+        return _t_child(self, '^', arg)
+
+    def __invert__(self):
+        return _t_child(self, '~', None)
+
+    def __neg__(self):
+        return _t_child(self, '_', None)
+
     def __repr__(self):
+        # TODO: handle arithmetic expressions
         t_path = _T_PATHS[self]
         return _format_t(t_path[1:], t_path[0])
 
@@ -1364,6 +1403,34 @@ def _t_eval(target, _t, scope):
             # if args to the call "reset" their path
             # e.g. "T.a" should mean the same thing
             # in both of these specs: T.a and T.b(T.a)
+        else:  # arithmetic operators
+            try:
+                if op == '+':
+                    cur = cur + arg
+                elif op == '-':
+                    cur = cur - arg
+                elif op == '*':
+                    cur = cur * arg
+                #elif op == '#':
+                #    cur = cur // arg  # TODO: python 2 friendly approach?
+                elif op == '/':
+                    cur = cur / arg
+                elif op == '%':
+                    cur = cur % arg
+                elif op == ':':
+                    cur = cur ** arg
+                elif op == '&':
+                    cur = cur & arg
+                elif op == '|':
+                    cur = cur | arg
+                elif op == '^':
+                    cur = cur ^ arg
+                elif op == '~':
+                    cur = ~cur
+                elif op == '_':
+                    cur = -cur
+            except (TypeError, ZeroDivisionError) as e:
+                pae = PathAccessError(e, Path(_t), i // 2)
         if pae:
             raise pae
         i += 2
