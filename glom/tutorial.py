@@ -12,9 +12,9 @@ Dealing with Data
 =================
 
 Every application deals with data, and these days, even the simplest
-applications deals with rich, heavily-nested data.
+applications deal with rich, heavily-nested data.
 
-What does nested data looks like? In its most basic form::
+What does nested data look like? In its most basic form::
 
   >>> data = {'a': {'b': {'c': 'd'}}}
   >>> data['a']['b']['c']
