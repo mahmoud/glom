@@ -676,6 +676,10 @@ def _glom_match(target, spec, scope):
         for sub_target, sub_spec in zip(target, spec):
             result.append(scope[glom](sub_target, sub_spec, scope))
         return tuple(result)
+    elif callable(spec):
+        if spec(target):
+            return target
+        raise MatchError("{}({!r}) did not validate".format(spec.__name__, target))
     elif target != spec:
         raise MatchError("{!r} does not match {!r}", target, spec)
     return target

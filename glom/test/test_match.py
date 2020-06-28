@@ -29,6 +29,7 @@ def test_basic():
     _chk(Match([int]), [1], ["1"])
     _chk(Match({int}), {1}, [1])
     _chk(Match(frozenset({float})), frozenset({}), frozenset({"1"}))
+    _chk(Match(len), [1], [])
     with pytest.raises(MatchError):
         glom([1], Match([]))  # empty shouldn't match
     glom({"a": 1, "b": 2}, Match({str: int}))
