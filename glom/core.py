@@ -1448,6 +1448,21 @@ class _VType(object):
 V = _VType()
 
 
+class Vars(object):
+    """
+    :class:`Vars` is where variables captured with `V` and SetVars() will be stored.
+    """
+    def __init__(self):
+        pass
+
+    def glomit(self, target, scope):
+        scope[V] = scope.__setitem__
+        return target
+
+    def __repr__(self):
+        return "Vars()"
+
+
 class _SetVar(object):
     def __init__(self, name):
         self.name = name
@@ -1461,6 +1476,28 @@ class _SetVar(object):
         return 'V.%s' % self.name
 
 
+class SetVars(object):
+    """
+    Same behavior as :class:`Let`, but rather than setting variables
+    on the current scope, variables are set at the level of the next
+    enclosing :class:`Vars`
+    """
+    def __init__(self, **kw):
+        if not kw:
+            raise TypeError('expected at least one keyword argument')
+        self._binding = kw
+
+    def glomit(self, target, scope):
+        setvar = scope[V]
+        for k, spec in self._binding.items():
+            setvar(k, scope[glom](target, spec, scope))
+        return target
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return format_invocation(cn, kwargs=self._binding, repr=bbrepr)
+
+
 class Let(object):
     """
     This specifier type assigns variables to the scope.
@@ -1469,17 +1506,15 @@ class Let(object):
     >>> spec = (Let(value=T['data']['val']), {'val': S['value']})
     >>> glom(target, spec)
     {'val': 9}
-
-    :class:`Let` is also where variables captured with `V` will
-    be stored.
     """
     def __init__(self, **kw):
+        if not kw:
+            raise TypeError('expected at least one keyword argument')
         self._binding = kw
 
     def glomit(self, target, scope):
         scope.update({
             k: scope[glom](target, v, scope) for k, v in self._binding.items()})
-        scope[V] = scope.__setitem__
         return target
 
     def __repr__(self):

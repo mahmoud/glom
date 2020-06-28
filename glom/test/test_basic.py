@@ -5,7 +5,7 @@ from xml.etree import cElementTree as ElementTree
 import pytest
 
 from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S, Invoke, Spec, Ref
-from glom import Auto, Fill, Iter, Let, V
+from glom import Auto, Fill, Iter, Let, V, Vars, SetVars
 
 import glom.core as glom_core
 from glom.core import UP, ROOT
@@ -408,8 +408,10 @@ def test_let():
 
     with pytest.raises(TypeError):
         Let('posarg')
+    with pytest.raises(TypeError):
+        Let()
 
-    assert glom([[1]], (Let(), [[V.a]], S.a)) == 1
+    assert glom([[1]], (Vars(), [[V.a]], SetVars(b=S.a), S.b)) == 1
 
     assert repr(Let(a=T.a.b)) == 'Let(a=T.a.b)'
 
