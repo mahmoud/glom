@@ -10,6 +10,12 @@ from glom.matching import (
     Optional, Required, Regex)
 from glom.core import Auto, SKIP, Ref
 
+try:
+    unicode
+except NameError:
+    unicode = str
+
+
 
 def _chk(spec, good_target, bad_target):
     glom(good_target, spec)
@@ -371,11 +377,15 @@ def test_nested_struct():
 
 
 def test_check_ported_tests():
+    """
+    Tests ported from Check() to make sure all the functionality has an analogue.
+    """
     target = [{'id': 0}, {'id': 1}, {'id': 2}]
 
     # check that skipping non-passing values works
     assert glom(target, [Coalesce(M('id') == 0, default=SKIP)]) == [{'id': 0}]
     assert glom(target, [Coalesce(M(T['id']) == 0, default=SKIP)]) == [{'id': 0}]
+
     # TODO: should M(subspec, default='') work? I lean no.
     # NB: this is not a very idiomatic use of Match, just brought over for Check reasons
     assert glom(target, [Match({'id': And(int, M == 1)}, default=SKIP)]) == [{'id': 1}]
@@ -385,3 +395,42 @@ def test_check_ported_tests():
     spec = (Or(M(len), Literal(STOP)), T[0])
     assert glom('hello', spec, glom_debug=True) == 'h'
     assert glom('', spec) == ''  # would fail with IndexError if STOP didn't work
+
+    target = [1, u'a']
+    assert glom(target, [Match(unicode, default=SKIP)]) == ['a']
+    assert glom(target, Match([Or(unicode, int)])) == [1, 'a']
+
+    target = ['1']
+    assert glom(target, [(M(int), int)]) == [1]
+    assert glom(target, Match(T)) == ['1']  # Match on its own just tests truthiness
+
+    failing_checks = [({'a': {'b': 1}}, {'a': ('a', 'b', Match(str))},
+                       '''expected type str, not int'''),  # TODO: bbrepr at least, maybe include path like Check did
+                      ({'a': {'b': 1}}, {'a': ('a', Match({'b': str}))},
+                       '''expected type str, not int'''),  # TODO: include subspec path ('b')
+                      (1, Match(Or(unicode, bool))),
+                      (1, Match(unicode)),
+                      (1, Match(0)),
+                      (1, Match(Or(0, 2))),
+    ]
+
+    # TODO: Best way to do validate with Match?
+    # TODO: ('-3.14', Check(validate=int)),
+    # TODO: ('', Check(validate=lambda x: False)),]
+
+    for fc in failing_checks:
+        if len(fc) == 2:
+            target, check = fc
+            msg = None
+        else:
+            target, check, msg = fc
+
+        with pytest.raises(MatchError) as exc_info:
+            glom(target, check)
+
+        if msg is not None:
+            actual_msg = str(exc_info.value)
+            assert actual_msg.find(msg) != -1
+        assert repr(exc_info.value)
+
+    return

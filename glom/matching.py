@@ -25,7 +25,7 @@ class MatchError(GlomError):
 
     def get_message(self):
         fmt, args = self.args[0], self.args[1:]
-        return "{}({})".format(self.__class__.__name__, fmt.format(*args))
+        return fmt.format(*args)
 
 
 class TypeMatchError(MatchError, TypeError):
@@ -35,7 +35,7 @@ class TypeMatchError(MatchError, TypeError):
 
     def __init__(self, actual, expected):
         super(TypeMatchError, self).__init__(
-            "expected type {!r}, not {!r}", expected, actual)
+            "expected type {.__name__}, not {.__name__}", expected, actual)
 
     def __copy__(self):
         # __init__ args = (actual, expected)
