@@ -1331,7 +1331,7 @@ def _s_first_magic(scope, key, _t):
     pae = None
     try:
         cur = scope[key]
-    except (KeyError, IndexError, TypeError) as e:
+    except (KeyError, IndexError) as e:
         pae = PathAccessError(e, Path(_t), 0)
     if pae:
         raise pae
