@@ -681,10 +681,10 @@ def _glom_match(target, spec, scope):
             if spec(target):
                 return target
         except Exception as e:
-            raise MatchError("{}({!r}) did not validate (got exception {!r})".format(
-                spec.__name__, target, e))
-        raise MatchError("{}({!r}) did not validate (non truthy return)".format(
-            spec.__name__, target))
+            raise MatchError(
+                "{}({!r}) did not validate (got exception {!r})", spec.__name__, target, e)
+        raise MatchError(
+            "{}({!r}) did not validate (non truthy return)", spec.__name__, target)
     elif target != spec:
         raise MatchError("{!r} does not match {!r}", target, spec)
     return target
