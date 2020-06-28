@@ -17,9 +17,7 @@ from glom.core import (glom,
                        Check,
                        Path,
                        Let,
-                       V,
                        Vars,
-                       SetVars,
                        Val,
                        Literal,
                        Coalesce,
@@ -30,7 +28,7 @@ from glom.core import (glom,
                        PathAccessError,
                        CoalesceError,
                        UnregisteredTarget,
-                       T, S)
+                       T, S, A)
 
 from glom.reduction import Sum, Fold, Flatten, flatten, FoldError, Merge, merge
 from glom.mutation import Assign, Delete, assign, delete, PathAssignError, PathDeleteError

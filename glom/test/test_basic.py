@@ -5,7 +5,7 @@ from xml.etree import cElementTree as ElementTree
 import pytest
 
 from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S, Invoke, Spec, Ref
-from glom import Auto, Fill, Iter, Let, V, Vars, SetVars
+from glom import Auto, Fill, Iter, Let, A, Vars
 
 import glom.core as glom_core
 from glom.core import UP, ROOT
@@ -411,9 +411,22 @@ def test_let():
     with pytest.raises(TypeError):
         Let()
 
-    assert glom([[1]], (Vars(), [[V.a]], SetVars(b=S.a), S.b)) == 1
+    assert glom([[1]], (Let(v=Vars()), [[A.v.a]], S.v.a)) == 1
 
     assert repr(Let(a=T.a.b)) == 'Let(a=T.a.b)'
+
+
+def test_globals():
+    assert glom([[1]], ([[A.globals.a]], S.globals.a)) == 1
+
+
+def test_vars():
+    # check that Vars() inside a spec doesn't hold state
+    # from run to run
+    let = Let(v=Vars())
+    assert glom(1, (let, A.v.a, S.v.a)) == 1
+    with pytest.raises(AttributeError):
+        glom(1, (let, S.v.a))
 
 
 def test_ref():

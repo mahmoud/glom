@@ -1308,10 +1308,10 @@ class TType(object):
 
     def __getstate__(self):
         t_path = _T_PATHS[self]
-        return tuple(('T' if t_path[0] is T else 'S',) + t_path[1:])
+        return tuple(({T: 'T', S: 'S', A: 'A'}[t_path[0]],) + t_path[1:])
 
     def __setstate__(self, state):
-        _T_PATHS[self] = (T if state[0] == 'T' else S,) + state[1:]
+        _T_PATHS[self] = ({'T': T, 'S': S, 'A': A}[state[0]],) + state[1:]
 
 
 _T_PATHS = weakref.WeakKeyDictionary()
@@ -1319,7 +1319,12 @@ _T_PATHS = weakref.WeakKeyDictionary()
 
 def _t_child(parent, operation, arg):
     t = TType()
-    _T_PATHS[t] = _T_PATHS[parent] + (operation, arg)
+    base = _T_PATHS[parent]
+    if base[0] is A and operation not in ('.', '[', 'P'):
+        # whitelist rather than blacklist assignment friendly operations
+        # TODO: error type?
+        raise ValueError("operation not allowed on A assignment path")
+    _T_PATHS[t] = base + (operation, arg)
     return t
 
 
@@ -1328,30 +1333,37 @@ def _s_first_magic(scope, key, _t):
     enable S.a to do S['a'] or S['a'].val as a special
     case for accessing user defined string variables
     """
-    pae = None
+    err = None
     try:
         cur = scope[key]
     except (KeyError, IndexError) as e:
-        pae = PathAccessError(e, Path(_t), 0)
-    if pae:
-        raise pae
+        err = NameError("name '%s' not defined in glom scope" % key)
+    if err:
+        raise err
     return cur
 
 
 def _t_eval(target, _t, scope):
     t_path = _T_PATHS[_t]
     i = 1
-    if t_path[0] is T:
+    fetch_till = len(t_path)
+    root = t_path[0]
+    if root is T:
         cur = target
-    elif t_path[0] is S:
+    elif root is S or root is A:
+        # A is basically the same as S, but last step is assign
+        if root is A:
+            fetch_till -= 2
+            if fetch_till < 1:
+                raise ValueError('cannot assign without destination')
         cur = scope
-        if len(t_path) > 1 and t_path[1] == '.':
+        if fetch_till > 1 and t_path[1] == '.':
             cur = _s_first_magic(cur, t_path[2], _t)
             i += 2
     else:
         raise ValueError('TType instance with invalid root object')
     pae = None
-    while i < len(t_path):
+    while i < fetch_till:
         op, arg = t_path[i], t_path[i + 1]
         if type(arg) in (Spec, TType, Literal):
             arg = scope[glom](target, arg, scope)
@@ -1385,20 +1397,37 @@ def _t_eval(target, _t, scope):
         if pae:
             raise pae
         i += 2
+    if root is A:
+        # TODO: PathAssignError or similar?
+        op, arg = t_path[-2:]
+        if op == '[':
+            cur[arg] = target
+        elif op == '.':
+            setattr(cur, arg, target)
+        elif op == 'P':
+            _assign = scope[TargetRegistry].get_handler('assign', cur)
+            try:
+                _assign(cur, arg, target)
+            except Exception as e:
+                raise PathAccessError(e, Path(_t), i // 2 + 1)
+        else:
+            raise ValueError('unsupported operation for assignment')
     return cur
 
 
 T = TType()  # target aka Mr. T aka "this"
 S = TType()  # like T, but means grab stuff from Scope, not Target
+A = TType()  # like S, but means assign target to scope
 
 _T_PATHS[T] = (T,)
 _T_PATHS[S] = (S,)
+_T_PATHS[A] = (A,)
 UP = make_sentinel('UP')
 ROOT = make_sentinel('ROOT')
 
 
 def _format_t(path, root=T):
-    prepr = ['T' if root is T else 'S']
+    prepr = [{T: 'T', S: 'S', A: 'A'}[root]]
     i = 0
     while i < len(path):
         op, arg = path[i], path[i + 1]
@@ -1440,62 +1469,21 @@ class Val(object):
         return '%s(%s)' % (cn, bbrepr(self.val))
 
 
-class _VType(object):
-    def __getattr__(self, attr):
-        return _SetVar(attr)
-
-
-V = _VType()
-
-
 class Vars(object):
     """
-    :class:`Vars` is where variables captured with `V` and SetVars() will be stored.
-    """
-    def __init__(self):
-        pass
-
-    def glomit(self, target, scope):
-        scope[V] = scope.__setitem__
-        return target
-
-    def __repr__(self):
-        return "Vars()"
-
-
-class _SetVar(object):
-    def __init__(self, name):
-        self.name = name
-
-    def glomit(self, target, scope):
-        scope[V](self.name, target)
-        return target
-
-    def __repr__(self):
-        cn = self.__class__.__name__
-        return 'V.%s' % self.name
-
-
-class SetVars(object):
-    """
-    Same behavior as :class:`Let`, but rather than setting variables
-    on the current scope, variables are set at the level of the next
-    enclosing :class:`Vars`
+    :class:`Vars` is a helper that stores variables
     """
     def __init__(self, **kw):
-        if not kw:
-            raise TypeError('expected at least one keyword argument')
-        self._binding = kw
+        # TODO: cleaner way to do this
+        if 'glomit' in kw:
+            raise ValueError('glomit is reserved')
+        self.__dict__ = kw
 
-    def glomit(self, target, scope):
-        setvar = scope[V]
-        for k, spec in self._binding.items():
-            setvar(k, scope[glom](target, spec, scope))
-        return target
+    def glomit(self, target, spec):
+        return copy.copy(self)
 
     def __repr__(self):
-        cn = self.__class__.__name__
-        return format_invocation(cn, kwargs=self._binding, repr=bbrepr)
+        return "Vars(%s)" % bbrepr(self.__dict__)
 
 
 class Let(object):
@@ -2066,6 +2054,7 @@ def glom(target, spec, **kwargs):
         Path: kwargs.pop('path', []),
         Inspect: kwargs.pop('inspector', None),
         MODE: AUTO,
+        'globals': Vars(),
     })
     scope[UP] = scope
     scope[ROOT] = scope
