@@ -1333,10 +1333,6 @@ def _s_first_magic(scope, key, _t):
         cur = scope[key]
     except (KeyError, IndexError, TypeError) as e:
         pae = PathAccessError(e, Path(_t), 0)
-    if isinstance(cur, _VarVal):
-        cur = cur.val
-        if cur is _UNDEFINED:
-            raise GlomError('var referenced before assignment')
     if pae:
         raise pae
     return cur
@@ -1444,24 +1440,25 @@ class Val(object):
         return '%s(%s)' % (cn, bbrepr(self.val))
 
 
-class Var(object):
-    """
-    Used to declare a variable inside a Let spec.
-    """
-    def __init__(self, final=False):
-        self.final = final
+class _VType(object):
+    def __getattr__(self, attr):
+        return _SetVar(attr)
 
 
-_UNDEFINED =  make_sentinel('UNDEFINED')
+V = _VType()
 
 
-class _VarVal(object):
-    """
-    Used to store the value assigned to a Var.
-    """
-    def __init__(self, var):
-        self.var = var
-        self.val = _UNDEFINED
+class _SetVar(object):
+    def __init__(self, name):
+        self.name = name
+
+    def glomit(self, target, scope):
+        scope[V](self.name, target)
+        return target
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return 'V.%s' % self.name
 
 
 class Let(object):
@@ -1472,40 +1469,17 @@ class Let(object):
     >>> spec = (Let(value=T['data']['val']), {'val': S['value']})
     >>> glom(target, spec)
     {'val': 9}
+
+    :class:`Let` is also where variables captured with `V` will
+    be stored.
     """
     def __init__(self, **kw):
-        if not kw:
-            raise TypeError('expected at least one keyword argument')
-        self._binding = {k: v for k, v in kw.items() if not isinstance(v, Var)}
-        self._vars = {k: v for k, v in kw.items() if isinstance(v, Var)}
+        self._binding = kw
 
     def glomit(self, target, scope):
         scope.update({
             k: scope[glom](target, v, scope) for k, v in self._binding.items()})
-        scope.update({k: _VarVal(v) for k, v in self._vars.items()})
-        return target
-
-    def __repr__(self):
-        cn = self.__class__.__name__
-        return format_invocation(cn, kwargs=self._binding, repr=bbrepr)
-
-
-class LetVar(object):
-    """
-    Used to assign values to variables declared with Let(name=Var())
-    """
-    def __init__(self, **kw):
-        if not kw:
-            raise TypeError('expected at least one keyword argument')
-        self._binding = kw
-
-    def glomit(self, target, scope):
-        for k, spec in self._binding.items():
-            if not isinstance(scope.get(k), _VarVal):
-                raise GlomError("tried to assign to undeclared variable")
-            if scope[k].val is not _UNDEFINED and scope[k].var.final:
-                raise GlomError("assigned more than once to final variable")
-            scope[k].val = scope[glom](target, spec, scope)
+        scope[V] = scope.__setitem__
         return target
 
     def __repr__(self):
