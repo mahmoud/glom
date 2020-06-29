@@ -18,7 +18,13 @@ _MISSING = make_sentinel('_MISSING')
 # to the next and take the first one that works)
 class MatchError(GlomError):
     """
-    Raised when a :class:`Match` fails.
+    Raised when a :class:`Match` or :data:`M` check fails.
+
+    >>> glom({123: 'a'}, Match({'id': int}))
+    Traceback (most recent call last):
+    ...
+    MatchError: key 123 didn't match any of ['id']
+
     """
     def __init__(self, fmt, *args):
         super(MatchError, self).__init__(fmt, *args)
@@ -31,6 +37,18 @@ class MatchError(GlomError):
 class TypeMatchError(MatchError, TypeError):
     """:exc:`MatchError` subtype raised when a
     :class:`Match` fails a type check.
+
+    >>> glom({'id': 'a'}, Match({'id': int}))
+    Traceback (most recent call last):
+    ...
+    TypeMatchError: error raised while processing.
+     Target-spec trace, with error detail (most recent last):
+     - Target: {'id': 'a'}
+     - Spec: Match({'id': <type 'int'>})
+     - Spec: {'id': <type 'int'>}
+     - Target: 'a'
+     - Spec: int
+    TypeMatchError: expected type int, not str
     """
 
     def __init__(self, actual, expected):
@@ -58,24 +76,24 @@ class Match(object):
 
     For example, let's say we are loading data of the form:
 
-    >>> input =[
+    >>> target =[
     ... {'id': 1, 'email': 'alice@example.com'},
     ... {'id': 2, 'email': 'bob@example.com'}]
 
-    Glom match can be used to ensure ths input is in its expected form:
+    Glom match can be used to ensure ths target is in its expected form:
 
     >>> str = type('')
-    >>> glom(input, Match([{'id': int, 'email': str}])) == \\
+    >>> glom(target, Match([{'id': int, 'email': str}])) == \\
     ...     [{'id': 1, 'email': 'alice@example.com'}, {'id': 2, 'email': 'bob@example.com'}]
     True
 
-    This ensures that `input` is a list of dicts, each of which
+    This ensures that `target` is a list of dicts, each of which
     has exactly two keys `'id'` and `'email'` whose values are
     an `int` and `str`.
 
     With a more complex match schema, we can be more precise:
 
-    >>> glom(input, Match([{'id': And(M > 0, int), 'email': Regex('[^@]+@[^@]+')}])) == \\
+    >>> glom(target, Match([{'id': And(M > 0, int), 'email': Regex('[^@]+@[^@]+')}])) == \\
     ...     [{'id': 1, 'email': 'alice@example.com'}, {'id': 2, 'email': 'bob@example.com'}]
     True
 
@@ -95,8 +113,8 @@ class Match(object):
     additional keys and values in the user dict above we could add `object` as a
     generic pass through:
 
-    >>> input = [{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}]
-    >>> glom(input, Match([{'id': int, 'email': str, object: object}])) == \\
+    >>> target = [{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}]
+    >>> glom(target, Match([{'id': int, 'email': str, object: object}])) == \\
     ...     [{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}]
     True
 
