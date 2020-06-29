@@ -74,15 +74,15 @@ def test_basic():
 
 def test_match_expressions():
     assert glom(1, M == M) == 1
-    assert glom(None, M(Literal(1)) == 1) is None
-    assert glom(None, M(Literal(1)) >= 1) is None
-    assert glom(None, M(Literal(1)) <= 1) is None
+    assert glom(1, M == 1) == 1
+    assert glom(1, M >= 1) == 1
+    assert glom(1, M <= 1) == 1
     with pytest.raises(MatchError):
-        glom(None, M(Literal(1)) > 1)
+        glom(1, M > 1)
     with pytest.raises(MatchError):
-        glom(None, M(Literal(1)) < 1)
+        glom(1, M < 1)
     with pytest.raises(MatchError):
-        glom(None, M(Literal(1)) != 1)
+        glom(1, M != 1)
 
 
 def test_match_default():
@@ -113,8 +113,8 @@ def test_spec_match():
     """test that M __call__ can be used to wrap a subspec for comparison"""
     target = {}
     target['a'] = target
-    assert glom(target, M == M('a')) == target
-    assert glom(target, M('a') == M) == target
+    assert glom(target, M == M(T['a'])) == target
+    assert glom(target, M(T['a']) == M) == target
 
 
 def test_precedence():
@@ -386,7 +386,6 @@ def test_check_ported_tests():
     target = [{'id': 0}, {'id': 1}, {'id': 2}]
 
     # check that skipping non-passing values works
-    assert glom(target, [Coalesce(M('id') == 0, default=SKIP)]) == [{'id': 0}]
     assert glom(target, [Coalesce(M(T['id']) == 0, default=SKIP)]) == [{'id': 0}]
 
     # TODO: should M(subspec, default='') work? I lean no.
@@ -395,7 +394,7 @@ def test_check_ported_tests():
     assert glom(target, [Match({'id': And(int, M <= 1)}, default=STOP)]) == [{'id': 0}, {'id': 1}]
 
     # check that stopping chain execution on non-passing values works
-    spec = (Or(M(len), Literal(STOP)), T[0])
+    spec = (Or(Match(len), Literal(STOP)), T[0])
     assert glom('hello', spec, glom_debug=True) == 'h'
     assert glom('', spec) == ''  # would fail with IndexError if STOP didn't work
 
@@ -404,8 +403,8 @@ def test_check_ported_tests():
     assert glom(target, Match([Or(unicode, int)])) == [1, 'a']
 
     target = ['1']
-    assert glom(target, [(M(int), int)]) == [1]
-    assert glom(target, Match(T)) == ['1']  # Match on its own just tests truthiness
+    assert glom(target, [(M(T), int)]) == [1]
+    assert glom(target, M(T)) == ['1']
 
     failing_checks = [({'a': {'b': 1}}, {'a': ('a', 'b', Match(str))},
                        '''expected type str, not int'''),  # TODO: bbrepr at least, maybe include path like Check did
