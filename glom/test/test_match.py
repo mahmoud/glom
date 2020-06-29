@@ -415,11 +415,10 @@ def test_check_ported_tests():
                       (1, Match(unicode)),
                       (1, Match(0)),
                       (1, Match(Or(0, 2))),
+                      ('-3.14', Match(lambda x: int(x) > 0)),
+                      # ('-3.14', M(lambda x: int(x) > 0)),
+                      # TODO: M doesn't behave quite like Match because it's mode-free
     ]
-
-    # TODO: Best way to do validate with Match?
-    # TODO: ('-3.14', Check(validate=int)),
-    # TODO: ('', Check(validate=lambda x: False)),]
 
     for fc in failing_checks:
         if len(fc) == 2:
