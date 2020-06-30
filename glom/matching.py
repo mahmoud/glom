@@ -258,7 +258,7 @@ class _Bool(object):
     def __init__(self, *children, default=_MISSING):
         self.children = children
         if not children:
-            raise ValueError("need at least one clause for {}".format(
+            raise ValueError("need at least one operand for {}".format(
                 self.__class__.__name__))
         self.default = default
 

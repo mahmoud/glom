@@ -57,6 +57,9 @@ def test_basic():
     with pytest.raises(ValueError):
         And()
 
+    with pytest.raises(ValueError):
+        Or()
+
     _chk(Match(Or("a", "b")), "a", "c")
     glom({None: 1}, Match({object: object}))
     _chk(Match((int, str)), (1, "cat"), (1, 2))
