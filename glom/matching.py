@@ -255,8 +255,12 @@ def _bool_child_repr(child):
 
 
 class _Bool(object):
-    def __init__(self, *children):
+    def __init__(self, *children, default=_MISSING):
         self.children = children
+        if not children:
+            raise ValueError("need at least one clause for {}".format(
+                self.__class__.__name__))
+        self.default = default
 
     def __and__(self, other):
         return And(self, other)
@@ -266,6 +270,14 @@ class _Bool(object):
 
     def __invert__(self):
         return Not(self)
+
+    def glomit(self, target, scope):
+        try:
+            return self._glomit(target, scope)
+        except GlomError:
+            if self.default is not _MISSING:
+                return self.default
+            raise
 
     def _m_repr(self):
         """should this Or() repr as M |?"""
@@ -292,7 +304,7 @@ class And(_Bool):
     OP = "&"
     __slots__ = ('children',)
 
-    def glomit(self, target, scope):
+    def _glomit(self, target, scope):
         # all children must match without exception
         result = target  # so that And() == True, similar to all([]) == True
         for child in self.children:
@@ -313,7 +325,7 @@ class Or(_Bool):
     OP = "|"
     __slots__ = ('children',)
 
-    def glomit(self, target, scope):
+    def _glomit(self, target, scope):
         if not self.children:  # so Or() == False, similar to any([]) == False
             raise MatchError("Or() with no arguments")
         for child in self.children[:-1]:

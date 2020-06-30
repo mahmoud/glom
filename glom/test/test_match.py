@@ -54,10 +54,8 @@ def test_basic():
     with pytest.raises(MatchError):
         glom("c", Match(Or("a", "b")))
 
-    with pytest.raises(MatchError):
-        glom("", Match(Or() | Or()))
-
-    assert Match(And() & And()).matches(True) is True
+    with pytest.raises(ValueError):
+        And()
 
     _chk(Match(Or("a", "b")), "a", "c")
     glom({None: 1}, Match({object: object}))
@@ -192,11 +190,12 @@ def test_reprs():
     assert repr(Regex('[ab]')) == "Regex('[ab]')"
     assert repr(Regex('[ab]', flags=1)) == "Regex('[ab]', flags=1)"
     assert 'search' in repr(Regex('[ab]', func=re.search))
-    assert repr(And()) == 'And()'
+    assert repr(And(1)) == 'And(1)'
     assert repr(~And(1)) == 'Not(And(1))'
     assert repr(~Or(M) & Or(M)) == '~(M) & M'
     assert repr(Not(M < 3)) == '~(M < 3)'
     assert repr(~(M < 4)) == '~(M < 4)'
+    assert repr(~M | "default") == "~M | 'default'"
 
 
 def test_shortcircuit():
