@@ -86,6 +86,12 @@ def test_match_expressions():
         glom(1, M != 1)
 
 
+def test_defaults():
+    assert glom(1, Match(2, default=3)) == 3
+    assert glom(1, Or(M == 2, default=3)) == 3
+    assert glom(1, And(M == 2, default=3)) == 3
+
+
 def test_match_default():
     default = []
     res = glom(None, Match(list, default=default))

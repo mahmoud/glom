@@ -294,7 +294,7 @@ class _Bool(object):
         if self._m_repr() and self.default is _MISSING:
             return " {} ".format(self.OP).join(child_reprs)
         if self.default is not _MISSING:
-            child_reprs += "default=" + repr(self.default)
+            child_reprs.append("default=" + repr(self.default))
         return self.__class__.__name__ + "(" + ", ".join(child_reprs) + ")"
 
 
