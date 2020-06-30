@@ -199,6 +199,7 @@ def test_reprs():
     assert repr(Not(M < 3)) == '~(M < 3)'
     assert repr(~(M < 4)) == '~(M < 4)'
     assert repr(~M | "default") == "~M | 'default'"
+    assert repr(Or(M, default=1)) == "Or(M, default=1)"
 
 
 def test_shortcircuit():

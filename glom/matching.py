@@ -291,8 +291,10 @@ class _Bool(object):
 
     def __repr__(self):
         child_reprs = [_bool_child_repr(c) for c in self.children]
-        if self._m_repr():
+        if self._m_repr() and self.default is _MISSING:
             return " {} ".format(self.OP).join(child_reprs)
+        if self.default is not _MISSING:
+            child_reprs += "default=" + repr(self.default)
         return self.__class__.__name__ + "(" + ", ".join(child_reprs) + ")"
 
 
