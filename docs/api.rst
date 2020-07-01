@@ -6,6 +6,7 @@
 .. contents:: Contents
    :local:
 
+
 .. _glom-func:
 
 The ``glom`` Function

@@ -4,6 +4,7 @@ Contains the code for match-mode, and match-mode adjacent helper Specs
 
 import re
 import sys
+from pprint import pprint
 
 from boltons.iterutils import is_iterable
 from boltons.typeutils import make_sentinel
@@ -11,6 +12,7 @@ from boltons.typeutils import make_sentinel
 from .core import GlomError, glom, T, MODE, bbrepr, format_invocation, Path
 
 _MISSING = make_sentinel('_MISSING')
+
 
 # NOTE: it is important that MatchErrors be cheap to construct,
 # because negative matches are part of normal control flow
@@ -62,40 +64,49 @@ class TypeMatchError(MatchError, TypeError):
 
 
 class Match(object):
-    """
-    glom's ``Match`` specifier type enables a new mode of glom usage: pattern matching.
+    """glom's ``Match`` specifier type enables a new mode of glom usage:
+    pattern matching.  In particular, this mode has been designed for
+    nested data validation.
 
-    Patterns are evaluated similar to `schema`_:
+    Pattern specs are evaluated as follows:
 
-      * Spec objects are always evaluated first
+      * Spec instances are always evaluated first
       * Types match instances of that type
-      * Instances of dict, list, tuple, set, and frozenset are matched recursively
-      * Any other values are compared to the target with ==
+      * Instances of :class:`dict`, :class:`list`, :class:`tuple`,
+        :class:`set`, and :class:`frozenset` are matched recursively
+      * Any other values are compared for equality to the target with
+        ``==``
 
-    By itself, this allows to assert that structures match certain patterns.
+    By itself, this allows to assert that structures match certain
+    patterns, and may be especially familiar to users of the `schema`_
+    library.
 
-    For example, let's say we are loading data of the form:
+    For example, let's load some data::
 
-    >>> target =[
-    ... {'id': 1, 'email': 'alice@example.com'},
-    ... {'id': 2, 'email': 'bob@example.com'}]
+      >>> target = [
+      ... {'id': 1, 'email': 'alice@example.com'},
+      ... {'id': 2, 'email': 'bob@example.com'}]
 
-    Glom match can be used to ensure ths target is in its expected form:
+    A :class:`Match` pattern can be used to ensure this data is in its expected form:
 
-    >>> str = type('')
-    >>> glom(target, Match([{'id': int, 'email': str}])) == \\
-    ...     [{'id': 1, 'email': 'alice@example.com'}, {'id': 2, 'email': 'bob@example.com'}]
-    True
+      >>> spec = Match([{'id': int, 'email': str}])
 
-    This ensures that `target` is a list of dicts, each of which
-    has exactly two keys `'id'` and `'email'` whose values are
-    an `int` and `str`.
+    This ``spec`` succinctly describes our data structure's pattern
+    Specifically, a :class:`list` of :class:`dict` objects, each of
+    which has exactly two keys, ``'id'`` and ``'email'``, whose values are
+    an :class:`int` and :class:`str`, respectively. Now,
+    :func:`~glom.glom` will ensure our ``target`` matches our pattern
+    ``spec``:
 
-    With a more complex match schema, we can be more precise:
+      >>> result = glom(target, spec)
+      >>> assert result == \\
+      ... [{'id': 1, 'email': 'alice@example.com'}, {'id': 2, 'email': 'bob@example.com'}]
 
-    >>> glom(target, Match([{'id': And(M > 0, int), 'email': Regex('[^@]+@[^@]+')}])) == \\
-    ...     [{'id': 1, 'email': 'alice@example.com'}, {'id': 2, 'email': 'bob@example.com'}]
-    True
+    With a more complex :class:`Match` spec, we can be more precise:
+
+    >>> spec = Match([{'id': And(M > 0, int), 'email': Regex('[^@]+@[^@]+')}])
+    >>> assert glom(target, spec) == \\
+    ... [{'id': 1, 'email': 'alice@example.com'}, {'id': 2, 'email': 'bob@example.com'}]
 
     :class:`~glom.And` allows multiple conditions to be applied
     (:class:`~glom.Or` and :class:`~glom.Not` are also available.)
@@ -154,6 +165,7 @@ class Match(object):
 
     .. _schema: https://github.com/keleshev/schema
     .. _pattern matching: https://en.wikipedia.org/wiki/Pattern_matching
+
     """
     def __init__(self, spec, default=_MISSING):
         self.spec = spec
@@ -255,12 +267,14 @@ def _bool_child_repr(child):
 
 
 class _Bool(object):
-    def __init__(self, *children, default=_MISSING):
+    def __init__(self, *children, **kw):
         self.children = children
         if not children:
             raise ValueError("need at least one operand for {}".format(
                 self.__class__.__name__))
-        self.default = default
+        self.default = kw.pop('default', _MISSING)
+        if kw:
+            raise TypeError('got unexpected kwargs: %r' % list(kw.keys))
 
     def __and__(self, other):
         return And(self, other)
@@ -520,7 +534,9 @@ class _MType(object):
         return _M_Subspec(spec)
 
     def __eq__(self, other):
-        return _MExpr(self, '=', other)
+        return _MExpr(self
+
+                      , '=', other)
 
     def __ne__(self, other):
         return _MExpr(self, '!', other)
