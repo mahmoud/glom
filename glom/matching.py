@@ -70,12 +70,12 @@ class Match(object):
 
     Pattern specs are evaluated as follows:
 
-      * Spec instances are always evaluated first
-      * Types match instances of that type
-      * Instances of :class:`dict`, :class:`list`, :class:`tuple`,
-        :class:`set`, and :class:`frozenset` are matched recursively
-      * Any other values are compared for equality to the target with
-        ``==``
+      1. Spec instances are always evaluated first
+      2. Types match instances of that type
+      3. Instances of :class:`dict`, :class:`list`, :class:`tuple`,
+         :class:`set`, and :class:`frozenset` are matched recursively
+      4. Any other values are compared for equality to the target with
+         ``==``
 
     By itself, this allows to assert that structures match certain
     patterns, and may be especially familiar to users of the `schema`_
@@ -104,67 +104,35 @@ class Match(object):
 
     With a more complex :class:`Match` spec, we can be more precise:
 
-    >>> spec = Match([{'id': And(M > 0, int), 'email': Regex('[^@]+@[^@]+')}])
-    >>> assert glom(target, spec) == \\
-    ... [{'id': 1, 'email': 'alice@example.com'}, {'id': 2, 'email': 'bob@example.com'}]
+      >>> spec = Match([{'id': And(M > 0, int), 'email': Regex('[^@]+@[^@]+')}])
 
-    :class:`~glom.And` allows multiple conditions to be applied
-    (:class:`~glom.Or` and :class:`~glom.Not` are also available.)
+    :class:`~glom.And` allows multiple conditions to be applied.
+    :class:`~glom.Regex` evaluates the regular expression against the
+    target value under the ``'email'`` key.  In this case, we take a
+    simple approach: an email has exactly one ``@``, with at least one
+    character before and after.
 
-    :class:`~glom.Regex` evaluates the passed pattern against the target value.
-    In this case, we check that an email has exactly one `@`,
-    at least one character before the `@` and at least one character
-    after the `@`.
+    Finally, :attr:`~glom.M` is our stand-in for the current target
+    we're matching against, allowing us to perform in-line comparisons
+    using Python's native greater-than operator (as well as
+    others). We apply our :class:`Match` pattern as before::
 
-    Finally, :attr:`~glom.M` is a stand-in for the current target, similar to :attr:`~glom.T`.
+      >>> assert glom(target, spec) == \\
+      ... [{'id': 1, 'email': 'alice@example.com'}, {'id': 2, 'email': 'bob@example.com'}]
 
-    Note that the four rules above imply that `object` is a match-anything pattern.
-    Because `isinstance(val, object)` is true for all values in Python,
-    `object` is a useful stopping case.  For instance, if we wanted to allow
-    additional keys and values in the user dict above we could add `object` as a
-    generic pass through:
+    And as usual, upon a successful match, we get the matched result.
 
-    >>> target = [{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}]
-    >>> glom(target, Match([{'id': int, 'email': str, object: object}])) == \\
-    ...     [{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}]
-    True
+    .. note::
 
-    The fact that `{object: object}` will match any dictionary exposes
-    the subtlety in dictionary evaluation.
-
-    For Python 3.6+ where dictionaries are ordered, keys in the target
-    are matched against keys in the spec in their insertion order.
-
-    By default, value match keys are required, and other keys
-    are optional.  For example, `'id'` and `'email'` above are
-    required because they are matched via `==`.  If either was
-    not present, it would raise `MatchError`.  `object` however
-    is matched with `isinstance()`; since it is not an value-match
-    comparison, it is not required.
-
-    This default behavior can be modified with :class:`~glom.Required`
-    and :class:`~glom.Optional`.
-
-    In addition to being useful as a structure validator on its own,
-    :class:`~glom.Match` can be embedded inside other specs in order
-    to add `pattern matching`_ functionality.
-
-    As a simple example, let's say we have a list of ids, some of which
-    are `None` and we want to filter those out:
-
-    >>> ids = [1, None, 2, 3, None]
-
-    >>> from glom import SKIP, Literal
-    >>> glom(ids, [Or(And(M == None, Literal(SKIP)), T)])
-    [1, 2, 3]
-
-    The glom evaluation above has two branches.  First,
-    if the current target is equal to None, :attr:`~glom.SKIP`
-    will be returned.  Otherwise, the :class:`~glom.Or` will
-    try the other path, which always returns the target itself
+       For Python 3.6+ where dictionaries are ordered, keys in the target
+       are matched against keys in the spec in their insertion order.
 
     .. _schema: https://github.com/keleshev/schema
-    .. _pattern matching: https://en.wikipedia.org/wiki/Pattern_matching
+
+    Args:
+       spec: The glomspec representing the pattern to match data against.
+       default: The default value to be returned if a match fails. If not
+         set, a match failure will raise a :class:`MatchError`.
 
     """
     def __init__(self, spec, default=_MISSING):
@@ -182,9 +150,29 @@ class Match(object):
         return ret
 
     def verify(self, target):
+        """A convenience function a :class:`Match` instance which returns the
+        matched value when *target* matches, or raises a
+        :exc:`MatchError` when it does not.
+
+        Args:
+          target: Target value or data structure to match against.
+
+        Raises:
+          glom.MatchError
+
+        """
         return glom(target, self)
 
     def matches(self, target):
+        """A convenience method on a :class:`Match` instance, returns
+        ``True`` if the *target* matches, ``False`` if not.
+
+        >>> Match(int).matches(-1.0)
+        False
+
+        Args:
+           target: Target value or data structure to match against.
+        """
         try:
             glom(target, self)
         except GlomError:
@@ -254,7 +242,7 @@ class Regex(object):
         if self.func is not None:
             args += ', func=' + self.func.__name__
         args += ')'
-        return "Regex" + args
+        return self.__class__.__name__ + args
 
 
 #TODO: combine this with other functionality elsewhere?
@@ -274,7 +262,7 @@ class _Bool(object):
                 self.__class__.__name__))
         self.default = kw.pop('default', _MISSING)
         if kw:
-            raise TypeError('got unexpected kwargs: %r' % list(kw.keys))
+            raise TypeError('got unexpected kwargs: %r' % list(kw.keys()))
 
     def __and__(self, other):
         return And(self, other)
