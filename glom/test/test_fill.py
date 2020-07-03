@@ -1,4 +1,4 @@
-from glom import Auto, Fill, T, glom
+from glom import Auto, Fill, T, S, glom, Format, Let
 
 def test():
     assert glom('abc', Fill((T[0], {T[1]: T[2]}))) == ('a', {'b': 'c'})
@@ -18,3 +18,10 @@ def test():
     assert repr(Fill(T)) == 'Fill(T)'
 
     assert repr(Fill(len)) == 'Fill(len)'
+
+
+def test_format():
+    assert glom(dict(a=1, b=2), Format("{a}{b}")) == "12"
+    assert glom(dict(a=1, b=2), (Let(a='a', b='b'), Format("{a}{b}", S))) == "12"
+    assert repr(Format('')) == "Format('')"
+    assert repr(Format('', S)) == "Format('', S)"
