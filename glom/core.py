@@ -1483,7 +1483,7 @@ class Vars(object):
         return copy.copy(self)
 
     def __repr__(self):
-        return "Vars(%s)" % bbrepr(self.__dict__)
+        return "%s(%s)" % (self.__class__.__name__, bbrepr(self.__dict__))
 
 
 class Let(object):
