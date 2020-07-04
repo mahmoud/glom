@@ -1492,7 +1492,7 @@ class Vars(object):
         return "%s(%s)" % (
             self.__class__.__name__,
             ", ".join(["%s=%s" % (key, bbrepr(val))
-                for key, val in self.__dict__.items()]))
+                for key, val in self.defaults.items()]))
 
 
 class Let(object):

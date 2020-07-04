@@ -427,6 +427,7 @@ def test_vars():
     assert glom(1, (let, A.v.a, S.v.a)) == 1
     with pytest.raises(AttributeError):
         glom(1, (let, S.v.a))
+    repr(Vars(a=1, b=2))
 
 
 def test_ref():
