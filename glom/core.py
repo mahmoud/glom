@@ -1469,18 +1469,21 @@ class Val(object):
         return '%s(%s)' % (cn, bbrepr(self.val))
 
 
+class _Vars(object):
+    def __init__(self, vals):
+        self.__dict__ = vals
+
+
 class Vars(object):
     """
-    :class:`Vars` is a helper that stores variables
+    :class:`Vars` is a helper that can be used with `Let` in order to
+    store shared mutable state.
     """
     def __init__(self, **kw):
-        # TODO: cleaner way to do this
-        if 'glomit' in kw:
-            raise ValueError('glomit is reserved')
-        self.__dict__ = kw
+        self.defaults = kw
 
     def glomit(self, target, spec):
-        return copy.copy(self)
+        return _Vars(copy.copy(self.defaults))
 
     def __repr__(self):
         return "%s(%s)" % (self.__class__.__name__, bbrepr(self.__dict__))
