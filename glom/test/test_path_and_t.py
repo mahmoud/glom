@@ -1,7 +1,7 @@
 
 from pytest import raises
 
-from glom import glom, Path, S, T, PathAccessError, GlomError
+from glom import glom, Path, S, T, A, PathAccessError, GlomError
 
 def test_list_path_access():
     assert glom(list(range(10)), Path(1)) == 1
@@ -95,6 +95,18 @@ def test_t_picklability():
 
     s_spec = S.attribute
     assert repr(s_spec) == repr(pickle.loads(pickle.dumps(s_spec)))
+
+
+def test_a_forbidden():
+    with raises(ValueError):
+        A()  # cannot assign to function call
+    with raises(ValueError):
+        glom(1, A)  # cannot assign without destination
+
+
+def test_s_magic():
+    with raises(NameError):
+        glom(1, S.a)  # ref to 'a' which doesn't exist in scope
 
 
 def test_path_len():

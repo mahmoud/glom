@@ -1357,7 +1357,7 @@ def _t_eval(target, _t, scope):
             if fetch_till < 1:
                 raise ValueError('cannot assign without destination')
         cur = scope
-        if fetch_till > 1 and t_path[1] == '.':
+        if fetch_till > 1 and t_path[1] in ('.', 'P'):
             cur = _s_first_magic(cur, t_path[2], _t)
             i += 2
     else:
@@ -1470,8 +1470,13 @@ class Val(object):
 
 
 class _Vars(object):
-    def __init__(self, vals):
-        self.__dict__ = vals
+    """
+    This is the run-time partner of :class:`Vars` -- this is what
+    actually lives in the scope and stores run-time values.
+    """
+    def __init__(self, base, defaults):
+        self.__dict__ = dict(base)
+        self.__dict__.update(defaults)
 
     def __repr__(self):
         return "Vars(%s)" % bbrepr(self.__dict__)
@@ -1481,18 +1486,28 @@ class Vars(object):
     """
     :class:`Vars` is a helper that can be used with `Let` in order to
     store shared mutable state.
+
+    Takes the same arguments as `dict()`.
+
+    Arguments here should be thought of the same way as default arguments
+    to a function.  Each time the spec is evaluated, the same arguments
+    will be referenced; so, think carefully about mutable data structures.
     """
-    def __init__(self, **kw):
+    def __init__(self, base=(), **kw):
+        dict(base)  # ensure it is a dict-compatible first arg
+        self.base = base
         self.defaults = kw
 
     def glomit(self, target, spec):
-        return _Vars(copy.copy(self.defaults))
+        return _Vars(self.base, self.defaults)
 
     def __repr__(self):
-        return "%s(%s)" % (
-            self.__class__.__name__,
-            ", ".join(["%s=%s" % (key, bbrepr(val))
-                for key, val in self.defaults.items()]))
+        args = [
+            "%s=%s" % (key, bbrepr(val))
+            for key, val in self.defaults.items()]
+        if self.base:
+            args = [bbrepr(self.base)] + args
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(args))
 
 
 class Let(object):

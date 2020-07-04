@@ -421,13 +421,16 @@ def test_globals():
 
 
 def test_vars():
-    # check that Vars() inside a spec doesn't hold state
-    # from run to run
-    let = Let(v=Vars())
+    let = Let(v=Vars({'b': 2}, c=3))
     assert glom(1, (let, A.v.a, S.v.a)) == 1
     with pytest.raises(AttributeError):
-        glom(1, (let, S.v.a))
-    repr(Vars(a=1, b=2))
+        glom(1, (let, S.v.a))  # check that Vars() inside a spec doesn't hold state
+    assert glom(1, (let, Path(A, 'v', 'a'), S.v.a)) == 1
+    assert glom(1, (let, S.v.b)) == 2
+    assert glom(1, (let, S.v.c)) == 3
+    assert repr(let) == "Let(v=Vars({'b': 2}, c=3))"
+    assert repr(Vars(a=1, b=2)) == "Vars(a=1, b=2)"
+    assert repr(Vars(a=1, b=2).glomit(None, None)) == "Vars({'a': 1, 'b': 2})"
 
 
 def test_ref():
