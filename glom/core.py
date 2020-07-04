@@ -1473,6 +1473,9 @@ class _Vars(object):
     def __init__(self, vals):
         self.__dict__ = vals
 
+    def __repr__(self):
+        return "Vars(%s)" % bbrepr(self.__dict__)
+
 
 class Vars(object):
     """
@@ -1486,7 +1489,10 @@ class Vars(object):
         return _Vars(copy.copy(self.defaults))
 
     def __repr__(self):
-        return "%s(%s)" % (self.__class__.__name__, bbrepr(self.__dict__))
+        return "%s(%s)" % (
+            self.__class__.__name__,
+            ", ".join(["%s=%s" % (key, bbrepr(val))
+                for key, val in self.__dict__.items()]))
 
 
 class Let(object):
