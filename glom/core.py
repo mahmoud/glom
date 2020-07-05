@@ -1355,7 +1355,7 @@ def _t_eval(target, _t, scope):
         if root is A:
             fetch_till -= 2
             if fetch_till < 1:
-                raise ValueError('cannot assign without destination')
+                raise BadSpec('cannot assign without destination')
         cur = scope
         if fetch_till > 1 and t_path[1] in ('.', 'P'):
             cur = _s_first_magic(cur, t_path[2], _t)

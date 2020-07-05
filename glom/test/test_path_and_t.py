@@ -100,7 +100,7 @@ def test_t_picklability():
 def test_a_forbidden():
     with raises(BadSpec):
         A()  # cannot assign to function call
-    with raises(ValueError):
+    with raises(BadSpec):
         glom(1, A)  # cannot assign without destination
 
 
