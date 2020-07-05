@@ -1,7 +1,7 @@
 
 from pytest import raises
 
-from glom import glom, Path, S, T, A, PathAccessError, GlomError
+from glom import glom, Path, S, T, A, PathAccessError, GlomError, BadSpec
 
 def test_list_path_access():
     assert glom(list(range(10)), Path(1)) == 1
@@ -98,7 +98,7 @@ def test_t_picklability():
 
 
 def test_a_forbidden():
-    with raises(ValueError):
+    with raises(BadSpec):
         A()  # cannot assign to function call
     with raises(ValueError):
         glom(1, A)  # cannot assign without destination

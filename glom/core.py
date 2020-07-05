@@ -1323,7 +1323,7 @@ def _t_child(parent, operation, arg):
     if base[0] is A and operation not in ('.', '[', 'P'):
         # whitelist rather than blacklist assignment friendly operations
         # TODO: error type?
-        raise ValueError("operation not allowed on A assignment path")
+        raise BadSpec("operation not allowed on A assignment path")
     _T_PATHS[t] = base + (operation, arg)
     return t
 
@@ -1409,7 +1409,8 @@ def _t_eval(target, _t, scope):
             try:
                 _assign(cur, arg, target)
             except Exception as e:
-                raise PathAccessError(e, Path(_t), i // 2 + 1)
+                from .mutation import PathAssignError  # TODO: circular
+                raise PathAssignError(e, Path(_t), i // 2 + 1)
         else:
             raise ValueError('unsupported operation for assignment')
     return cur
