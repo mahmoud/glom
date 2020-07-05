@@ -429,8 +429,10 @@ def test_vars():
     assert glom(1, (let, S.v.b)) == 2
     assert glom(1, (let, S.v.c)) == 3
     assert repr(let) == "Let(v=Vars({'b': 2}, c=3))"
-    assert repr(Vars(a=1, b=2)) == "Vars(a=1, b=2)"
-    assert repr(Vars(a=1, b=2).glomit(None, None)) == "Vars({'a': 1, 'b': 2})"
+    assert repr(Vars(a=1, b=2)) in (
+        "Vars(a=1, b=2)", "Vars(b=2, a=1)")
+    assert repr(Vars(a=1, b=2).glomit(None, None)) in (
+        "Vars({'a': 1, 'b': 2})", "Vars({'b': 2, 'a': 1})")
 
 
 def test_ref():
