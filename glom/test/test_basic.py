@@ -9,6 +9,7 @@ from glom import Auto, Fill, Iter, Let, A, Vars, GlomError
 
 import glom.core as glom_core
 from glom.core import UP, ROOT
+from glom.mutation import PathAssignError
 
 from glom import OMIT  # backwards compat
 
@@ -415,6 +416,13 @@ def test_let():
     assert glom(1, (Let(v=lambda t: {}), A.v['a'], S.v['a'])) == 1
     with pytest.raises(GlomError):
         glom(1, (Let(v=lambda t: 1), A.v.a))
+
+    class FailAssign(object):
+        def __setattr__(self, name, val):
+            raise Exception('nope')
+
+    with pytest.raises(PathAssignError):
+        glom(1, (Let(v=lambda t: FailAssign()), Path(A.v, 'a')))
 
     assert repr(Let(a=T.a.b)) == 'Let(a=T.a.b)'
 
