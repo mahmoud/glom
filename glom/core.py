@@ -1398,7 +1398,6 @@ def _t_eval(target, _t, scope):
             raise pae
         i += 2
     if root is A:
-        # TODO: PathAssignError or similar?
         op, arg = t_path[-2:]
         if op == '[':
             cur[arg] = target
@@ -1411,7 +1410,7 @@ def _t_eval(target, _t, scope):
             except Exception as e:
                 from .mutation import PathAssignError  # TODO: circular
                 raise PathAssignError(e, Path(_t), i // 2 + 1)
-        else:
+        else:  # pragma: no cover
             raise ValueError('unsupported operation for assignment')
     return cur
 

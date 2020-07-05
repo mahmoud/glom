@@ -174,6 +174,7 @@ def test_literal():
 
     assert glom(None, Literal('success')) == 'success'
     assert repr(Literal(3.14)) == 'Literal(3.14)'
+    assert repr(Val(3.14)) == 'Val(3.14)'
 
 
 def test_abstract_iterable():
