@@ -3,6 +3,7 @@ Control flow primitives of glom.
 """
 
 from glom import glom, GlomError
+from .core import bbrepr
 
 
 _MISSING = object()
@@ -28,25 +29,25 @@ class Switch(object):
             cases = list(cases.items())
         if type(cases) is not list:
             raise TypeError(
-                "cases must be {keyspec: valspec} or "
+                "cases must be {{keyspec: valspec}} or "
                 "[(keyspec, valspec)] not {}".format(type(cases)))
         self.cases = cases
         # glom.match(cases, Or([(object, object)], dict))
         # start dogfooding ^
         self.default = default
+        if not cases and self.default is _MISSING:
+            raise ValueError('Switch() without cases or default will always error')
 
     def glomit(self, target, scope):
         for keyspec, valspec in self.cases:
             try:
                 scope[glom](target, keyspec, scope)
-                break
-            except GlomError:
-                pass
-        else:
-            if self.default is not _MISSING:
-                return default
-            raise GlomError("no matches for target in Switch")
-        return scope[glom](target, valspec, scope)
+            except GlomError as ge:
+                continue
+            return scope[glom](target, valspec, scope)
+        if self.default is not _MISSING:
+            return self.default
+        raise GlomError("no matches for target in Switch")
 
     def __repr__(self):
-        return "Switch(" + repr(self.cases) + ")"
+        return "Switch(" + bbrepr(self.cases) + ")"
