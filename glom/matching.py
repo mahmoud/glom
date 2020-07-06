@@ -1,5 +1,10 @@
 """
-Contains the code for match-mode, and match-mode adjacent helper Specs
+.. versionadded:: 20.7.0
+
+Sometimes you want to confirm that your target data matches your
+code's assumptions. With glom, you don't need a separate validation
+step, you can do these checks inline with your glom spec, using
+:class:`~glom.Match` and friends.
 """
 
 import re
@@ -566,16 +571,22 @@ M = _MType()
 
 
 class Optional(object):
-    """
-    Used as a `dict` key in `Match()` mode,
-    marks that a value match key which would otherwise
-    be required is optional and should not raise
-    `MatchError` even if no keys match.
+    """Used as a :class:`dict` key in a :class:`~glom.Match()` spec,
+    marks that a value match key which would otherwise be required is
+    optional and should not raise :exc:`~glom.MatchError` even if no
+    keys match.
 
-    For example, `{Optional("name", default=""): str}`
-    would match `{"name": "alice"}` and also `{}`.
+    For example::
 
-    (In the case of `{}`, the result would be `{"name": ""}`)
+      >>> spec = Match({Optional("name"): str})
+      >>> glom({"name": "alice"}, spec)
+      {'name': 'alice'}
+      >>> glom({}, spec)
+      {}
+      >>> spec = Match({Optional("name", default=""): str})
+      >>> glom({}, spec)
+      {'name': ''}
+
     """
     __slots__ = ('key', 'default')
 
@@ -590,25 +601,46 @@ class Optional(object):
     def glomit(self, target, scope):
         if target != self.key:
             raise MatchError("target {} != spec {}", target, self.key)
+        return target
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, bbrepr(self.key))
 
 
 class Required(object):
-    """
-    Used as a `dict` key in `Match()` mode,
-    marks that a non value match key which would otherwise
-    not be required should raise `MatchError` if at least
-    one key in the target does not match.
+    """Used as a :class:`dict` key in :class:`~glom.Match()` mode, marks
+    that a key which might otherwise not be required should raise
+    :exc:`~glom.MatchError` if the key in the target does not match.
 
-    For example, `{object: object}` will match any
-    `dict`, including `{}`.  Because `object` is a type,
-    it is not an error by default if no keys match.
+    For example::
 
-    `{Required(object): object}` will not match `{}`,
-    because the `Required()` means `MatchError` will
-    be raised if there isn't at least one key.
+      >>> spec = Match({object: object})
+
+    This spec will match any dict, because :class:`object` is the base
+    type of every object::
+
+      >>> glom({}, spec)
+      {}
+
+    ``{}`` will also match because match mode does not require at
+    least one match by default. If we want to require that a key
+    matches, we can use :class:`~glom.Required`::
+
+      >>> spec = Match({Required(object): object})
+      >>> glom({}, spec)
+      Traceback (most recent call last):
+      ...
+      MatchError: error raised while processing.
+       Target-spec trace, with error detail (most recent last):
+       - Target: {}
+       - Spec: Match({Required(object): <type 'object'>})
+       - Spec: {Required(object): <type 'object'>}
+      MatchError: target missing expected keys Required(object)
+
+    Now our spec requires at least one key of any type. You can refine
+    the spec by putting more specific subpatterns inside of
+    :class:`~glom.Required`.
+
     """
     __slots__ = ('key',)
 
@@ -674,7 +706,7 @@ def _handle_dict(target, spec, scope):
         else:
             raise MatchError("key {!r} didn't match any of {!r}", key, spec_keys)
     if required:
-        raise MatchError("missing keys {} from target {}", required, target)
+        raise MatchError("target missing expected keys: {}", ', '.join([bbrepr(r) for r in required]))
     return result
 
 

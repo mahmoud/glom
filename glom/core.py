@@ -1,11 +1,8 @@
 """*glom gets results.*
 
-If there was ever a Python example of "big things come in small
-packages", ``glom`` might be it.
-
 The ``glom`` package has one central entrypoint,
 :func:`glom.glom`. Everything else in the package revolves around that
-one function.
+one function. Sometimes, big things come in small packages.
 
 A couple of conventional terms you'll see repeated many times below:
 
@@ -148,8 +145,8 @@ class GlomError(Exception):
             return self._finalized_str
         elif getattr(self, '_scope', None) is not None:
             self._target_spec_trace = format_target_spec_trace(self._scope)
-            parts = ["error raised while processing.",
-                     " Target-spec trace, with error detail (most recent last):",
+            parts = ["error raised while processing, details below.",
+                     " Target-spec trace (most recent last):",
                      self._target_spec_trace]
             parts.extend(self._tb_lines)
             self._finalized_str = "\n".join(parts)
@@ -1873,13 +1870,12 @@ def register_op(op_name, **kwargs):
 
 
 class Glommer(object):
-    """All the wholesome goodness that it takes to make glom work. This
-    type mostly serves to encapsulate the type registration context so
-    that advanced uses of glom don't need to worry about stepping on
-    each other's toes.
+    """The :class:`Glommer` type mostly serves to encapsulate type
+    registration context so that advanced uses of glom don't need to
+    worry about stepping on each other.
 
     Glommer objects are lightweight and, once instantiated, provide
-    the :func:`glom()` method we know and love:
+    a :func:`glom()` method:
 
     >>> glommer = Glommer()
     >>> glommer.glom({}, 'a.b.c', default='d')
@@ -1896,6 +1892,7 @@ class Glommer(object):
           default actions include dict access, list and iterable
           iteration, and generic object attribute access. Defaults to
           True.
+
     """
     def __init__(self, **kwargs):
         register_default_types = kwargs.pop('register_default_types', True)

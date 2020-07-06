@@ -51,12 +51,28 @@ There's much, much more to glom, check out the :doc:`tutorial` and :doc:`API ref
 
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
+   :caption: Learning glom
 
    tutorial
-   api
-   cli
    faq
    by_analogy
    snippets
-   extensions
+   cli
+
+.. toctree::
+   :maxdepth: 2
+   :caption: API Reference
+
+   api
+   mutation
+   streaming
+   grouping
+   matching
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Extending glom
+
+   custom_spec_types
+   modes

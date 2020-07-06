@@ -1,7 +1,24 @@
-``glom`` API reference
-======================
+Core ``glom`` API
+=================
 
 .. automodule:: glom.core
+
+.. seealso::
+
+   As the glom API grows, we've refactored the docs into separate
+   domains. The core API is below. More specialized types can also be
+   found in the following docs:
+
+   .. hlist::
+      :columns: 2
+
+      * :doc:`mutation`
+      * :doc:`streaming`
+      * :doc:`grouping`
+      * :doc:`matching`
+
+   Longtime glom docs readers: thanks in advance for reporting/fixing
+   any broken links you may find.
 
 .. contents:: Contents
    :local:
@@ -12,7 +29,8 @@
 The ``glom`` Function
 ---------------------
 
-Where it all happens. The reason for the season. The eponymous function, ``glom``.
+Where it all happens. The reason for the season. The eponymous
+function, :func:`~glom.glom`.
 
 .. autofunction:: glom.glom
 
@@ -25,23 +43,38 @@ Basic glom specifications consist of ``dict``, ``list``, ``tuple``,
 complicated interactions, ``glom`` provides specialized specifier
 types that can be used with the basic set of Python builtins.
 
+Basic Specifiers
+^^^^^^^^^^^^^^^^
+
 .. autoclass:: glom.Path
 .. autoclass:: glom.Literal
 .. autoclass:: glom.Spec
 
-Advanced Specifiers
--------------------
+.. _advanced-specifiers:
 
-The specification techniques detailed above allow you to do pretty
-much everything glom is designed to do. After all, you can always
-define and insert a function or ``lambda`` into almost anywhere in the
-spec?
+.. seealso::
 
-Still, for even more specification readability and improved error
-reporting, glom has a few more tricks up its sleeve.
+   Note that many of the Specifier types previously mentioned here
+   have moved into their own docs, among them:
 
-Conditional access and defaults with Coalesce
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   .. hlist::
+      :columns: 2
+
+      * :doc:`mutation`
+      * :doc:`streaming`
+      * :doc:`grouping`
+      * :doc:`matching`
+
+Object-oriented access and method calls with ``T``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+glom's shortest-named feature may be its most powerful.
+
+.. autodata:: glom.T
+
+
+Defaults with Coalesce
+^^^^^^^^^^^^^^^^^^^^^^
 
 Data isn't always where or what you want it to be. Use these
 specifiers to declare away overly branchy procedural code.
@@ -51,71 +84,9 @@ specifiers to declare away overly branchy procedural code.
 .. autodata:: glom.SKIP
 .. autodata:: glom.STOP
 
-Stream processing iterables with Iter
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-*New in glom 19.10.0*
-
-.. autoclass:: glom.Iter
-
-   .. automethod:: map
-   .. automethod:: filter
-   .. automethod:: chunked
-   .. automethod:: split
-   .. automethod:: flatten
-   .. automethod:: unique
-   .. automethod:: limit
-   .. automethod:: slice
-   .. automethod:: takewhile
-   .. automethod:: dropwhile
-   .. automethod:: all
-   .. automethod:: first
-
-
-Combining iterables with Flatten and friends
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. versionadded:: 19.1.0
-
-Got lists of lists? Sets of tuples? A sequence of dicts (but only want
-one)? Do you find yourself reaching for Python's builtin :func:`sum`
-and :func:`reduce`? To handle these situations and more, glom has five
-specifier types and two convenience functions:
-
-.. autofunction:: glom.flatten
-
-.. autoclass:: glom.Flatten
-
-.. autofunction:: glom.merge
-
-.. autoclass:: glom.Merge
-
-.. autoclass:: glom.Sum
-
-.. autoclass:: glom.Fold
-
-
-Target mutation with Assign and friends
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Most of glom's API design defaults to safely copying your data. But
-such caution isn't always justified.
-
-When you already have a large or complex bit of nested data that you
-are sure you want to modify in-place, glom has you covered, with the
-:func:`~glom.assign` function, and the :func:`~glom.Assign` specifier
-type.
-
-.. autofunction:: glom.assign
-
-.. autoclass:: glom.Assign
-
-.. autofunction:: glom.delete
-
-.. autoclass:: glom.Delete
-
-Wrapping callables with Invoke
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Calling callables with Invoke
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. versionadded:: 19.10.0
 
@@ -148,105 +119,16 @@ specifier type.
 .. autoclass:: glom.Call
 
 
-Object-oriented access and method calls with ``T``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-glom's shortest-named feature may be its most powerful.
-
-.. autodata:: glom.T
-
-Validation with Match and ``M``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. versionadded:: 20.6.0
-
-Sometimes you want to confirm that your target data matches your
-code's assumptions. With glom, you don't need a separate validation
-step, you can do these checks inline with your glom spec, using
-``~glom.Match`` and friends.
-
-.. autoclass:: glom.Match
-   :members:
-
-
-Wildcard ``dict`` and optional key matching
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Note that our four :class:`~glom.Match` rules above imply that
-:class:`object` is a match-anything pattern.  Because
-``isinstance(val, object)`` is true for all values in Python,
-``object`` is a useful stopping case. For instance, if we wanted to
-extend an example above to allow additional keys and values in the
-user dict above we could add :class:`object` as a generic pass through::
-
-  >>> target = [{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}]
-  >>> spec = Match([{'id': int, 'email': str, object: object}]))
-  >>> assert glom(target, spec) == \\
-      ... [{'id': 1, 'email': 'alice@example.com', 'extra': 'val'}]
-  True
-
-The fact that ``{object: object}`` will match any dictionary exposes
-the subtlety in :class:`~glom.Match` dictionary evaluation.
-
-By default, value match keys are required, and other keys are
-optional.  For example, ``'id'`` and ``'email'`` above are required
-because they are matched via ``==``.  If either was not present, it
-would raise class:`~glom.MatchError`.  class:`object` however is matched
-with func:`isinstance()`. Since it is not an value-match comparison,
-it is not required.
-
-This default behavior can be modified with :class:`~glom.Required`
-and :class:`~glom.Optional`.
-
-.. autoclass:: glom.Optional
-
-.. autoclass:: glom.Required
-
-``M`` Expressions
-~~~~~~~~~~~~~~~~~
-
-The most concise way to express validation and guards.
-
-.. autodata:: glom.M
-
-Boolean operators and matching
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-While ``M`` is an easy way to construct expressions, sometimes a more
-object-oriented approach can be more suitable.
-
-.. autoclass:: glom.Or
-
-.. autoclass:: glom.And
-
-.. autoclass:: glom.Not
-
-
-String matching
-~~~~~~~~~~~~~~~
-
-.. autoclass:: glom.Regex
-
-.. _check-specifier:
-
-
-Validation with Check
-~~~~~~~~~~~~~~~~~~~~~
-
-.. warning::
-
-   Given the suite of tools introduced with :class:`~glom.Match`, the
-   :class:`Check` specifier type may be deprecated in a future
-   release.
-
-.. autoclass:: glom.Check
-
-.. _exceptions:
-
 Self-referential specs
 ^^^^^^^^^^^^^^^^^^^^^^
 
+Sometimes nested data repeats itself, either recursive structure or
+just through redundancy.
+
 .. autoclass:: glom.Ref
+
+.. _exceptions:
+
 
 Exceptions
 ----------
@@ -262,17 +144,22 @@ other standard Python exceptions as appropriate.
 
 .. autoclass:: glom.CoalesceError
 
-.. autoclass:: glom.MatchError
-
-.. autoclass:: glom.TypeMatchError
-
-.. autoclass:: glom.CheckError
-
 .. autoclass:: glom.UnregisteredTarget
 
+.. autoclass:: glom.MatchError
+   :noindex:
+
+.. autoclass:: glom.TypeMatchError
+   :noindex:
+
+.. autoclass:: glom.CheckError
+   :noindex:
+
 .. autoclass:: glom.PathAssignError
+   :noindex:
 
 .. autoclass:: glom.PathDeleteError
+   :noindex:
 
 .. autoclass:: glom.GlomError
 
@@ -293,9 +180,9 @@ that's where **Inspect** comes in.
 Setup and Registration
 ----------------------
 
-For the vast majority of objects and types out there in Python-land,
-:func:`~glom.glom()` will just work. However, for that very special
-remainder, glom is ready and extensible!
+When it comes to targets, :func:`~glom.glom()` will operate on the
+vast majority of objects out there in Python-land. However, for that
+very special remainder, glom is readily extensible!
 
 .. autofunction:: glom.register
 .. autoclass:: glom.Glommer

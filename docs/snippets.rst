@@ -1,5 +1,5 @@
-Snippets
-========
+Examples & Snippets
+===================
 
 glom can do a lot of things, in the right hands. This doc makes those
 hands yours, through sample code of useful building blocks and common
