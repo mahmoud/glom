@@ -34,17 +34,14 @@ function, :func:`~glom.glom`.
 
 .. autofunction:: glom.glom
 
-
-Specifier Types
----------------
+Basic Specifiers
+----------------
 
 Basic glom specifications consist of ``dict``, ``list``, ``tuple``,
 ``str``, and ``callable`` objects. However, as data calls for more
 complicated interactions, ``glom`` provides specialized specifier
 types that can be used with the basic set of Python builtins.
 
-Basic Specifiers
-^^^^^^^^^^^^^^^^
 
 .. autoclass:: glom.Path
 .. autoclass:: glom.Literal
@@ -65,8 +62,8 @@ Basic Specifiers
       * :doc:`grouping`
       * :doc:`matching`
 
-Object-oriented access and method calls with ``T``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Object-Oriented Access and Method Calls with T
+----------------------------------------------
 
 glom's shortest-named feature may be its most powerful.
 
@@ -74,7 +71,7 @@ glom's shortest-named feature may be its most powerful.
 
 
 Defaults with Coalesce
-^^^^^^^^^^^^^^^^^^^^^^
+----------------------
 
 Data isn't always where or what you want it to be. Use these
 specifiers to declare away overly branchy procedural code.
@@ -85,8 +82,8 @@ specifiers to declare away overly branchy procedural code.
 .. autodata:: glom.STOP
 
 
-Calling callables with Invoke
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Calling Callables with Invoke
+-----------------------------
 
 .. versionadded:: 19.10.0
 
@@ -119,8 +116,8 @@ specifier type.
 .. autoclass:: glom.Call
 
 
-Self-referential specs
-^^^^^^^^^^^^^^^^^^^^^^
+Self-Referential Specs
+----------------------
 
 Sometimes nested data repeats itself, either recursive structure or
 just through redundancy.
