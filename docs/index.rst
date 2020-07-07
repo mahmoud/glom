@@ -69,6 +69,7 @@ There's much, much more to glom, check out the :doc:`tutorial` and :doc:`API ref
    streaming
    grouping
    matching
+   debugging
 
 .. toctree::
    :maxdepth: 1

@@ -6,7 +6,7 @@ of data to a smaller set, otherwise known as "grouping" or
 "reduction".
 
 Combining iterables with Flatten and Merge
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------------------------
 
 .. versionadded:: 19.1.0
 
@@ -26,3 +26,8 @@ specifier types and two convenience functions:
 .. autoclass:: glom.Sum
 
 .. autoclass:: glom.Fold
+
+Exceptions
+----------
+
+.. autoclass:: glom.FoldError

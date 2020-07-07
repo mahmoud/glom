@@ -124,18 +124,15 @@ just through redundancy.
 
 .. autoclass:: glom.Ref
 
-.. _exceptions:
+Core Exceptions
+---------------
 
+Not all data is going to match specifications. Luckily, glom errors
+are designed to be as readable and actionable as possible.
 
-Exceptions
-----------
-
-glom introduces a few new exception types designed to maximize
-readability and debuggability. Note that all these errors derive from
-:exc:`GlomError`, and are only raised from :func:`glom()` calls, not
-from spec construction or glom type registration. Those declarative
-and setup operations raise :exc:`ValueError`, :exc:`TypeError`, and
-other standard Python exceptions as appropriate.
+All glom exceptions inherit from :exc:`GlomError`, described below,
+along with other core exception types. For more details about handling
+and debugging exceptions, see ":doc:`debugging`".
 
 .. autoclass:: glom.PathAccessError
 
@@ -143,34 +140,10 @@ other standard Python exceptions as appropriate.
 
 .. autoclass:: glom.UnregisteredTarget
 
-.. autoclass:: glom.MatchError
-   :noindex:
-
-.. autoclass:: glom.TypeMatchError
-   :noindex:
-
-.. autoclass:: glom.CheckError
-   :noindex:
-
-.. autoclass:: glom.PathAssignError
-   :noindex:
-
-.. autoclass:: glom.PathDeleteError
-   :noindex:
+.. auto:: glom.BadSpec
 
 .. autoclass:: glom.GlomError
 
-.. _debugging:
-
-
-Debugging
----------
-
-Even the most carefully-constructed specifications eventually need
-debugging. If the error message isn't enough to fix your glom issues,
-that's where **Inspect** comes in.
-
-.. autoclass:: glom.Inspect
 
 .. _setup-and-registration:
 
