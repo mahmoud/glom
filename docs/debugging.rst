@@ -1,5 +1,5 @@
-Exceptions and Debugging
-========================
+Exceptions & Debugging
+======================
 
 While glom works well when all goes as intended, it even shines when
 data doesn't match expectations. glom's error messages and exception
