@@ -5,7 +5,7 @@ from xml.etree import cElementTree as ElementTree
 import pytest
 
 from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S, Invoke, Spec, Ref
-from glom import Auto, Fill, Iter, Let, A, Vars, GlomError
+from glom import Auto, Fill, Iter, Let, A, Vars, Val, GlomError
 
 import glom.core as glom_core
 from glom.core import UP, ROOT
