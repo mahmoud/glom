@@ -37,6 +37,7 @@ from glom.matching import (M,
                            Regex,
                            Optional,
                            Required,
+                           Switch,
                            Check,
                            CheckError)
 from glom.mutation import Assign, Delete, assign, delete, PathAssignError, PathDeleteError

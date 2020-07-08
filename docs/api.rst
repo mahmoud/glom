@@ -140,7 +140,7 @@ and debugging exceptions, see ":doc:`debugging`".
 
 .. autoclass:: glom.UnregisteredTarget
 
-.. auto:: glom.BadSpec
+.. autoclass:: glom.BadSpec
 
 .. autoclass:: glom.GlomError
 
