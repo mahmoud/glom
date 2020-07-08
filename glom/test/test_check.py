@@ -70,6 +70,15 @@ def test_check_basic():
         assert repr(exc_info.value)
 
 
+def test_check_multi():
+    target = 1
+    with raises(CheckError) as exc_info:
+        glom(target, Check(instance_of=float, validate=lambda x: x > 3.14))
+
+    assert "2 errors" in str(exc_info.value)
+
+
+
 def test_check_signature():
     with raises(ValueError):
         Check(instance_of=())

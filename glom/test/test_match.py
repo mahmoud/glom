@@ -162,7 +162,6 @@ def test_and_or_reduction():
     assert repr(or_spec) == "Or(T['a'], T['b'], T['c'])"
 
 
-
 def test_precedence():
     """test corner cases of dict key precedence"""
     glom({(0, 1): 3},
