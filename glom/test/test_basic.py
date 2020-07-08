@@ -100,6 +100,16 @@ def test_coalesce():
     # check that arbitrary exceptions can be ignored
     assert glom(val, Coalesce(lambda x: 1/0, 'a.b', skip_exc=ZeroDivisionError)) == 'c'
 
+    target = {'a': 1, 'b': 3, 'c': 4}
+    spec = Coalesce('a', 'b', 'c', skip=lambda x: x % 2)
+    assert glom(target, spec) == 4
+
+    spec = Coalesce('a', 'b', 'c', skip=(1,))
+    assert glom(target, spec) == 3
+
+    with pytest.raises(TypeError):
+        Coalesce(bad_kwarg=True)
+
 
 
 def test_skip():
