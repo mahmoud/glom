@@ -495,7 +495,7 @@ def test_switch():
     assert glom({'c': None}, Switch(cases)) == 3
     assert glom({'c': None}, Switch(cases2)) == 3
     assert glom(None, Switch(cases, default=4)) == 4
-    assert glom(None, Switch({}, default=4)) == 4
+    assert glom(None, Switch({'z': 26}, default=4)) == 4
     with pytest.raises(MatchError):
     	glom(None, Switch(cases))
     with pytest.raises(ValueError):

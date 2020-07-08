@@ -816,8 +816,11 @@ class Switch(object):
         # glom.match(cases, Or([(object, object)], dict))
         # start dogfooding ^
         self.default = default
-        if not cases and self.default is _MISSING:
-            raise ValueError('Switch() without cases or default will always error')
+        if not cases:
+            raise ValueError('expected at least one case in %s, got: %r'
+                             % (self.__class__.__name__, self.cases))
+        return
+
 
     def glomit(self, target, scope):
         for keyspec, valspec in self.cases:
