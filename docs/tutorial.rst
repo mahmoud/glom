@@ -11,7 +11,6 @@ declarative data transformations.
 Go beyond basic with 10 minutes or less, and even further if you
 can spare a half hour.
 
-
 .. contents:: Contents
    :local:
 

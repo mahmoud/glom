@@ -1,28 +1,47 @@
 ``glom`` Modes
 ==============
 
-A mode determines how python built-in
-data structures are evaluated.  A mode is used
-similar to a spec: whatever python data structure
-is passed to the mode class init will be evaluated
-under that mode.
+.. note::
 
-Modes do not change the behavior of `T`, or spec classes;
-they only modify `dict`, `tuple`, `list`, etc.
+   Be sure to read ":doc:`custom_spec_types`" before diving into the
+   deep details below.
 
-Once set, the mode remains in place until it is
-overridden by another mode.
+A glom "mode" determines how Python built-in data structures are
+evaluated. Think of it like a dialect for how :class:`dict`,
+:class:`tuple`, :class:`list`, etc., are interpreted in a spec. Modes
+do not change the behavior of `T`, or many other core
+specifiers. Modes are one of the keys to keeping glom specs short and
+readable.
 
-The default behavior of glom is the :class:`~glom.Auto`
-mode.  The next most common mode is :class:`~glom.Fill`.
+A mode is used similar to a spec: whatever Python data structure is
+passed to the mode type constructor will be evaluated under that
+mode. Once set, the mode remains in place until it is overridden by
+another mode.
 
-custom modes
-------------
+glom only has a few modes:
 
-A mode is a spec which sets `scope[MODE]` to a function
-which accepts target, spec, and scope and returns a result.
+  1. :class:`~glom.Auto` - The default glom behavior, used for data
+     transformation, with the spec acting as a template.
+  2. :class:`~glom.Fill` - A variant of the default transformation
+     behavior; preferring to "fill" containers instead of
+     iterating, chaining, etc.
+  3. :class:`~glom.Match` - Treats the spec as a pattern, checking
+     that the target matches.
 
-For example, here is an abbreviated version of :class:`~glom.Fill`
+Adding a new mode is relatively rare, but when it comes up this
+document includes relevant details.
+
+
+Writing custom Modes
+--------------------
+
+A mode is a spec which sets ``scope[MODE]`` to a function which
+accepts ``target``, ``spec``, and ``scope`` and returns a result, a
+signature very similar to the top-level :func:`~glom.glom` method
+itself.
+
+For example, here is an abbreviated version of the :class:`~glom.Fill`
+mode:
 
 
 .. code-block:: python
@@ -49,4 +68,11 @@ For example, here is an abbreviated version of :class:`~glom.Fill`
              return spec(target)
         return spec
 
+Like any other :doc:`Specifier Type <custom_spec_types>`, ``Fill`` has
+a ``glomit()`` method, and this method sets the ``MODE`` key in the
+:ref:`glom scope <glom_scope>` to our ``_fill`` function. The name
+itself doesn't matter, but the signature must match exactly:
+``(target, spec, scope)``.
 
+As mentioned above, custom modes are relatively rare for glom. If you
+write one, `let us know <https://github.com/mahmoud/glom/issues>`_!
