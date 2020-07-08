@@ -387,7 +387,7 @@ class Not(_Bool):
 _M_OP_MAP = {'=': '==', '!': '!=', 'g': '>=', 'l': '<='}
 
 
-class _M_Subspec(object):
+class _MSubspec(object):
     """used by MType.__call__ to wrap a sub-spec for comparison"""
     __slots__ = ('spec')
 
@@ -445,9 +445,9 @@ class _MExpr(object):
             lhs = target
         if rhs is M:
             rhs = target
-        if type(lhs) is _M_Subspec:
+        if type(lhs) is _MSubspec:
             lhs = scope[glom](target, lhs.spec, scope)
-        if type(rhs) is _M_Subspec:
+        if type(rhs) is _MSubspec:
             rhs = scope[glom](target, rhs.spec, scope)
         matched = (
             (op == '=' and lhs == rhs) or
@@ -525,7 +525,7 @@ class _MType(object):
             # TODO: open this up for other specs so we can do other
             # checks, like function calls
             raise TypeError("M() only accepts T-style specs, not %s" % type(spec).__name__)
-        return _M_Subspec(spec)
+        return _MSubspec(spec)
 
     def __eq__(self, other):
         return _MExpr(self
