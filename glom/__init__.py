@@ -14,23 +14,34 @@ from glom.core import (glom,
                        UP,
                        ROOT,
                        MODE,
-                       Check,
                        Path,
                        Let,
                        Vars,
                        Val,
                        Literal,
+                       Let,
                        Coalesce,
                        Inspect,
                        GlomError,
                        BadSpec,
-                       CheckError,
                        PathAccessError,
                        CoalesceError,
                        UnregisteredTarget,
                        T, S, A)
 
 from glom.reduction import Sum, Fold, Flatten, flatten, FoldError, Merge, merge
+from glom.matching import (M,
+                           Or,
+                           And,
+                           Not,
+                           Match,
+                           MatchError,
+                           TypeMatchError,
+                           Regex,
+                           Optional,
+                           Required,
+                           Check,
+                           CheckError)
 from glom.mutation import Assign, Delete, assign, delete, PathAssignError, PathDeleteError
 
 # there's no -ion word that really fits what "streaming" means.

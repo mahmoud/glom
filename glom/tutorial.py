@@ -12,9 +12,9 @@ Dealing with Data
 =================
 
 Every application deals with data, and these days, even the simplest
-applications deals with rich, heavily-nested data.
+applications deal with rich, heavily-nested data.
 
-What does nested data looks like? In its most basic form::
+What does nested data look like? In its most basic form::
 
   >>> data = {'a': {'b': {'c': 'd'}}}
   >>> data['a']['b']['c']
@@ -62,6 +62,10 @@ Well that's short, and reads fine, but what about in the error case?
 
 That's more like it! We have a function that can give us our data, or
 give us an error message we can read, understand, and act upon.
+
+.. seealso::
+
+   For more on glom's error messages, see :doc:`debugging`.
 
 Interactive Deep Get
 --------------------
@@ -389,16 +393,17 @@ our case, ``primary_email`` can be None, so a further access of
 ``primary_email.email`` would, outside of glom, result in an
 AttributeError or TypeError like the one we described before the
 Contact example. Inside of a glom ``Coalesce``, exceptions are caught
-and we move on to the next spec. glom raises a ``CoalesceError`` when
-no specs match, so we use ``default`` to tell it to return None
-instead.
+and we move on to the next spec. glom raises a
+:class:`~glom.CoalesceError` when no specs match, so we use
+``default`` to tell it to return None instead.
 
 Some Contacts have nicknames or other names they prefer to go by, so
 for ``pref_name``, we want to return the stored ``pref_name``, or fall
-back to the normal name. Again, we use ``Coalesce``, but this time we
-tell it not only to ignore the default ``GlomError`` exceptions, but
-also ignore empty string values, and finally default to empty string
-if all specs result in empty strings or :exc:`~glom.GlomError`.
+back to the normal name. Again, we use :class:`~glom.Coalesce`, but
+this time we tell it not only to ignore the default
+:exc:`~glom.GlomError` exceptions, but also ignore empty string
+values, and finally default to empty string if all specs result in
+empty strings or :exc:`~glom.GlomError`.
 
 And finally, for our last field, ``detail``, we want to conjure up a
 bit of info that'll help jog the user's memory. We're going to include

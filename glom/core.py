@@ -1,11 +1,8 @@
 """*glom gets results.*
 
-If there was ever a Python example of "big things come in small
-packages", ``glom`` might be it.
-
 The ``glom`` package has one central entrypoint,
 :func:`glom.glom`. Everything else in the package revolves around that
-one function.
+one function. Sometimes, big things come in small packages.
 
 A couple of conventional terms you'll see repeated many times below:
 
@@ -30,6 +27,7 @@ import weakref
 import operator
 from abc import ABCMeta
 from pprint import pprint
+import string
 from collections import OrderedDict
 import traceback
 
@@ -42,10 +40,12 @@ PY2 = (sys.version_info[0] == 2)
 if PY2:
     _AbstractIterableBase = object
     from .chainmap_backport import ChainMap
+    from repr import Repr
 else:
     basestring = str
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
     from collections import ChainMap
+    from reprlib import Repr
 
 GLOM_DEBUG = os.getenv('GLOM_DEBUG', '').strip().lower()
 GLOM_DEBUG = False if (GLOM_DEBUG in ('', '0', 'false')) else True
@@ -148,8 +148,8 @@ class GlomError(Exception):
             return self._finalized_str
         elif getattr(self, '_scope', None) is not None:
             self._target_spec_trace = format_target_spec_trace(self._scope)
-            parts = ["error raised while processing.",
-                     " Target-spec trace, with error detail (most recent last):",
+            parts = ["error raised while processing, details below.",
+                     " Target-spec trace (most recent last):",
                      self._target_spec_trace]
             parts.extend(self._tb_lines)
             self._finalized_str = "\n".join(parts)
@@ -402,14 +402,40 @@ if getattr(__builtins__, '__dict__', None) is not None:
 _BUILTIN_ID_NAME_MAP = dict([(id(v), k)
                              for k, v in __builtins__.items()])
 
-def bbrepr(obj):
+
+# on py27, Repr is an old-style class, hence the lack of super() below
+class _BBRepr(Repr):
     """A better repr for builtins, when the built-in repr isn't
     roundtrippable.
     """
-    ret = repr(obj)
-    if not ret.startswith('<'):
-        return ret
-    return _BUILTIN_ID_NAME_MAP.get(id(obj), ret)
+    def __init__(self):
+        Repr.__init__(self)
+        # turn up all the length limits very high
+        for name in self.__dict__:
+            setattr(self, name, 1024)
+
+    def repr1(self, x, maxlevel):
+        ret = Repr.repr1(self, x, maxlevel)
+        if not ret.startswith('<'):
+            return ret
+        return _BUILTIN_ID_NAME_MAP.get(id(x), ret)
+
+
+bbrepr = _BBRepr().repr
+
+
+class _BBReprFormatter(string.Formatter):
+    """
+    allow format strings to be evaluated where {!r} will use bbrepr
+    instead of repr
+    """
+    def convert_field(self, value, conversion):
+        if conversion == 'r':
+            return bbrepr(value)
+        return super(_BBReprFormatter, self).convert_field(value, conversion)
+
+
+bbformat = _BBReprFormatter().format
 
 
 # TODO: push this back up to boltons with repr kwarg
@@ -1762,7 +1788,6 @@ class Auto(object):
         return '%s(%s)' % (cn, rpr)
 
 
-
 class _AbstractIterable(_AbstractIterableBase):
     __metaclass__ = ABCMeta
     @classmethod
@@ -2195,13 +2220,12 @@ def register_op(op_name, **kwargs):
 
 
 class Glommer(object):
-    """All the wholesome goodness that it takes to make glom work. This
-    type mostly serves to encapsulate the type registration context so
-    that advanced uses of glom don't need to worry about stepping on
-    each other's toes.
+    """The :class:`Glommer` type mostly serves to encapsulate type
+    registration context so that advanced uses of glom don't need to
+    worry about stepping on each other.
 
     Glommer objects are lightweight and, once instantiated, provide
-    the :func:`glom()` method we know and love:
+    a :func:`glom()` method:
 
     >>> glommer = Glommer()
     >>> glommer.glom({}, 'a.b.c', default='d')
@@ -2218,6 +2242,7 @@ class Glommer(object):
           default actions include dict access, list and iterable
           iteration, and generic object attribute access. Defaults to
           True.
+
     """
     def __init__(self, **kwargs):
         register_default_types = kwargs.pop('register_default_types', True)

@@ -1,5 +1,11 @@
-"""
-This module contains Specs that perform mutations.
+"""By default, glom aims to safely return a transformed copy of your
+data. But sometimes you really need to transform an existing object.
+
+When you already have a large or complex bit of nested data that you
+are sure you want to modify in-place, glom has you covered, with the
+:func:`~glom.assign` function, and the :func:`~glom.Assign` specifier
+type.
+
 """
 import operator
 from pprint import pprint
