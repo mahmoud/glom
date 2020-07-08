@@ -37,10 +37,10 @@ from glom.matching import (M,
                            Regex,
                            Optional,
                            Required,
+                           Switch,
                            Check,
                            CheckError)
 from glom.mutation import Assign, Delete, assign, delete, PathAssignError, PathDeleteError
-from glom.control_flow import Switch
 
 # there's no -ion word that really fits what "streaming" means.
 # generation, production, iteration, all have more relevant meanings
