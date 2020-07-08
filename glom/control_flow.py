@@ -3,7 +3,7 @@ Control flow primitives of glom.
 """
 
 from glom import glom, GlomError
-from .core import bbrepr
+from .core import bbrepr, LAST_CHILD_SCOPE
 
 
 _MISSING = object()
@@ -44,6 +44,7 @@ class Switch(object):
                 scope[glom](target, keyspec, scope)
             except GlomError as ge:
                 continue
+            scope = scope[LAST_CHILD_SCOPE]  # valspec child of keyspec so e.g. var capture
             return scope[glom](target, valspec, scope)
         if self.default is not _MISSING:
             return self.default

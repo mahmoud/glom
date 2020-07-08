@@ -1,6 +1,7 @@
 from pytest import raises
 
-from glom import glom, Switch, GlomError
+from glom import glom, Switch, GlomError, S
+from glom.core import Let
 
 
 def test_switch():
@@ -19,4 +20,5 @@ def test_switch():
     	Switch({})
     with raises(TypeError):
     	Switch("wrong type")
+    assert glom(None, Switch({Let(a=lambda t: 1): S['a']})) == 1
     repr(Switch(cases))
