@@ -8,7 +8,7 @@ from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Liter
 from glom import Auto, Fill, Iter
 
 import glom.core as glom_core
-from glom.core import UP, ROOT, Let
+from glom.core import UP, ROOT, Let, bbformat
 
 from glom import OMIT  # backwards compat
 
@@ -449,3 +449,7 @@ def test_api_repr():
             spec_types_wo_reprs.append(k)  # pragma: no cover
 
     assert set(spec_types_wo_reprs) == set([])
+
+
+def test_bbformat():
+    assert bbformat("{0.__name__}", int) == "int"

@@ -27,6 +27,7 @@ import weakref
 import operator
 from abc import ABCMeta
 from pprint import pprint
+import string
 from collections import OrderedDict
 import traceback
 
@@ -407,6 +408,23 @@ def bbrepr(obj):
     if not ret.startswith('<'):
         return ret
     return _BUILTIN_ID_NAME_MAP.get(id(obj), ret)
+
+
+class _BBReprFormatter(string.Formatter):
+    """
+    allow format strings to be evaluated where {!r} will use bbrepr
+    instead of repr
+    """
+    def convert_field(self, value, conversion):
+        if conversion == 'r':
+            return bbrepr(value)
+        return super(_BBReprFormatter, self).convert_field(value, conversion)
+
+
+_BB_REPR_FORMATTER = _BBReprFormatter()
+
+
+bbformat = _BB_REPR_FORMATTER.format
 
 
 # TODO: push this back up to boltons with repr kwarg

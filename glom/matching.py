@@ -14,7 +14,7 @@ from pprint import pprint
 from boltons.iterutils import is_iterable
 from boltons.typeutils import make_sentinel
 
-from .core import GlomError, glom, T, MODE, bbrepr, format_invocation, Path
+from .core import GlomError, glom, T, MODE, bbrepr, bbformat, format_invocation, Path
 
 _MISSING = make_sentinel('_MISSING')
 
@@ -38,7 +38,7 @@ class MatchError(GlomError):
 
     def get_message(self):
         fmt, args = self.args[0], self.args[1:]
-        return fmt.format(*args)
+        return bbformat(fmt, *args)
 
 
 class TypeMatchError(MatchError, TypeError):
@@ -60,7 +60,7 @@ class TypeMatchError(MatchError, TypeError):
 
     def __init__(self, actual, expected):
         super(TypeMatchError, self).__init__(
-            "expected type {.__name__}, not {.__name__}", expected, actual)
+            "expected type {0.__name__}, not {1.__name__}", expected, actual)
 
     def __copy__(self):
         # __init__ args = (actual, expected)
