@@ -123,13 +123,30 @@ def test_sets():
         glom(frozenset([1]), Match(frozenset()))
 
 
-def test_spec_match():
+def test_m_call_match():
     """test that M __call__ can be used to wrap a subspec for comparison"""
     target = {}
     target['a'] = target
     assert glom(target, M == M(T['a'])) == target
     assert glom(target, M(T['a']) == M) == target
+    assert repr(M(T['a'])) == "M(T['a'])"
 
+    with pytest.raises(MatchError):
+        glom({'a': False}, M(T['a']))
+
+    # let's take the operators for a spin
+    valid_target_spec_pairs = [({'a': 1, 'b': 2}, M(T['a']) < M(T['b'])),
+                               ({'a': 2, 'b': 1}, M(T['a']) > M(T['b'])),
+                               ({'a': 2, 'b': 1}, M(T['a']) != M(T['b'])),
+                               ({'a': 2, 'b': 1}, M(T['a']) >= M(T['b'])),
+                               ({'a': 2, 'b': 2}, M(T['a']) >= M(T['b'])),
+                               ({'a': 2, 'b': 2}, M(T['a']) <= M(T['b'])),
+                               ({'a': 1, 'b': 2}, M(T['a']) <= M(T['b']))]
+
+    for target, spec in valid_target_spec_pairs:
+        assert glom(target, spec) is target
+
+    return
 
 def test_precedence():
     """test corner cases of dict key precedence"""

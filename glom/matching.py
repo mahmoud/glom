@@ -522,7 +522,9 @@ class _MType(object):
     def __call__(self, spec):
         """wrap a sub-spec in order to apply comparison operators to the result"""
         if not isinstance(spec, type(T)):
-            raise TypeError("M() only accepts T, not %s" % type(spec).__name__)
+            # TODO: open this up for other specs so we can do other
+            # checks, like function calls
+            raise TypeError("M() only accepts T-style specs, not %s" % type(spec).__name__)
         return _M_Subspec(spec)
 
     def __eq__(self, other):
