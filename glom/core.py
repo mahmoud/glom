@@ -40,10 +40,12 @@ PY2 = (sys.version_info[0] == 2)
 if PY2:
     _AbstractIterableBase = object
     from .chainmap_backport import ChainMap
+    import repr as reprlib
 else:
     basestring = str
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
     from collections import ChainMap
+    import reprlib
 
 GLOM_DEBUG = os.getenv('GLOM_DEBUG', '').strip().lower()
 GLOM_DEBUG = False if (GLOM_DEBUG in ('', '0', 'false')) else True
@@ -400,14 +402,25 @@ if getattr(__builtins__, '__dict__', None) is not None:
 _BUILTIN_ID_NAME_MAP = dict([(id(v), k)
                              for k, v in __builtins__.items()])
 
-def bbrepr(obj):
+
+class _BBRepr(reprlib.Repr):
     """A better repr for builtins, when the built-in repr isn't
     roundtrippable.
     """
-    ret = repr(obj)
-    if not ret.startswith('<'):
-        return ret
-    return _BUILTIN_ID_NAME_MAP.get(id(obj), ret)
+    def __init__(self):
+        super(_BBRepr, self).__init__()
+        # turn up all the length limits very high
+        for name in self.__dict__:
+            setattr(self, name, 1024)
+
+    def repr1(self, x, maxlevel):
+        ret = super(_BBRepr, self).repr1(x, maxlevel)
+        if not ret.startswith('<'):
+            return ret
+        return _BUILTIN_ID_NAME_MAP.get(id(x), ret)
+
+
+bbrepr = _BBRepr().repr
 
 
 class _BBReprFormatter(string.Formatter):
@@ -421,10 +434,7 @@ class _BBReprFormatter(string.Formatter):
         return super(_BBReprFormatter, self).convert_field(value, conversion)
 
 
-_BB_REPR_FORMATTER = _BBReprFormatter()
-
-
-bbformat = _BB_REPR_FORMATTER.format
+bbformat = _BBReprFormatter().format
 
 
 # TODO: push this back up to boltons with repr kwarg

@@ -8,7 +8,7 @@ from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Liter
 from glom import Auto, Fill, Iter
 
 import glom.core as glom_core
-from glom.core import UP, ROOT, Let, bbformat
+from glom.core import UP, ROOT, Let, bbformat, bbrepr
 
 from glom import OMIT  # backwards compat
 
@@ -463,3 +463,7 @@ def test_api_repr():
 
 def test_bbformat():
     assert bbformat("{0.__name__}", int) == "int"
+
+
+def test_bbrepr():
+    assert bbrepr({str: int}) == "{str: int}"
