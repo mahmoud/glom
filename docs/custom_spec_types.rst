@@ -1,43 +1,43 @@
-``glom`` Extensions
-===================
+Writing a custom Specifier Type
+===============================
 
 While glom comes with a lot of built-in features, no library can ever
 encompass all data manipulation operations.
 
 To cover every case out there, glom provides a way to extend its
 functionality with your own data handling hooks. This document
-explains glom's execution model and how to integrate with it using
-glom's Extension API.
+explains glom's execution model and how to integrate with it when
+writing a custom Specifier Type.
 
-When to make an extension
--------------------------
+When to write a Specifier Type
+------------------------------
 
-From day one, ``glom`` has had built-in support for arbitrary callables, like so:
+``glom`` has always supported arbitrary callables, like so:
 
 .. code::
 
    glom({'nums': range(5)}, ('nums', sum))
    # 10
 
-With this built-in extensibility, what does a glom extension add?
+With this built-in extensibility, what does a glom specifier type add?
 
-Glom extensions are useful when you want to:
+Custom specifier types are useful when you want to:
 
-  * Perform validation at spec construction time
-  * Enable users to interact with new target types and operations
-  * Improve readability and reusability of your data transformations
-  * Temporarily change the glom runtime behavior
+  1. Perform validation at spec construction time
+  2. Enable users to interact with new target types and operations
+  3. Improve readability and reusability of your data transformations
+  4. Temporarily change the glom runtime behavior
 
 If you're just building a one-off spec for transforming your own data,
 there's no reason to reach for an extension. ``glom``'s extension API
 is easy, but a good old Python ``lambda`` is even easier.
 
-Making a Specifier Type
------------------------
+Building your Specifier Type
+----------------------------
 
 Any object instance with a ``glomit`` method can participate in a glom
 call. By way of example, here is a programming cliché implemented as a
-glom extension type, with comments referencing notes below.
+glom specifier type, with comments referencing notes below.
 
 .. code::
 
@@ -68,11 +68,12 @@ There are a few things to note from this example:
   3. By convention, instances are used in specs passed to
      :func:`~glom.glom` calls, not the types themselves.
 
+.. _glom_scope:
 
 The glom Scope
 --------------
 
-The glom scope exposes glom-internal state to the extension. Let's take a look inside a scope:
+The glom scope exposes runtime state to the specifier type. Let's take a look inside a scope:
 
 .. code::
 
@@ -108,7 +109,7 @@ As you can see, all glom's core workings are present, all under familiar keys:
 To learn how to use the scope's powerful features idiomatically, let's
 reimplement at one of glom's standard specifier types.
 
-Extensions by example
+Specifiers by example
 ---------------------
 
 While we've technically created a couple of extensions above, let's
@@ -119,7 +120,7 @@ it works like this:
 
 .. code::
 
-   from glom import glom
+   from glom import glom, Sum
 
    glom([1, 2, 3], Sum())
    # 6
@@ -168,7 +169,7 @@ contains comments with references to explanatory notes below.
 
 Now, let's take a look at the interesting parts, referencing the comments above:
 
-  1. Extensions often reference the TargetRegistry, which is not part
+  1. Specifier types often reference the TargetRegistry, which is not part
      of the top-level ``glom`` API, and must be imported from
      ``glom.core``. More on this in #4.
   2. Specifier type ``__init__`` methods may take as many or as few
@@ -177,7 +178,7 @@ Now, let's take a look at the interesting parts, referencing the comments above:
      actual specifier's operation. This helps readability of
      glomspecs. See :class:`~glom.Coalesce` for an example of this
      idiom.
-  3. Extension specifiers should not reference the
+  3. Specifier types should not reference the
      :func:`~glom.glom()` function directly, instead use the
      :func:`~glom.glom` function as a key to the ``scope`` map to get the
      currently active ``glom()``. This ensures that the extension type is
@@ -185,32 +186,31 @@ Now, let's take a look at the interesting parts, referencing the comments above:
      ``glom()`` function.
   4. To maximize compatiblity with new target types, ``glom`` allows
      :ref:`new types and operations to be registered
-     <setup-and-registration>` with the ``TargetRegistry``. Extensions
+     <setup-and-registration>` with the ``TargetRegistry``. Specifier types
      should respect this by contextually fetching these standard
      operators as demonstrated above. At the time of writing, three
      primary operators are used by glom itself, ``"get"``,
      ``"iterate"``, and ``"assign"``.
   5. In the event that the current target does not support your
-     extension's desired operation, it's customary to raise a helpful
+     Specifier type's desired operation, it's customary to raise a helpful
      error. Consider creating your own exception type and inheriting
      from :class:`~glom.GlomError`.
-  6. Extension types may have other methods and members in addition to
+  6. Specifier types may have other methods and members in addition to
      the primary ``glomit()`` method. This ``_sum()`` method
-     implements most of the core of our custom extension.
+     implements most of the core of our custom specifier type.
 
 Check out the implementation of the real :class:`glom.Sum()` specifier for more details.
 
 Summing up
 ----------
 
-``glom`` extensions are more than just add-ons; the extension
+``glom`` Specifier Types are more than just add-ons; the extension
 architecture is how most of ``glom`` itself is implemented. Build
-knowing that the paradigm is powerful enough to achieve your data
-transformation requirements.
+knowing that the paradigm is as powerful as anything built-in.
 
-If you need more examples, a simple one can be found in :ref:`this snippet
-<lisp-style-if>`, and ``glom`` itself contains many specifiers more
-advanced than the above. Simply search the codebase for ``glomit()``
-methods and you will find no shortage.
+If you need more examples, another simple one can be found in
+:ref:`this snippet <lisp-style-if>`. ``glom``'s source code itself
+contains many specifiers more advanced than the above. Simply search
+the codebase for ``glomit()`` methods and you will find no shortage.
 
 Happy extending!

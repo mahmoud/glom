@@ -1,11 +1,8 @@
 """*glom gets results.*
 
-If there was ever a Python example of "big things come in small
-packages", ``glom`` might be it.
-
 The ``glom`` package has one central entrypoint,
 :func:`glom.glom`. Everything else in the package revolves around that
-one function.
+one function. Sometimes, big things come in small packages.
 
 A couple of conventional terms you'll see repeated many times below:
 
@@ -30,6 +27,7 @@ import weakref
 import operator
 from abc import ABCMeta
 from pprint import pprint
+import string
 from collections import OrderedDict
 import traceback
 
@@ -42,10 +40,12 @@ PY2 = (sys.version_info[0] == 2)
 if PY2:
     _AbstractIterableBase = object
     from .chainmap_backport import ChainMap
+    from repr import Repr
 else:
     basestring = str
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
     from collections import ChainMap
+    from reprlib import Repr
 
 GLOM_DEBUG = os.getenv('GLOM_DEBUG', '').strip().lower()
 GLOM_DEBUG = False if (GLOM_DEBUG in ('', '0', 'false')) else True
@@ -148,8 +148,8 @@ class GlomError(Exception):
             return self._finalized_str
         elif getattr(self, '_scope', None) is not None:
             self._target_spec_trace = format_target_spec_trace(self._scope)
-            parts = ["error raised while processing.",
-                     " Target-spec trace, with error detail (most recent last):",
+            parts = ["error raised while processing, details below.",
+                     " Target-spec trace (most recent last):",
                      self._target_spec_trace]
             parts.extend(self._tb_lines)
             self._finalized_str = "\n".join(parts)
@@ -402,14 +402,40 @@ if getattr(__builtins__, '__dict__', None) is not None:
 _BUILTIN_ID_NAME_MAP = dict([(id(v), k)
                              for k, v in __builtins__.items()])
 
-def bbrepr(obj):
+
+# on py27, Repr is an old-style class, hence the lack of super() below
+class _BBRepr(Repr):
     """A better repr for builtins, when the built-in repr isn't
     roundtrippable.
     """
-    ret = repr(obj)
-    if not ret.startswith('<'):
-        return ret
-    return _BUILTIN_ID_NAME_MAP.get(id(obj), ret)
+    def __init__(self):
+        Repr.__init__(self)
+        # turn up all the length limits very high
+        for name in self.__dict__:
+            setattr(self, name, 1024)
+
+    def repr1(self, x, maxlevel):
+        ret = Repr.repr1(self, x, maxlevel)
+        if not ret.startswith('<'):
+            return ret
+        return _BUILTIN_ID_NAME_MAP.get(id(x), ret)
+
+
+bbrepr = _BBRepr().repr
+
+
+class _BBReprFormatter(string.Formatter):
+    """
+    allow format strings to be evaluated where {!r} will use bbrepr
+    instead of repr
+    """
+    def convert_field(self, value, conversion):
+        if conversion == 'r':
+            return bbrepr(value)
+        return super(_BBReprFormatter, self).convert_field(value, conversion)
+
+
+bbformat = _BBReprFormatter().format
 
 
 # TODO: push this back up to boltons with repr kwarg
@@ -1421,213 +1447,6 @@ def _format_t(path, root=T):
     return "".join(prepr)
 
 
-class CheckError(GlomError):
-    """This :exc:`GlomError` subtype is raised when target data fails to
-    pass a :class:`Check`'s specified validation.
-
-    An uncaught ``CheckError`` looks like this::
-
-       >>> target = {'a': {'b': 'c'}}
-       >>> glom(target, {'b': ('a.b', Check(type=int))})
-       Traceback (most recent call last):
-       ...
-       CheckError: target at path ['a.b'] failed check, got error: "expected type to be 'int', found type 'str'"
-
-    If the ``Check`` contains more than one condition, there may be
-    more than one error message. The string rendition of the
-    ``CheckError`` will include all messages.
-
-    You can also catch the ``CheckError`` and programmatically access
-    messages through the ``msgs`` attribute on the ``CheckError``
-    instance.
-
-    .. note::
-
-       As of 2018-07-05 (glom v18.2.0), the validation subsystem is
-       still very new. Exact error message formatting may be enhanced
-       in future releases.
-
-    """
-    def __init__(self, msgs, check, path):
-        self.msgs = msgs
-        self.check_obj = check
-        self.path = path
-
-    def get_message(self):
-        msg = 'target at path %s failed check,' % self.path
-        if self.check_obj.spec is not T:
-            msg += ' subtarget at %r' % (self.check_obj.spec,)
-        if len(self.msgs) == 1:
-            msg += ' got error: %r' % (self.msgs[0],)
-        else:
-            msg += ' got %s errors: %r' % (len(self.msgs), self.msgs)
-        return msg
-
-    def __copy__(self):
-        # py27 struggles to copy PAE without this method
-        return type(self)(self.msgs, self.check_obj, self.path)
-
-    def __repr__(self):
-        cn = self.__class__.__name__
-        return '%s(%r, %r, %r)' % (cn, self.msgs, self.check_obj, self.path)
-
-
-RAISE = make_sentinel('RAISE')  # flag object for "raise on check failure"
-
-
-class Check(object):
-    """Check objects are used to make assertions about the target data,
-    and either pass through the data or raise exceptions if there is a
-    problem.
-
-    If any check condition fails, a :class:`~glom.CheckError` is raised.
-
-    Args:
-
-       spec: a sub-spec to extract the data to which other assertions will
-          be checked (defaults to applying checks to the target itself)
-       type: a type or sequence of types to be checked for exact match
-       equal_to: a value to be checked for equality match ("==")
-       validate: a callable or list of callables, each representing a
-          check condition. If one or more return False or raise an
-          exception, the Check will fail.
-       instance_of: a type or sequence of types to be checked with isinstance()
-       one_of: an iterable of values, any of which can match the target ("in")
-       default: an optional default value to replace the value when the check fails
-                (if default is not specified, GlomCheckError will be raised)
-
-    Aside from *spec*, all arguments are keyword arguments. Each
-    argument, except for *default*, represent a check
-    condition. Multiple checks can be passed, and if all check
-    conditions are left unset, Check defaults to performing a basic
-    truthy check on the value.
-
-    """
-    # TODO: the next level of Check would be to play with the Scope to
-    # allow checking to continue across the same level of
-    # dictionary. Basically, collect as many errors as possible before
-    # raising the unified CheckError.
-    def __init__(self, spec=T, **kwargs):
-        self.spec = spec
-        self._orig_kwargs = dict(kwargs)
-        self.default = kwargs.pop('default', RAISE)
-
-        def _get_arg_val(name, cond, func, val, can_be_empty=True):
-            if val is _MISSING:
-                return ()
-            if not is_iterable(val):
-                val = (val,)
-            elif not val and not can_be_empty:
-                raise ValueError('expected %r argument to contain at least one value,'
-                                 ' not: %r' % (name, val))
-            for v in val:
-                if not func(v):
-                    raise ValueError('expected %r argument to be %s, not: %r'
-                                     % (name, cond, v))
-            return val
-
-        # if there are other common validation functions, maybe a
-        # small set of special strings would work as valid arguments
-        # to validate, too.
-        def truthy(val):
-            return bool(val)
-
-        validate = kwargs.pop('validate', _MISSING if kwargs else truthy)
-        type_arg = kwargs.pop('type', _MISSING)
-        instance_of = kwargs.pop('instance_of', _MISSING)
-        equal_to = kwargs.pop('equal_to', _MISSING)
-        one_of = kwargs.pop('one_of', _MISSING)
-        if kwargs:
-            raise TypeError('unexpected keyword arguments: %r' % kwargs.keys())
-
-        self.validators = _get_arg_val('validate', 'callable', callable, validate)
-        self.instance_of = _get_arg_val('instance_of', 'a type',
-                                        lambda x: isinstance(x, type), instance_of, False)
-        self.types = _get_arg_val('type', 'a type',
-                                  lambda x: isinstance(x, type), type_arg, False)
-
-        if equal_to is not _MISSING:
-            self.vals = (equal_to,)
-            if one_of is not _MISSING:
-                raise TypeError('expected "one_of" argument to be unset when'
-                                ' "equal_to" argument is passed')
-        elif one_of is not _MISSING:
-            if not is_iterable(one_of):
-                raise ValueError('expected "one_of" argument to be iterable'
-                                 ' , not: %r' % one_of)
-            if not one_of:
-                raise ValueError('expected "one_of" to contain at least'
-                                 ' one value, not: %r' % (one_of,))
-            self.vals = one_of
-        else:
-            self.vals = ()
-        return
-
-    class _ValidationError(Exception):
-        "for internal use inside of Check only"
-        pass
-
-    def glomit(self, target, scope):
-        ret = target
-        errs = []
-        if self.spec is not T:
-            target = scope[glom](target, self.spec, scope)
-        if self.types and type(target) not in self.types:
-            if self.default is not RAISE:
-                return self.default
-            errs.append('expected type to be %r, found type %r' %
-                        (self.types[0].__name__ if len(self.types) == 1
-                         else tuple([t.__name__ for t in self.types]),
-                         type(target).__name__))
-
-        if self.vals and target not in self.vals:
-            if self.default is not RAISE:
-                return self.default
-            if len(self.vals) == 1:
-                errs.append("expected {}, found {}".format(self.vals[0], target))
-            else:
-                errs.append('expected one of {}, found {}'.format(self.vals, target))
-
-        if self.validators:
-            for i, validator in enumerate(self.validators):
-                try:
-                    res = validator(target)
-                    if res is False:
-                        raise self._ValidationError
-                except Exception as e:
-                    msg = ('expected %r check to validate target'
-                           % getattr(validator, '__name__', None) or ('#%s' % i))
-                    if type(e) is self._ValidationError:
-                        if self.default is not RAISE:
-                            return self.default
-                    else:
-                        msg += ' (got exception: %r)' % e
-                    errs.append(msg)
-
-        if self.instance_of and not isinstance(target, self.instance_of):
-            # TODO: can these early returns be done without so much copy-paste?
-            # (early return to avoid potentially expensive or even error-causeing
-            # string formats)
-            if self.default is not RAISE:
-                return self.default
-            errs.append('expected instance of %r, found instance of %r' %
-                        (self.instance_of[0].__name__ if len(self.instance_of) == 1
-                         else tuple([t.__name__ for t in self.instance_of]),
-                         type(target).__name__))
-
-        if errs:
-            # TODO: due to the usage of basic path (not a Path
-            # object), the format can be a bit inconsistent here
-            # (e.g., 'a.b' and ['a', 'b'])
-            raise CheckError(errs, self, scope[Path])
-        return ret
-
-    def __repr__(self):
-        cn = self.__class__.__name__
-        posargs = (self.spec,) if self.spec is not T else ()
-        return format_invocation(cn, posargs, self._orig_kwargs, repr=bbrepr)
-
-
 class Auto(object):
     """
     Switch to Auto mode (the default)
@@ -1647,7 +1466,6 @@ class Auto(object):
         cn = self.__class__.__name__
         rpr = '' if self.spec is None else bbrepr(self.spec)
         return '%s(%s)' % (cn, rpr)
-
 
 
 class _AbstractIterable(_AbstractIterableBase):
@@ -2081,13 +1899,12 @@ def register_op(op_name, **kwargs):
 
 
 class Glommer(object):
-    """All the wholesome goodness that it takes to make glom work. This
-    type mostly serves to encapsulate the type registration context so
-    that advanced uses of glom don't need to worry about stepping on
-    each other's toes.
+    """The :class:`Glommer` type mostly serves to encapsulate type
+    registration context so that advanced uses of glom don't need to
+    worry about stepping on each other.
 
     Glommer objects are lightweight and, once instantiated, provide
-    the :func:`glom()` method we know and love:
+    a :func:`glom()` method:
 
     >>> glommer = Glommer()
     >>> glommer.glom({}, 'a.b.c', default='d')
@@ -2104,6 +1921,7 @@ class Glommer(object):
           default actions include dict access, list and iterable
           iteration, and generic object attribute access. Defaults to
           True.
+
     """
     def __init__(self, **kwargs):
         register_default_types = kwargs.pop('register_default_types', True)

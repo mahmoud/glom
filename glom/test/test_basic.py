@@ -8,7 +8,7 @@ from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Liter
 from glom import Auto, Fill, Iter
 
 import glom.core as glom_core
-from glom.core import UP, ROOT, Let
+from glom.core import UP, ROOT, Let, bbformat, bbrepr
 
 from glom import OMIT  # backwards compat
 
@@ -99,6 +99,16 @@ def test_coalesce():
 
     # check that arbitrary exceptions can be ignored
     assert glom(val, Coalesce(lambda x: 1/0, 'a.b', skip_exc=ZeroDivisionError)) == 'c'
+
+    target = {'a': 1, 'b': 3, 'c': 4}
+    spec = Coalesce('a', 'b', 'c', skip=lambda x: x % 2)
+    assert glom(target, spec) == 4
+
+    spec = Coalesce('a', 'b', 'c', skip=(1,))
+    assert glom(target, spec) == 3
+
+    with pytest.raises(TypeError):
+        Coalesce(bad_kwarg=True)
 
 
 
@@ -449,3 +459,11 @@ def test_api_repr():
             spec_types_wo_reprs.append(k)  # pragma: no cover
 
     assert set(spec_types_wo_reprs) == set([])
+
+
+def test_bbformat():
+    assert bbformat("{0.__name__}", int) == "int"
+
+
+def test_bbrepr():
+    assert bbrepr({int: dict}) == "{int: dict}"
