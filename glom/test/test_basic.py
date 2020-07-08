@@ -466,4 +466,4 @@ def test_bbformat():
 
 
 def test_bbrepr():
-    assert bbrepr({str: int}) == "{str: int}"
+    assert bbrepr({int: dict}) == "{int: dict}"

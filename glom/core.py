@@ -40,12 +40,12 @@ PY2 = (sys.version_info[0] == 2)
 if PY2:
     _AbstractIterableBase = object
     from .chainmap_backport import ChainMap
-    import repr as reprlib
+    from repr import Repr
 else:
     basestring = str
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
     from collections import ChainMap
-    import reprlib
+    from reprlib import Repr
 
 GLOM_DEBUG = os.getenv('GLOM_DEBUG', '').strip().lower()
 GLOM_DEBUG = False if (GLOM_DEBUG in ('', '0', 'false')) else True
@@ -403,18 +403,19 @@ _BUILTIN_ID_NAME_MAP = dict([(id(v), k)
                              for k, v in __builtins__.items()])
 
 
-class _BBRepr(reprlib.Repr):
+# on py27, Repr is an old-style class, hence the lack of super() below
+class _BBRepr(Repr):
     """A better repr for builtins, when the built-in repr isn't
     roundtrippable.
     """
     def __init__(self):
-        super(_BBRepr, self).__init__()
+        Repr.__init__(self)
         # turn up all the length limits very high
         for name in self.__dict__:
             setattr(self, name, 1024)
 
     def repr1(self, x, maxlevel):
-        ret = super(_BBRepr, self).repr1(x, maxlevel)
+        ret = Repr.repr1(self, x, maxlevel)
         if not ret.startswith('<'):
             return ret
         return _BUILTIN_ID_NAME_MAP.get(id(x), ret)
