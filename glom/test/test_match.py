@@ -57,8 +57,15 @@ def test_basic():
     with pytest.raises(ValueError):
         And()
 
+    with pytest.raises(TypeError):
+        And('a', bad_kwarg=True)
+
     with pytest.raises(ValueError):
         Or()
+
+    with pytest.raises(TypeError):
+        Or('a', bad_kwarg=True)
+
 
     _chk(Match(Or("a", "b")), "a", "c")
     glom({None: 1}, Match({object: object}))

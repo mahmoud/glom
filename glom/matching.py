@@ -288,8 +288,7 @@ class _Bool(object):
 
     def _m_repr(self):
         """should this Or() repr as M |?"""
-        if not self.children:
-            return False
+        # only used by And() and Or(), not Not(), so len(children) >= 1
         if isinstance(self.children[0], (_MType, _MExpr)):
             return True
         if type(self.children[0]) in (And, Or, Not):
