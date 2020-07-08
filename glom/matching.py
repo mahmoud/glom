@@ -334,8 +334,6 @@ class Or(_Bool):
     __slots__ = ('children',)
 
     def _glomit(self, target, scope):
-        if not self.children:  # so Or() == False, similar to any([]) == False
-            raise MatchError("Or() with no arguments")
         for child in self.children[:-1]:
             try:  # one child must match without exception
                 return scope[glom](target, child, scope)
@@ -528,9 +526,7 @@ class _MType(object):
         return _MSubspec(spec)
 
     def __eq__(self, other):
-        return _MExpr(self
-
-                      , '=', other)
+        return _MExpr(self, '=', other)
 
     def __ne__(self, other):
         return _MExpr(self, '!', other)

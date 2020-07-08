@@ -131,6 +131,9 @@ def test_m_call_match():
     assert glom(target, M(T['a']) == M) == target
     assert repr(M(T['a'])) == "M(T['a'])"
 
+    with pytest.raises(TypeError):
+        M('failure')  # TODO: may change in future, see TODO in M.__call__
+
     with pytest.raises(MatchError):
         glom({'a': False}, M(T['a']))
 
@@ -147,6 +150,18 @@ def test_m_call_match():
         assert glom(target, spec) is target
 
     return
+
+
+def test_and_or_reduction():
+    and_spec = And(T['a'], T['b']) & T['c']
+
+    assert repr(and_spec) == "And(T['a'], T['b'], T['c'])"
+
+    or_spec = Or(T['a'], T['b']) | T['c']
+
+    assert repr(or_spec) == "Or(T['a'], T['b'], T['c'])"
+
+
 
 def test_precedence():
     """test corner cases of dict key precedence"""
