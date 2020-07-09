@@ -29,6 +29,7 @@ def test_empty_path_access():
 def test_path_t_roundtrip():
     # check that T repr roundrips
     assert repr(T['a'].b.c()) == "T['a'].b.c()"
+    assert repr(T[1:]) == "T[1:]"
 
     # check that Path repr roundtrips
     assert repr(Path('a', 1, 'b.b', -1.0)) == "Path('a', 1, 'b.b', -1.0)"

@@ -414,8 +414,8 @@ class _BBRepr(Repr):
         for name in self.__dict__:
             setattr(self, name, 1024)
 
-    def repr1(self, x, maxlevel):
-        ret = Repr.repr1(self, x, maxlevel)
+    def repr1(self, x, level):
+        ret = Repr.repr1(self, x, level)
         if not ret.startswith('<'):
             return ret
         return _BUILTIN_ID_NAME_MAP.get(id(x), ret)
@@ -1429,6 +1429,15 @@ class Let(object):
         return format_invocation(cn, kwargs=self._binding, repr=bbrepr)
 
 
+def _format_slice(x):
+    if type(x) is not slice:
+        return bbrepr(x)
+    fmt = lambda v: "" if v is None else bbrepr(v)
+    if x.step is None:
+        return fmt(x.start) + ":" + fmt(x.stop)
+    return fmt(x.start) + ":" + fmt(x.stop) + ":" + fmt(x.step)    
+
+
 def _format_t(path, root=T):
     prepr = ['T' if root is T else 'S']
     i = 0
@@ -1437,7 +1446,11 @@ def _format_t(path, root=T):
         if op == '.':
             prepr.append('.' + arg)
         elif op == '[':
-            prepr.append("[%s]" % (bbrepr(arg),))
+            if type(arg) is tuple:
+                index = ", ".join([_format_slice(x) for x in arg])
+            else:
+                index = _format_slice(arg)
+            prepr.append("[%s]" % (index,))
         elif op == '(':
             args, kwargs = arg
             prepr.append(format_invocation(args=args, kwargs=kwargs, repr=bbrepr))
