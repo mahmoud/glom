@@ -1448,6 +1448,8 @@ A = TType()  # like S, but means assign target to scope
 _T_PATHS[T] = (T,)
 _T_PATHS[S] = (S,)
 _T_PATHS[A] = (A,)
+
+
 UP = make_sentinel('UP')
 ROOT = make_sentinel('ROOT')
 
@@ -1895,7 +1897,7 @@ def glom(target, spec, **kwargs):
          omitted). If *skip_exc* and *default* are both not set,
          glom raises errors through.
        scope (dict): Additional data that can be accessed
-         via S inside the glom-spec.
+         via S inside the glom-spec. Read more: :ref:`scope`.
 
     It's a small API with big functionality, and glom's power is
     only surpassed by its intuitiveness. Give it a whirl!

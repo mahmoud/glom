@@ -124,6 +124,66 @@ just through redundancy.
 
 .. autoclass:: glom.Ref
 
+.. _scope:
+
+The ``glom`` Scope
+------------------
+
+Sometimes data transformation involves more than a single target and
+spec. For those times, glom has a *scope* system designed to manage
+additional state.
+
+Basic usage
+~~~~~~~~~~~
+
+On its surface, the glom scope is a dictionary of extra values that
+can be passed in to the top-level glom call. These values can then be
+addressed with the **S** object, which behaves
+similarly to the :data:`~glom.T` object.
+
+Here's an example case, counting the occurrences of a value in the
+target, using the scope:
+
+  >>> count_spec = T.count(S.val)
+  >>> glom(['a', 'c', 'a', 'b'], count_spec, scope={'val': 'a'})
+  2
+
+Note how **S** supports attribute-style dot-access for its keys. For
+keys which are not valid attribute names, key-style access is also
+supported.
+
+.. note::
+
+   glom itself uses certain special keys in the scope to manage
+   internal state. Consider the namespace of strings, integers,
+   builtin types, and other common Python objects open for your usage,
+   and read :doc:`the custom spec doc<custom_spec_types>` to learn
+   about more advanced, reserved cases.
+
+Updating the scope - ``Let`` & ``A``
+~~~~~~~~~~~~~~~~~~
+
+glom's scope isn't only set once when the top-level :func:`glom`
+function is called. If your use case requires saving a value from one
+part of the target for usage elsewhere, then :class:`Let` will allow
+you to save values to the scope.
+
+.. autoclass:: glom.Let
+
+To succinctly save the target to the scope, you can use the ``A``
+shortcut.
+
+Sensible saving - ``Vars`` & ``S.globals``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Of course, glom's scopes do not last forever. Much like function calls
+in Python, new child scopes can see values in parent scopes, but when
+a spec completes, its scope is deleted.
+
+.. autoclass:: glom.Vars
+
+(TODO)
+
 Core Exceptions
 ---------------
 
