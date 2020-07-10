@@ -72,6 +72,14 @@ String matching
 
 .. autoclass:: glom.Regex
 
+Control flow with ``Switch``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Match becomes even more powerful when combined with the ability to
+branch spec execution.
+
+.. autoclass:: glom.Switch
+
 Exceptions
 ~~~~~~~~~~
 

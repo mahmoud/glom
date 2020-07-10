@@ -14,7 +14,8 @@ from pprint import pprint
 from boltons.iterutils import is_iterable
 from boltons.typeutils import make_sentinel
 
-from .core import GlomError, glom, T, MODE, bbrepr, bbformat, format_invocation, Path
+from .core import GlomError, glom, T, MODE, bbrepr, bbformat, format_invocation, Path, LAST_CHILD_SCOPE, Literal
+
 
 _MISSING = make_sentinel('_MISSING')
 
@@ -755,6 +756,86 @@ def _glom_match(target, spec, scope):
     elif target != spec:
         raise MatchError("{!r} does not match {!r}", target, spec)
     return target
+
+
+class Switch(object):
+    """The :class:`Switch` specifier type routes data processing based on
+    matching keys, much like the classic switch statement.
+
+    Here is a spec which differentiates between lowercase English
+    vowel and consonant characters:
+
+      >>> switch_spec = Match(Switch([(Or('a', 'e', 'i', 'o', 'u'), Literal('vowel')),
+      ...                             (And(str, M, M(T[2:]) == ''), Literal('consonant'))]))
+
+    The constructor accepts a :class:`dict` of ``{keyspec: valspec}``
+    or a list of items, ``[(keyspec, valspec)]``. Keys are tried
+    against the current target in order. If a keyspec raises
+    :class:`GlomError`, the next keyspec is tried.  Once a keyspec
+    succeeds, the corresponding valspec is evaluated and returned.
+    Let's try it out:
+
+      >>> glom('a', switch_spec)
+      'vowel'
+      >>> glom('z', switch_spec)
+      'consonant'
+
+    If no keyspec succeeds, a :class:`MatchError` is raised. Our spec
+    only works on characters (strings of length 1). Let's try a
+    non-character, ``3``:
+
+      >>> glom(3, switch_spec)
+      Traceback (most recent call last):
+      ...
+      MatchError: error raised while processing, details below.
+       Target-spec trace (most recent last):
+       - Target: 3
+       - Spec: Match(Switch([(Or('a', 'e', 'i', 'o', 'u'), Literal('vowel')), (An...
+       - Spec: Switch([(Or('a', 'e', 'i', 'o', 'u'), Literal('vowel')), (And(str,...
+       - Spec: Or('a', 'e', 'i', 'o', 'u')
+       - Spec: 'a'
+      MatchError: no matches for target in Switch
+
+    A *default* value can be passed to the spec to be returned instead
+    of raising a :class:`MatchError`.
+
+    .. note::
+
+      Switch implements control flow similar to the switch statement
+      proposed in `PEP622 <https://www.python.org/dev/peps/pep-0622/>`_.
+
+    """
+    def __init__(self, cases, default=_MISSING):
+        if type(cases) is dict:
+            cases = list(cases.items())
+        if type(cases) is not list:
+            raise TypeError(
+                "expected cases argument to be of format {{keyspec: valspec}}"
+                " or [(keyspec, valspec)] not: {}".format(type(cases)))
+        self.cases = cases
+        # glom.match(cases, Or([(object, object)], dict))
+        # start dogfooding ^
+        self.default = default
+        if not cases:
+            raise ValueError('expected at least one case in %s, got: %r'
+                             % (self.__class__.__name__, self.cases))
+        return
+
+
+    def glomit(self, target, scope):
+        for keyspec, valspec in self.cases:
+            try:
+                scope[glom](target, keyspec, scope)
+            except GlomError as ge:
+                continue
+            scope = scope[LAST_CHILD_SCOPE]  # valspec child of keyspec so e.g. var capture
+            return scope[glom](target, valspec, scope)
+        if self.default is not _MISSING:
+            return self.default
+        raise MatchError("no matches for target in %s"  % self.__class__.__name__)
+
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, bbrepr(self.cases))
 
 
 RAISE = make_sentinel('RAISE')  # flag object for "raise on check failure"
