@@ -1387,7 +1387,7 @@ def _t_eval(target, _t, scope):
             cur = _s_first_magic(cur, t_path[2], _t)
             i += 2
     else:
-        raise ValueError('TType instance with invalid root object')
+        raise ValueError('TType instance with invalid root')  # pragma: no cover
     pae = None
     while i < fetch_till:
         op, arg = t_path[i], t_path[i + 1]
