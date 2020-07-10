@@ -1452,6 +1452,15 @@ UP = make_sentinel('UP')
 ROOT = make_sentinel('ROOT')
 
 
+def _format_slice(x):
+    if type(x) is not slice:
+        return bbrepr(x)
+    fmt = lambda v: "" if v is None else bbrepr(v)
+    if x.step is None:
+        return fmt(x.start) + ":" + fmt(x.stop)
+    return fmt(x.start) + ":" + fmt(x.stop) + ":" + fmt(x.step)
+
+
 def _format_t(path, root=T):
     prepr = [{T: 'T', S: 'S', A: 'A'}[root]]
     i = 0
@@ -1460,7 +1469,11 @@ def _format_t(path, root=T):
         if op == '.':
             prepr.append('.' + arg)
         elif op == '[':
-            prepr.append("[%s]" % (bbrepr(arg),))
+            if type(arg) is tuple:
+                index = ", ".join([_format_slice(x) for x in arg])
+            else:
+                index = _format_slice(arg)
+            prepr.append("[%s]" % (index,))
         elif op == '(':
             args, kwargs = arg
             prepr.append(format_invocation(args=args, kwargs=kwargs, repr=bbrepr))
@@ -1558,37 +1571,6 @@ class Let(object):
     def __repr__(self):
         cn = self.__class__.__name__
         return format_invocation(cn, kwargs=self._binding, repr=bbrepr)
-
-
-def _format_slice(x):
-    if type(x) is not slice:
-        return bbrepr(x)
-    fmt = lambda v: "" if v is None else bbrepr(v)
-    if x.step is None:
-        return fmt(x.start) + ":" + fmt(x.stop)
-    return fmt(x.start) + ":" + fmt(x.stop) + ":" + fmt(x.step)
-
-
-def _format_t(path, root=T):
-    prepr = ['T' if root is T else 'S']
-    i = 0
-    while i < len(path):
-        op, arg = path[i], path[i + 1]
-        if op == '.':
-            prepr.append('.' + arg)
-        elif op == '[':
-            if type(arg) is tuple:
-                index = ", ".join([_format_slice(x) for x in arg])
-            else:
-                index = _format_slice(arg)
-            prepr.append("[%s]" % (index,))
-        elif op == '(':
-            args, kwargs = arg
-            prepr.append(format_invocation(args=args, kwargs=kwargs, repr=bbrepr))
-        elif op == 'P':
-            return _format_path(path)
-        i += 2
-    return "".join(prepr)
 
 
 class Auto(object):

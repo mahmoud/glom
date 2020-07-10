@@ -49,3 +49,5 @@ def test_vars():
         "Vars(a=1, b=2)", "Vars(b=2, a=1)")
     assert repr(Vars(a=1, b=2).glomit(None, None)) in (
         "Vars({'a': 1, 'b': 2})", "Vars({'b': 2, 'a': 1})")
+
+    assert repr(A.b["c"]) == "A.b['c']"
