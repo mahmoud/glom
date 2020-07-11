@@ -37,6 +37,8 @@ def test_globals():
 
 
 def test_vars():
+    assert glom(1, A.a) == 1  # A should not change the target
+    assert glom(1, (A.a, S.a)) == 1
     let = Let(v=Vars({'b': 2}, c=3))
     assert glom(1, (let, A.v.a, S.v.a)) == 1
     with pytest.raises(AttributeError):

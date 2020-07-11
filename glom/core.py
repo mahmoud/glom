@@ -1425,7 +1425,7 @@ def _t_eval(target, _t, scope):
         i += 2
     if root is A:
         op, arg = t_path[-2:]
-        if op == '[':
+        if op == '[' or cur is scope:  # all assignment on scope is setitem
             cur[arg] = target
         elif op == '.':
             setattr(cur, arg, target)
@@ -1438,6 +1438,7 @@ def _t_eval(target, _t, scope):
                 raise PathAssignError(e, Path(_t), i // 2 + 1)
         else:  # pragma: no cover
             raise ValueError('unsupported operation for assignment')
+        return target  # A should not change the target
     return cur
 
 
