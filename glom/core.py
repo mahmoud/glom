@@ -1444,12 +1444,11 @@ def _t_eval(target, _t, scope):
 
 T = TType()  # target aka Mr. T aka "this"
 S = TType()  # like T, but means grab stuff from Scope, not Target
-A = TType()  # like S, but means assign target to scope
+A = TType()  # like S, but shorthand to assign target to scope
 
 _T_PATHS[T] = (T,)
 _T_PATHS[S] = (S,)
 _T_PATHS[A] = (A,)
-
 
 UP = make_sentinel('UP')
 ROOT = make_sentinel('ROOT')
@@ -1526,10 +1525,10 @@ class _Vars(object):
 
 class Vars(object):
     """
-    :class:`Vars` is a helper that can be used with `Let` in order to
+    :class:`Vars` is a helper that can be used with :class:`Let` in order to
     store shared mutable state.
 
-    Takes the same arguments as `dict()`.
+    Takes the same arguments as :class:`dict()`.
 
     Arguments here should be thought of the same way as default arguments
     to a function.  Each time the spec is evaluated, the same arguments
