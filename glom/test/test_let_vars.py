@@ -1,7 +1,7 @@
 
 import pytest
 
-from glom import glom, Path, T, S, Literal, Let, A, Vars, GlomError
+from glom import glom, Path, T, S, Literal, Let, A, Vars, Val, GlomError
 
 from glom.core import ROOT
 from glom.mutation import PathAssignError
@@ -39,6 +39,9 @@ def test_globals():
 def test_vars():
     assert glom(1, A.a) == 1  # A should not change the target
     assert glom(1, (A.a, S.a)) == 1
+    # check that tuple vars don't "leak" into parent tuple
+    assert glom(1, (A.t, Val(2), A.t, S.t)) == 2
+    assert glom(1, (A.t, (Val(2), A.t), S.t)) == 1
     let = Let(v=Vars({'b': 2}, c=3))
     assert glom(1, (let, A.v.a, S.v.a)) == 1
     with pytest.raises(AttributeError):
