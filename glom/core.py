@@ -1512,8 +1512,8 @@ class Val(object):
 
 class _Vars(object):
     """
-    This is the run-time partner of :class:`Vars` -- this is what
-    actually lives in the scope and stores run-time values.
+    This is the runtime partner of :class:`Vars` -- this is what
+    actually lives in the scope and stores runtime values.
     """
     def __init__(self, base, defaults):
         self.__dict__ = dict(base)
@@ -1543,12 +1543,11 @@ class Vars(object):
         return _Vars(self.base, self.defaults)
 
     def __repr__(self):
-        args = [
-            "%s=%s" % (key, bbrepr(val))
-            for key, val in self.defaults.items()]
-        if self.base:
-            args = [bbrepr(self.base)] + args
-        return "%s(%s)" % (self.__class__.__name__, ", ".join(args))
+        ret = format_invocation(self.__class__.__name__,
+                                args=(self.base,) if self.base else (),
+                                kwargs=self.defaults,
+                                repr=bbrepr)
+        return ret
 
 
 class Let(object):
