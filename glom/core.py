@@ -99,10 +99,10 @@ similar to tuple.
 """
 MODE =  make_sentinel('MODE')
 
-ERROR_SCOPE = make_sentinel('ERROR_SCOPE')
-ERROR_SCOPE.__doc__ = """
-``ERROR_SCOPE`` is used by glom internals to store the scope
-from which an exception was raised when processing fails.
+CHILD_ERRORS = make_sentinel('CHILD_ERRORS')
+CHILD_ERRORS.__doc__ = """
+``CHILD_ERRORS`` is used by glom internals to keep track of
+failed child branches of the current scope.
 """
 
 _PKG_DIR_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -176,7 +176,19 @@ def _unpack_stack(scope):
     #
     # root glom call generates two scopes up at the top that aren't part
     # of execution
-    return [(scope, scope[Spec], scope[T]) for scope in list(reversed(scope.maps[:-2]))]
+    stack = []
+    while LAST_CHILD_SCOPE in scope.maps[0]:
+        branches = scope.maps[0][CHILD_ERRORS][:-1]
+        # use LAST_CHILD_SCOPE for direct child so that this
+        # is useful even for stacks that are still executing
+        child = scope.maps[0][LAST_CHILD_SCOPE]
+        branch_stacks = [
+            _unpack_stack(branch_scope)
+            for branch_scope, branch_error in branches]
+        stack.append((scope.maps[0], scope[Spec], scope[T], branch_stacks))
+        scope = child
+    stack.append((scope.maps[0], scope[Spec], scope[T], []))
+    return stack
 
 
 def _format_trace_value(value, maxlen):
@@ -190,7 +202,7 @@ def _format_trace_value(value, maxlen):
     return s
 
 
-def format_target_spec_trace(scope, width=TRACE_WIDTH):
+def format_target_spec_trace(scope, width=TRACE_WIDTH, branches=True, depth=0):
     """
     unpack a scope into a multi-line but short summary
     """
@@ -198,7 +210,7 @@ def format_target_spec_trace(scope, width=TRACE_WIDTH):
     prev_target = _MISSING
     target_width = width - len(" - Target: ")
     spec_width = width - len(" - Spec: ")
-    for scope, spec, target in _unpack_stack(scope):
+    for scope, spec, target, branches in _unpack_stack(scope):
         if target is not prev_target:
             segments.append(" - Target: " + _format_trace_value(target, target_width))
         prev_target = target
@@ -216,7 +228,7 @@ def format_oneline_trace(scope):
     # if the target is the same, don't repeat it
     segments = []
     prev_target = _MISSING
-    for scope, spec, target in _unpack_stack(scope):
+    for scope, spec, target, branches in _unpack_stack(scope):
         segments.append('/')
         if type(spec) in (TType, Path):
             segments.append(bbrepr(spec))
@@ -1796,6 +1808,7 @@ def glom(target, spec, **kwargs):
         Path: kwargs.pop('path', []),
         Inspect: kwargs.pop('inspector', None),
         MODE: AUTO,
+        CHILD_ERRORS: [],
     })
     scope[UP] = scope
     scope[ROOT] = scope
@@ -1821,7 +1834,7 @@ def glom(target, spec, **kwargs):
         else:
             err = GlomError.wrap(e)
         if isinstance(err, GlomError):
-            err._finalize(scope[ERROR_SCOPE])
+            err._finalize(scope[LAST_CHILD_SCOPE])
         else:  # wrapping failed, fall back to default behavior
             raise
 
@@ -1832,11 +1845,13 @@ def glom(target, spec, **kwargs):
 
 def _glom(target, spec, scope):
     parent = scope
-    scope = scope.new_child()
-    parent[LAST_CHILD_SCOPE] = scope
-    scope[T] = target
-    scope[Spec] = spec
-    scope[UP] = parent
+    scope = scope.new_child({
+        T: target,
+        Spec: spec,
+        UP: parent,
+        CHILD_ERRORS: [],
+    })
+    parent.maps[0][LAST_CHILD_SCOPE] = scope
 
     try:
         if isinstance(spec, TType):  # must go first, due to callability
@@ -1845,8 +1860,9 @@ def _glom(target, spec, scope):
             return spec.glomit(target, scope)
 
         return scope[MODE](target, spec, scope)
-    except Exception:
-        scope[ROOT].setdefault(ERROR_SCOPE, scope)
+    except Exception as e:
+        errs = scope.maps[1][CHILD_ERRORS]
+        errs.append((scope, e))
         raise
 
 

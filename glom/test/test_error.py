@@ -6,7 +6,7 @@ import traceback
 import pytest
 
 from glom import glom, S, T, GlomError
-from glom.core import format_oneline_trace, format_target_spec_trace, bbrepr
+from glom.core import format_oneline_trace, format_target_spec_trace, bbrepr, ROOT, LAST_CHILD_SCOPE
 from glom.matching import M, MatchError, TypeMatchError, Match
 
 try:
@@ -40,14 +40,14 @@ def test_unfinalized_glomerror_repr():
 
 def test_line_trace():
     stacklifier = ([{'data': S}],)
-    scope = glom([1], stacklifier)[0]['data']
+    scope = glom([1], stacklifier)[0]['data'][ROOT][LAST_CHILD_SCOPE]
     fmtd_stack = format_oneline_trace(scope)
     assert fmtd_stack == '/tuple!list/list<0>/dict!int/S'
 
 
 def test_short_trace():
     stacklifier = ([{'data': S}],)
-    scope = glom([1], stacklifier)[0]['data']
+    scope = glom([1], stacklifier)[0]['data'][ROOT][LAST_CHILD_SCOPE]
     fmtd_stack = format_target_spec_trace(scope)
     exp_lines = [
         " - Target: [1]",
