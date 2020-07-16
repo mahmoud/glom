@@ -107,8 +107,14 @@ def test_a_forbidden():
 
 
 def test_s_magic():
+    assert glom(None, S.test, scope={'test': 'value'}) == 'value'
+
     with raises(PathAccessError):
         glom(1, S.a)  # ref to 'a' which doesn't exist in scope
+
+    with raises(PathAccessError):
+        glom(1, A.b.c)
+
     return
 
 

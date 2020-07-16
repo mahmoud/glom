@@ -1396,8 +1396,8 @@ def _s_first_magic(scope, key, _t):
     err = None
     try:
         cur = scope[key]
-    except (KeyError, IndexError) as e:
-        err = PathAccessError(e, _t, 0)
+    except KeyError as e:
+        err = PathAccessError(e, _t, 0)  # always only one level depth, hence 0
     if err:
         raise err
     return cur
@@ -1431,19 +1431,19 @@ def _t_eval(target, _t, scope):
             try:
                 cur = getattr(cur, arg)
             except AttributeError as e:
-                pae = PathAccessError(e, Path(_t), i // 2)
+                pae = PathAccessError(e, _t, i // 2)
         elif op == '[':
             try:
                 cur = cur[arg]
             except (KeyError, IndexError, TypeError) as e:
-                pae = PathAccessError(e, Path(_t), i // 2)
+                pae = PathAccessError(e, _t, i // 2)
         elif op == 'P':
             # Path type stuff (fuzzy match)
             get = scope[TargetRegistry].get_handler('get', cur, path=t_path[2:i+2:2])
             try:
                 cur = get(cur, arg)
             except Exception as e:
-                pae = PathAccessError(e, Path(_t), i // 2)
+                pae = PathAccessError(e, _t, i // 2)
         elif op == '(':
             args, kwargs = arg
             scope[Path] += t_path[2:i+2:2]
@@ -1468,7 +1468,7 @@ def _t_eval(target, _t, scope):
             try:
                 _assign(cur, arg, target)
             except Exception as e:
-                raise PathAssignError(e, Path(_t), i // 2 + 1)
+                raise PathAssignError(e, _t, i // 2 + 1)
         else:  # pragma: no cover
             raise ValueError('unsupported operation for assignment')
         return target  # A should not change the target
