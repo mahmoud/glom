@@ -124,6 +124,98 @@ just through redundancy.
 
 .. autoclass:: glom.Ref
 
+.. _scope:
+
+The ``glom`` Scope
+------------------
+
+Sometimes data transformation involves more than a single target and
+spec. For those times, glom has a *scope* system designed to manage
+additional state.
+
+Basic usage
+~~~~~~~~~~~
+
+On its surface, the glom scope is a dictionary of extra values that
+can be passed in to the top-level glom call. These values can then be
+addressed with the **S** object, which behaves
+similarly to the :data:`~glom.T` object.
+
+Here's an example case, counting the occurrences of a value in the
+target, using the scope:
+
+  >>> count_spec = T.count(S.search)
+  >>> glom(['a', 'c', 'a', 'b'], count_spec, scope={'search': 'a'})
+  2
+
+Note how **S** supports attribute-style dot-access for its keys. For
+keys which are not valid attribute names, key-style access is also
+supported.
+
+.. note::
+
+   glom itself uses certain keys in the scope to manage internal
+   state. Consider the namespace of strings, integers, builtin types,
+   and other common Python objects open for your usage.  Read
+   :doc:`the custom spec doc<custom_spec_types>` to learn about more
+   advanced, reserved cases.
+
+Updating the scope - ``Let`` & ``A``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+glom's scope isn't only set once when the top-level :func:`glom`
+function is called. It's dynamic and updatable.
+
+If your use case requires saving a value from one part of the target
+for usage elsewhere, then :class:`Let` will allow you to save values
+to the scope.
+
+.. autoclass:: glom.Let
+
+When only the target is being assigned, you can use the **A**
+shortcut::
+
+    >>> target = {'data': {'val': 9}}
+    >>> spec = ('data.val', A.value, {'val': S.value})
+    >>> glom(target, spec)
+    {'val': 9}
+
+**A** enables a shorthand which assigns the current target to a
+location in the scope.
+
+```
+
+Sensible saving - ``Vars`` & ``S.globals``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Of course, glom's scopes do not last forever. Much like function calls
+in Python, new child scopes can see and read values in parent
+scopes. When a child spec saves a new value to the scope, it's lost
+when the child spec completes.
+
+If you need values to be saved beyond a spec's local scope, the best
+way to do that is to create a :class:`~glom.Vars` object in a common
+ancestor scope. :class:`~glom.Vars` acts as a mutable namespace where
+child scopes can store state and have it persist beyond their local
+scope. Choose a location in the spec such that all involved child
+scopes can see and share the value.
+
+  .. note::
+
+     glom precreates a *global* :class:`~glom.Vars` object at
+     ``S.globals``. Any values saved there will be accessible
+     throughout that given :func:`~glom.glom` call::
+
+     >>> last_spec = ([A.globals.last], S.globals.last)
+     >>> glom([3, 1, 4, 1, 5], last_spec)
+     5
+
+     While not shared across calls, most of the same care prescribed
+     about using global state still applies.
+
+.. autoclass:: glom.Vars
+
+
 Core Exceptions
 ---------------
 

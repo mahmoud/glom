@@ -5,10 +5,11 @@ from xml.etree import cElementTree as ElementTree
 import pytest
 
 from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S, Invoke, Spec, Ref
-from glom import Auto, Fill, Iter
+from glom import Auto, Fill, Iter, Let, A, Vars, Val, GlomError
 
 import glom.core as glom_core
 from glom.core import UP, ROOT, Let, bbformat, bbrepr
+from glom.mutation import PathAssignError
 
 from glom import OMIT  # backwards compat
 
@@ -183,6 +184,7 @@ def test_literal():
 
     assert glom(None, Literal('success')) == 'success'
     assert repr(Literal(3.14)) == 'Literal(3.14)'
+    assert repr(Val(3.14)) == 'Val(3.14)'
 
 
 def test_abstract_iterable():
@@ -408,20 +410,6 @@ def test_inspect():
 
     assert glom(target, spec, default='default') == 'default'
     assert len(tracker) == 1
-
-
-def test_let():
-    data = {'a': 1, 'b': [{'c': 2}, {'c': 3}]}
-    output = [{'a': 1, 'c': 2}, {'a': 1, 'c': 3}]
-    assert glom(data, (Let(a='a'), ('b', [{'a': S['a'], 'c': 'c'}]))) == output
-    assert glom(data, ('b', [{'a': S[ROOT][Literal(T)]['a'], 'c': 'c'}])) == output
-
-    with pytest.raises(TypeError):
-        Let('posarg')
-    with pytest.raises(TypeError):
-        Let()
-
-    assert repr(Let(a=T.a.b)) == 'Let(a=T.a.b)'
 
 
 def test_ref():

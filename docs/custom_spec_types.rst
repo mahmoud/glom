@@ -73,7 +73,8 @@ There are a few things to note from this example:
 The glom Scope
 --------------
 
-The glom scope exposes runtime state to the specifier type. Let's take a look inside a scope:
+The :ref:`glom scope<scope>` is also used to expose runtime state to the specifier
+type. Let's take a look inside a scope:
 
 .. code::
 
@@ -169,9 +170,9 @@ contains comments with references to explanatory notes below.
 
 Now, let's take a look at the interesting parts, referencing the comments above:
 
-  1. Specifier types often reference the TargetRegistry, which is not part
-     of the top-level ``glom`` API, and must be imported from
-     ``glom.core``. More on this in #4.
+  1. Specifier types often reference the :class:`TargetRegistry`,
+     which is not part of the top-level ``glom`` API, and must be
+     imported from ``glom.core``. More on this in #4.
   2. Specifier type ``__init__`` methods may take as many or as few
      arguments as desired, but many glom specifier types take a first
      parameter of a *subspec*, meant to be fetched right before the

@@ -276,13 +276,47 @@ class PathAccessError(GlomError, AttributeError, KeyError, IndexError):
         return type(self)(self.exc, self.path, self.part_idx)
 
     def get_message(self):
-        path_part = self.path.values()[self.part_idx]
+        path_part = Path(self.path).values()[self.part_idx]
         return ('could not access %r, part %r of %r, got error: %r'
                 % (path_part, self.part_idx, self.path, self.exc))
 
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.part_idx)
+
+
+class PathAssignError(GlomError):
+    """This :exc:`GlomError` subtype is raised when an assignment fails,
+    stemming from an :func:`~glom.assign` call or other
+    :class:`~glom.Assign` usage.
+
+    One example would be assigning to an out-of-range position in a list::
+
+      >>> assign(["short", "list"], Path(5), 'too far')  # doctest: +SKIP
+      Traceback (most recent call last):
+      ...
+      PathAssignError: could not assign 5 on object at Path(), got error: IndexError(...
+
+    Other assignment failures could be due to assigning to an
+    ``@property`` or exception being raised inside a ``__setattr__()``.
+
+    """
+    def __init__(self, exc, path, dest_name):
+        self.exc = exc
+        self.path = path
+        self.dest_name = dest_name
+
+    def __copy__(self):
+        # py27 struggles to copy PAE without this method
+        return type(self)(self.exc, self.path, self.dest_name)
+
+    def get_message(self):
+        return ('could not assign %r on object at %r, got error: %r'
+                % (self.dest_name, self.path, self.exc))
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.dest_name)
 
 
 class CoalesceError(GlomError):
@@ -1334,10 +1368,10 @@ class TType(object):
 
     def __getstate__(self):
         t_path = _T_PATHS[self]
-        return tuple(('T' if t_path[0] is T else 'S',) + t_path[1:])
+        return tuple(({T: 'T', S: 'S', A: 'A'}[t_path[0]],) + t_path[1:])
 
     def __setstate__(self, state):
-        _T_PATHS[self] = (T if state[0] == 'T' else S,) + state[1:]
+        _T_PATHS[self] = ({'T': T, 'S': S, 'A': A}[state[0]],) + state[1:]
 
 
 _T_PATHS = weakref.WeakKeyDictionary()
@@ -1345,21 +1379,51 @@ _T_PATHS = weakref.WeakKeyDictionary()
 
 def _t_child(parent, operation, arg):
     t = TType()
-    _T_PATHS[t] = _T_PATHS[parent] + (operation, arg)
+    base = _T_PATHS[parent]
+    if base[0] is A and operation not in ('.', '[', 'P'):
+        # whitelist rather than blacklist assignment friendly operations
+        # TODO: error type?
+        raise BadSpec("operation not allowed on A assignment path")
+    _T_PATHS[t] = base + (operation, arg)
     return t
+
+
+def _s_first_magic(scope, key, _t):
+    """
+    enable S.a to do S['a'] or S['a'].val as a special
+    case for accessing user defined string variables
+    """
+    err = None
+    try:
+        cur = scope[key]
+    except KeyError as e:
+        err = PathAccessError(e, _t, 0)  # always only one level depth, hence 0
+    if err:
+        raise err
+    return cur
 
 
 def _t_eval(target, _t, scope):
     t_path = _T_PATHS[_t]
     i = 1
-    if t_path[0] is T:
+    fetch_till = len(t_path)
+    root = t_path[0]
+    if root is T:
         cur = target
-    elif t_path[0] is S:
+    elif root is S or root is A:
+        # A is basically the same as S, but last step is assign
+        if root is A:
+            fetch_till -= 2
+            if fetch_till < 1:
+                raise BadSpec('cannot assign without destination')
         cur = scope
+        if fetch_till > 1 and t_path[1] in ('.', 'P'):
+            cur = _s_first_magic(cur, t_path[2], _t)
+            i += 2
     else:
-        raise ValueError('TType instance with invalid root object')
+        raise ValueError('TType instance with invalid root')  # pragma: no cover
     pae = None
-    while i < len(t_path):
+    while i < fetch_till:
         op, arg = t_path[i], t_path[i + 1]
         if type(arg) in (Spec, TType, Literal):
             arg = scope[glom](target, arg, scope)
@@ -1367,19 +1431,19 @@ def _t_eval(target, _t, scope):
             try:
                 cur = getattr(cur, arg)
             except AttributeError as e:
-                pae = PathAccessError(e, Path(_t), i // 2)
+                pae = PathAccessError(e, _t, i // 2)
         elif op == '[':
             try:
                 cur = cur[arg]
             except (KeyError, IndexError, TypeError) as e:
-                pae = PathAccessError(e, Path(_t), i // 2)
+                pae = PathAccessError(e, _t, i // 2)
         elif op == 'P':
             # Path type stuff (fuzzy match)
             get = scope[TargetRegistry].get_handler('get', cur, path=t_path[2:i+2:2])
             try:
                 cur = get(cur, arg)
             except Exception as e:
-                pae = PathAccessError(e, Path(_t), i // 2)
+                pae = PathAccessError(e, _t, i // 2)
         elif op == '(':
             args, kwargs = arg
             scope[Path] += t_path[2:i+2:2]
@@ -1393,16 +1457,138 @@ def _t_eval(target, _t, scope):
         if pae:
             raise pae
         i += 2
+    if root is A:
+        op, arg = t_path[-2:]
+        if op == '[' or cur is scope:  # all assignment on scope is setitem
+            cur[arg] = target
+        elif op == '.':
+            setattr(cur, arg, target)
+        elif op == 'P':
+            _assign = scope[TargetRegistry].get_handler('assign', cur)
+            try:
+                _assign(cur, arg, target)
+            except Exception as e:
+                raise PathAssignError(e, _t, i // 2 + 1)
+        else:  # pragma: no cover
+            raise ValueError('unsupported operation for assignment')
+        return target  # A should not change the target
     return cur
 
 
 T = TType()  # target aka Mr. T aka "this"
 S = TType()  # like T, but means grab stuff from Scope, not Target
+A = TType()  # like S, but shorthand to assign target to scope
 
 _T_PATHS[T] = (T,)
 _T_PATHS[S] = (S,)
+_T_PATHS[A] = (A,)
+
 UP = make_sentinel('UP')
 ROOT = make_sentinel('ROOT')
+
+
+def _format_slice(x):
+    if type(x) is not slice:
+        return bbrepr(x)
+    fmt = lambda v: "" if v is None else bbrepr(v)
+    if x.step is None:
+        return fmt(x.start) + ":" + fmt(x.stop)
+    return fmt(x.start) + ":" + fmt(x.stop) + ":" + fmt(x.step)
+
+
+def _format_t(path, root=T):
+    prepr = [{T: 'T', S: 'S', A: 'A'}[root]]
+    i = 0
+    while i < len(path):
+        op, arg = path[i], path[i + 1]
+        if op == '.':
+            prepr.append('.' + arg)
+        elif op == '[':
+            if type(arg) is tuple:
+                index = ", ".join([_format_slice(x) for x in arg])
+            else:
+                index = _format_slice(arg)
+            prepr.append("[%s]" % (index,))
+        elif op == '(':
+            args, kwargs = arg
+            prepr.append(format_invocation(args=args, kwargs=kwargs, repr=bbrepr))
+        elif op == 'P':
+            return _format_path(path)
+        i += 2
+    return "".join(prepr)
+
+
+class Val(object):
+    """Val objects are specs which evaluate to the wrapped value.
+
+    >>> target = {'a': {'b': 'c'}}
+    >>> spec = {'a': 'a.b', 'readability': Val('counts')}
+    >>> pprint(glom(target, spec))
+    {'a': 'c', 'readability': 'counts'}
+
+    Instead of accessing ``'counts'`` as a key like it did with
+    ``'a.b'``, :func:`~glom.glom` just unwrapped the Val and
+    included the value.
+
+    :class:`~glom.Val` takes one argument, the value to be returned.
+    """
+    def __init__(self, val):
+        self.val = val
+
+    def glomit(self, target, scope):
+        return self.val
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%s)' % (cn, bbrepr(self.val))
+
+
+class ScopeVars(object):
+    """This is the runtime partner of :class:`Vars` -- this is what
+    actually lives in the scope and stores runtime values.
+
+    While not part of the importable API of glom, it's half expected
+    that some folks may write sepcs to populate and export scopes, at
+    which point this type makes it easy to access values by attribute
+    access or by converting to a dict.
+
+    """
+    def __init__(self, base, defaults):
+        self.__dict__ = dict(base)
+        self.__dict__.update(defaults)
+
+    def __iter__(self):
+        return iter(self.__dict__.items())
+
+    def __repr__(self):
+        return "%s(%s)" % (self.__class__.__name__, bbrepr(self.__dict__))
+
+
+class Vars(object):
+    """
+    :class:`Vars` is a helper that can be used with :class:`Let` in order to
+    store shared mutable state.
+
+    Takes the same arguments as :class:`dict()`.
+
+    Arguments here should be thought of the same way as default arguments
+    to a function.  Each time the spec is evaluated, the same arguments
+    will be referenced; so, think carefully about mutable data structures.
+    """
+    def __init__(self, base=(), **kw):
+        dict(base)  # ensure it is a dict-compatible first arg
+        self.base = base
+        self.defaults = kw
+
+    def glomit(self, target, spec):
+        return ScopeVars(self.base, self.defaults)
+
+    def __repr__(self):
+        ret = format_invocation(self.__class__.__name__,
+                                args=(self.base,) if self.base else (),
+                                kwargs=self.defaults,
+                                repr=bbrepr)
+        return ret
 
 
 class Let(object):
@@ -1427,37 +1613,6 @@ class Let(object):
     def __repr__(self):
         cn = self.__class__.__name__
         return format_invocation(cn, kwargs=self._binding, repr=bbrepr)
-
-
-def _format_slice(x):
-    if type(x) is not slice:
-        return bbrepr(x)
-    fmt = lambda v: "" if v is None else bbrepr(v)
-    if x.step is None:
-        return fmt(x.start) + ":" + fmt(x.stop)
-    return fmt(x.start) + ":" + fmt(x.stop) + ":" + fmt(x.step)    
-
-
-def _format_t(path, root=T):
-    prepr = ['T' if root is T else 'S']
-    i = 0
-    while i < len(path):
-        op, arg = path[i], path[i + 1]
-        if op == '.':
-            prepr.append('.' + arg)
-        elif op == '[':
-            if type(arg) is tuple:
-                index = ", ".join([_format_slice(x) for x in arg])
-            else:
-                index = _format_slice(arg)
-            prepr.append("[%s]" % (index,))
-        elif op == '(':
-            args, kwargs = arg
-            prepr.append(format_invocation(args=args, kwargs=kwargs, repr=bbrepr))
-        elif op == 'P':
-            return _format_path(path)
-        i += 2
-    return "".join(prepr)
 
 
 class Auto(object):
@@ -1782,7 +1937,7 @@ def glom(target, spec, **kwargs):
          omitted). If *skip_exc* and *default* are both not set,
          glom raises errors through.
        scope (dict): Additional data that can be accessed
-         via S inside the glom-spec.
+         via S inside the glom-spec. Read more: :ref:`scope`.
 
     It's a small API with big functionality, and glom's power is
     only surpassed by its intuitiveness. Give it a whirl!
@@ -1796,6 +1951,7 @@ def glom(target, spec, **kwargs):
         Path: kwargs.pop('path', []),
         Inspect: kwargs.pop('inspector', None),
         MODE: AUTO,
+        'globals': ScopeVars({}, {}),
     })
     scope[UP] = scope
     scope[ROOT] = scope
