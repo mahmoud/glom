@@ -276,13 +276,47 @@ class PathAccessError(GlomError, AttributeError, KeyError, IndexError):
         return type(self)(self.exc, self.path, self.part_idx)
 
     def get_message(self):
-        path_part = self.path.values()[self.part_idx]
+        path_part = Path(self.path).values()[self.part_idx]
         return ('could not access %r, part %r of %r, got error: %r'
                 % (path_part, self.part_idx, self.path, self.exc))
 
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.part_idx)
+
+
+class PathAssignError(GlomError):
+    """This :exc:`GlomError` subtype is raised when an assignment fails,
+    stemming from an :func:`~glom.assign` call or other
+    :class:`~glom.Assign` usage.
+
+    One example would be assigning to an out-of-range position in a list::
+
+      >>> assign(["short", "list"], Path(5), 'too far')  # doctest: +SKIP
+      Traceback (most recent call last):
+      ...
+      PathAssignError: could not assign 5 on object at Path(), got error: IndexError(...
+
+    Other assignment failures could be due to assigning to an
+    ``@property`` or exception being raised inside a ``__setattr__()``.
+
+    """
+    def __init__(self, exc, path, dest_name):
+        self.exc = exc
+        self.path = path
+        self.dest_name = dest_name
+
+    def __copy__(self):
+        # py27 struggles to copy PAE without this method
+        return type(self)(self.exc, self.path, self.dest_name)
+
+    def get_message(self):
+        return ('could not assign %r on object at %r, got error: %r'
+                % (self.dest_name, self.path, self.exc))
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.dest_name)
 
 
 class CoalesceError(GlomError):
@@ -1363,7 +1397,7 @@ def _s_first_magic(scope, key, _t):
     try:
         cur = scope[key]
     except (KeyError, IndexError) as e:
-        err = NameError("name '%s' not defined in glom scope" % key)
+        err = PathAccessError(e, _t, 0)
     if err:
         raise err
     return cur
@@ -1434,7 +1468,6 @@ def _t_eval(target, _t, scope):
             try:
                 _assign(cur, arg, target)
             except Exception as e:
-                from .mutation import PathAssignError  # TODO: circular
                 raise PathAssignError(e, Path(_t), i // 2 + 1)
         else:  # pragma: no cover
             raise ValueError('unsupported operation for assignment')

@@ -107,8 +107,9 @@ def test_a_forbidden():
 
 
 def test_s_magic():
-    with raises(NameError):
+    with raises(PathAccessError):
         glom(1, S.a)  # ref to 'a' which doesn't exist in scope
+    return
 
 
 def test_path_len():

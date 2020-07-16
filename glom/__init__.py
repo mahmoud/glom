@@ -25,6 +25,7 @@ from glom.core import (glom,
                        GlomError,
                        BadSpec,
                        PathAccessError,
+                       PathAssignError,
                        CoalesceError,
                        UnregisteredTarget,
                        T, S, A)
@@ -43,7 +44,7 @@ from glom.matching import (M,
                            Switch,
                            Check,
                            CheckError)
-from glom.mutation import Assign, Delete, assign, delete, PathAssignError, PathDeleteError
+from glom.mutation import Assign, Delete, assign, delete, PathDeleteError
 
 # there's no -ion word that really fits what "streaming" means.
 # generation, production, iteration, all have more relevant meanings
