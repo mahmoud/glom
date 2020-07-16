@@ -1543,17 +1543,25 @@ class Val(object):
         return '%s(%s)' % (cn, bbrepr(self.val))
 
 
-class _Vars(object):
-    """
-    This is the runtime partner of :class:`Vars` -- this is what
+class ScopeVars(object):
+    """This is the runtime partner of :class:`Vars` -- this is what
     actually lives in the scope and stores runtime values.
+
+    While not part of the importable API of glom, it's half expected
+    that some folks may write sepcs to populate and export scopes, at
+    which point this type makes it easy to access values by attribute
+    access or by converting to a dict.
+
     """
     def __init__(self, base, defaults):
         self.__dict__ = dict(base)
         self.__dict__.update(defaults)
 
+    def __iter__(self):
+        return iter(self.__dict__.items())
+
     def __repr__(self):
-        return "Vars(%s)" % bbrepr(self.__dict__)
+        return "%s(%s)" % (self.__class__.__name__, bbrepr(self.__dict__))
 
 
 class Vars(object):
@@ -1573,7 +1581,7 @@ class Vars(object):
         self.defaults = kw
 
     def glomit(self, target, spec):
-        return _Vars(self.base, self.defaults)
+        return ScopeVars(self.base, self.defaults)
 
     def __repr__(self):
         ret = format_invocation(self.__class__.__name__,
@@ -1943,7 +1951,7 @@ def glom(target, spec, **kwargs):
         Path: kwargs.pop('path', []),
         Inspect: kwargs.pop('inspector', None),
         MODE: AUTO,
-        'globals': Vars(),
+        'globals': ScopeVars({}, {}),
     })
     scope[UP] = scope
     scope[ROOT] = scope

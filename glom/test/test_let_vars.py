@@ -1,7 +1,7 @@
 
 import pytest
 
-from glom import glom, Path, T, S, Literal, Let, A, Vars, Val, GlomError
+from glom import glom, Path, T, S, Literal, Let, A, Vars, Val, GlomError, M, Or, SKIP, Coalesce
 
 from glom.core import ROOT
 from glom.mutation import PathAssignError
@@ -53,6 +53,25 @@ def test_vars():
     assert repr(Vars(a=1, b=2)) in (
         "Vars(a=1, b=2)", "Vars(b=2, a=1)")
     assert repr(Vars(a=1, b=2).glomit(None, None)) in (
-        "Vars({'a': 1, 'b': 2})", "Vars({'b': 2, 'a': 1})")
+        "ScopeVars({'a': 1, 'b': 2})", "Vars({'b': 2, 'a': 1})")
 
     assert repr(A.b["c"]) == "A.b['c']"
+
+
+def test_scoped_vars():
+    target = list(range(10)) + list(range(5))
+
+    scope_globals = glom(target, ([A.globals.last], S.globals))
+    assert scope_globals.last == 4
+    assert dict(scope_globals) == {'last': 4}
+
+
+@pytest.mark.xfail
+def test_max_skip():
+    target = list(range(10)) + list(range(5))
+
+    max_spec = (Let(max=Vars(max=0)),
+                [((M > S.max.max) & A.max.max) | Val(SKIP)],
+                 S.max)
+    result = glom(target, max_spec)
+    assert result.max == 9
