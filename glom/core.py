@@ -228,12 +228,12 @@ def format_target_spec_trace(scope, width=TRACE_WIDTH, depth=0, prev_error=None,
     if depth:
         segments.append(fmt_branch(prev_error))
     for scope, spec, target, branches in _unpack_stack(scope):
-        segments.extend([recurse(s, e) for s, e in branches])
-        # ^ to disable branch printing remove this line ^
         if target is not prev_target:
             segments.append(fmt_t(target))
         prev_target = target
         segments.append(fmt_s(spec))
+        segments.extend([recurse(s, e) for s, e in branches])
+        # ^ to disable branch printing remove this line ^
     return "\n".join(segments)
 
 

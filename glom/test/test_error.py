@@ -242,11 +242,11 @@ glom.matching.MatchError: error raised while processing, details below.
  Target-spec trace (most recent last):
  - Target: [None]
  - Spec: Match(Switch([(1, 1), ('a', 'a'), (T.a, T.a)]))
+ - Spec: Switch([(1, 1), ('a', 'a'), (T.a, T.a)])
    Failed Branch ([None] does not match 1):
    - Spec: 1
    Failed Branch ([None] does not match 'a'):
    - Spec: 'a'
- - Spec: Switch([(1, 1), ('a', 'a'), (T.a, T.a)])
  - Spec: T.a
 glom.matching.MatchError: no matches for target in Switch
 """
