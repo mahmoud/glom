@@ -4,8 +4,8 @@ from xml.etree import cElementTree as ElementTree
 
 import pytest
 
-from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S, Invoke, Spec, Ref
-from glom import Auto, Fill, Iter, Let, A, Vars, Val, GlomError
+from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Val, Call, T, S, Invoke, Spec, Ref
+from glom import Auto, Fill, Iter, Let, A, Vars, Val, Literal, GlomError
 
 import glom.core as glom_core
 from glom.core import UP, ROOT, Let, bbformat, bbrepr
@@ -173,17 +173,18 @@ def test_top_level_default():
     return
 
 
-def test_literal():
+def test_val():
+    assert Literal is Val
     expected = {'value': 'c',
                 'type': 'a.b'}
     target = {'a': {'b': 'c'}}
     val = glom(target, {'value': 'a.b',
-                        'type': Literal('a.b')})
+                        'type': Val('a.b')})
 
     assert val == expected
 
-    assert glom(None, Literal('success')) == 'success'
-    assert repr(Literal(3.14)) == 'Literal(3.14)'
+    assert glom(None, Val('success')) == 'success'
+    assert repr(Val(3.14)) == 'Val(3.14)'
     assert repr(Val(3.14)) == 'Val(3.14)'
 
 
@@ -215,8 +216,8 @@ def test_call_and_target():
     assert glom([1], Call(F, args=T)).a == 1
     assert glom(F, T(T)).a == F
     assert glom([F, 1], T[0](T[1]).a) == 1
-    assert glom([[1]], S[UP][Literal(T)][0][0]) == 1
-    assert glom([[1]], S[UP][UP][UP][Literal(T)]) == [[1]]  # tops out
+    assert glom([[1]], S[UP][Val(T)][0][0]) == 1
+    assert glom([[1]], S[UP][UP][UP][Val(T)]) == [[1]]  # tops out
 
     assert list(glom({'a': 'b'}, Call(T.values))) == ['b']
 

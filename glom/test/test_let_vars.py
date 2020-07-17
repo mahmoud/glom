@@ -1,7 +1,7 @@
 
 import pytest
 
-from glom import glom, Path, T, S, Literal, Let, A, Vars, Val, GlomError, M, Or, SKIP, Coalesce
+from glom import glom, Path, T, S, Val, Let, A, Vars, Val, GlomError, M, Or, SKIP, Coalesce
 
 from glom.core import ROOT
 from glom.mutation import PathAssignError
@@ -10,7 +10,7 @@ def test_let():
     data = {'a': 1, 'b': [{'c': 2}, {'c': 3}]}
     output = [{'a': 1, 'c': 2}, {'a': 1, 'c': 3}]
     assert glom(data, (Let(a='a'), ('b', [{'a': S['a'], 'c': 'c'}]))) == output
-    assert glom(data, ('b', [{'a': S[ROOT][Literal(T)]['a'], 'c': 'c'}])) == output
+    assert glom(data, ('b', [{'a': S[ROOT][Val(T)]['a'], 'c': 'c'}])) == output
 
     with pytest.raises(TypeError):
         Let('posarg')

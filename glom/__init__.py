@@ -18,7 +18,7 @@ from glom.core import (glom,
                        Let,
                        Vars,
                        Val,
-                       Literal,
+                       Literal,  # backwards compat
                        Let,
                        Coalesce,
                        Inspect,

@@ -58,7 +58,7 @@ _MISSING = make_sentinel('_MISSING')
 SKIP =  make_sentinel('SKIP')
 SKIP.__doc__ = """
 The ``SKIP`` singleton can be returned from a function or included
-via a :class:`~glom.Literal` to cancel assignment into the output
+via a :class:`~glom.Val` to cancel assignment into the output
 object.
 
 >>> target = {'a': 'b'}
@@ -679,40 +679,6 @@ def _format_path(t_path):
     return _format_t(cur_t_path)
 
 
-class Literal(object):
-    """Literal objects specify literal values in rare cases when part of
-    the spec should not be interpreted as a glommable
-    subspec. Wherever a Literal object is encountered in a spec, it is
-    replaced with its wrapped *value* in the output.
-
-    >>> target = {'a': {'b': 'c'}}
-    >>> spec = {'a': 'a.b', 'readability': Literal('counts')}
-    >>> pprint(glom(target, spec))
-    {'a': 'c', 'readability': 'counts'}
-
-    Instead of accessing ``'counts'`` as a key like it did with
-    ``'a.b'``, :func:`~glom.glom` just unwrapped the literal and
-    included the value.
-
-    :class:`~glom.Literal` takes one argument, the literal value that should appear
-    in the glom output.
-
-    This could also be achieved with a callable, e.g., ``lambda x:
-    'literal_string'`` in the spec, but using a :class:`~glom.Literal`
-    object adds explicitness, code clarity, and a clean :func:`repr`.
-
-    """
-    def __init__(self, value):
-        self.value = value
-
-    def glomit(self, target, scope):
-        return self.value
-
-    def __repr__(self):
-        cn = self.__class__.__name__
-        return '%s(%s)' % (cn, bbrepr(self.value))
-
-
 class Spec(object):
     """Spec objects serve three purposes, here they are, roughly ordered
     by utility:
@@ -724,7 +690,7 @@ class Spec(object):
       3. A way to update the scope within another Spec.
 
     In the second usage, Spec objects are the complement to
-    :class:`~glom.Literal`, wrapping a value and marking that it
+    :class:`~glom.Val`, wrapping a value and marking that it
     should be interpreted as a glom spec, rather than a literal value.
     This is useful in places where it would be interpreted as a value
     by default. (Such as T[key], Call(func) where key and func are
@@ -1425,7 +1391,7 @@ def _t_eval(target, _t, scope):
     pae = None
     while i < fetch_till:
         op, arg = t_path[i], t_path[i + 1]
-        if type(arg) in (Spec, TType, Literal):
+        if type(arg) in (Spec, TType, Val):
             arg = scope[glom](target, arg, scope)
         if op == '.':
             try:
@@ -1519,7 +1485,7 @@ def _format_t(path, root=T):
 
 
 class Val(object):
-    """Val objects are specs which evaluate to the wrapped value.
+    """Val objects are specs which evaluate to the wrapped *value*.
 
     >>> target = {'a': {'b': 'c'}}
     >>> spec = {'a': 'a.b', 'readability': Val('counts')}
@@ -1531,16 +1497,26 @@ class Val(object):
     included the value.
 
     :class:`~glom.Val` takes one argument, the value to be returned.
+
+    .. note::
+
+       :class:`Val` was named ``Literal`` in versions of glom before
+       20.7.0. An alias has been preserved for backwards
+       compatibility, but reprs have changed.
+
     """
-    def __init__(self, val):
-        self.val = val
+    def __init__(self, value):
+        self.value = value
 
     def glomit(self, target, scope):
-        return self.val
+        return self.value
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%s)' % (cn, bbrepr(self.val))
+        return '%s(%s)' % (cn, bbrepr(self.value))
+
+
+Literal = Val  # backwards compat for pre-20.7.0
 
 
 class ScopeVars(object):

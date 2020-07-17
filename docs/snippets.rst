@@ -244,7 +244,7 @@ simply:
 
 .. code-block:: python
 
-    glom(range(10), [(M < 7) | Literal(7)])
+    glom(range(10), [(M < 7) | Val(7)])
     # [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]
 
 
@@ -252,7 +252,7 @@ What if you want to drop rather than clamp out-of-range values?
 
 .. code-block:: python
 
-    glom(range(10), [(M < 7) | Literal(SKIP)])
+    glom(range(10), [(M < 7) | Val(SKIP)])
     # [0, 1, 2, 3, 4, 5, 6]
 
 

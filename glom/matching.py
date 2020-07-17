@@ -14,7 +14,7 @@ from pprint import pprint
 from boltons.iterutils import is_iterable
 from boltons.typeutils import make_sentinel
 
-from .core import GlomError, glom, T, MODE, bbrepr, bbformat, format_invocation, Path, LAST_CHILD_SCOPE, Literal
+from .core import GlomError, glom, T, MODE, bbrepr, bbformat, format_invocation, Path, LAST_CHILD_SCOPE, Val
 
 
 _MISSING = make_sentinel('_MISSING')
@@ -484,10 +484,10 @@ class _MType(object):
     True
 
     :attr:`~glom.M` by itself evaluates the current target for truthiness.
-    For example, `M | Literal(None)` is a simple idiom for normalizing all falsey values to None:
+    For example, `M | Val(None)` is a simple idiom for normalizing all falsey values to None:
 
-    >>> from glom import Literal
-    >>> glom([0, False, "", None], [M | Literal(None)])
+    >>> from glom import Val
+    >>> glom([0, False, "", None], [M | Val(None)])
     [None, None, None, None]
 
     For convenience, ``&`` and ``|`` operators are overloaded to
@@ -765,8 +765,8 @@ class Switch(object):
     Here is a spec which differentiates between lowercase English
     vowel and consonant characters:
 
-      >>> switch_spec = Match(Switch([(Or('a', 'e', 'i', 'o', 'u'), Literal('vowel')),
-      ...                             (And(str, M, M(T[2:]) == ''), Literal('consonant'))]))
+      >>> switch_spec = Match(Switch([(Or('a', 'e', 'i', 'o', 'u'), Val('vowel')),
+      ...                             (And(str, M, M(T[2:]) == ''), Val('consonant'))]))
 
     The constructor accepts a :class:`dict` of ``{keyspec: valspec}``
     or a list of items, ``[(keyspec, valspec)]``. Keys are tried
@@ -790,8 +790,8 @@ class Switch(object):
       MatchError: error raised while processing, details below.
        Target-spec trace (most recent last):
        - Target: 3
-       - Spec: Match(Switch([(Or('a', 'e', 'i', 'o', 'u'), Literal('vowel')), (An...
-       - Spec: Switch([(Or('a', 'e', 'i', 'o', 'u'), Literal('vowel')), (And(str,...
+       - Spec: Match(Switch([(Or('a', 'e', 'i', 'o', 'u'), Val('vowel')), (An...
+       - Spec: Switch([(Or('a', 'e', 'i', 'o', 'u'), Val('vowel')), (And(str,...
        - Spec: Or('a', 'e', 'i', 'o', 'u')
        - Spec: 'a'
       MatchError: no matches for target in Switch

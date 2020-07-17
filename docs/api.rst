@@ -44,7 +44,7 @@ types that can be used with the basic set of Python builtins.
 
 
 .. autoclass:: glom.Path
-.. autoclass:: glom.Literal
+.. autoclass:: glom.Val
 .. autoclass:: glom.Spec
 
 .. _advanced-specifiers:
@@ -183,7 +183,6 @@ shortcut::
 **A** enables a shorthand which assigns the current target to a
 location in the scope.
 
-```
 
 Sensible saving - ``Vars`` & ``S.globals``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
