@@ -66,12 +66,11 @@ def test_scoped_vars():
     assert dict(scope_globals) == {'last': 4}
 
 
-@pytest.mark.xfail
 def test_max_skip():
     target = list(range(10)) + list(range(5))
 
     max_spec = (Let(max=Vars(max=0)),
-                [((M > S.max.max) & A.max.max) | Val(SKIP)],
+                [((M > M(S.max.max)) & A.max.max) | Val(SKIP)],
                  S.max)
     result = glom(target, max_spec)
     assert result.max == 9
