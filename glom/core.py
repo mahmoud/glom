@@ -182,10 +182,7 @@ def _unpack_stack(scope):
         # use LAST_CHILD_SCOPE for direct child so that this
         # is useful even for stacks that are still executing
         child = scope.maps[0][LAST_CHILD_SCOPE]
-        branch_stacks = [
-            _unpack_stack(branch_scope)
-            for branch_scope, branch_error in branches]
-        stack.append((scope.maps[0], scope[Spec], scope[T], branch_stacks))
+        stack.append((scope.maps[0], scope[Spec], scope[T], branches))
         scope = child
     stack.append((scope.maps[0], scope[Spec], scope[T], []))
     return stack
@@ -202,19 +199,28 @@ def _format_trace_value(value, maxlen):
     return s
 
 
-def format_target_spec_trace(scope, width=TRACE_WIDTH, branches=True, depth=0):
+def format_target_spec_trace(scope, width=TRACE_WIDTH, depth=0, branch_error=None, prev_target=_MISSING):
     """
     unpack a scope into a multi-line but short summary
     """
     segments = []
-    prev_target = _MISSING
-    target_width = width - len(" - Target: ")
-    spec_width = width - len(" - Spec: ")
+    indent = " " * 2 * depth
+    target_pre = indent + " - Target: "
+    spec_pre = indent + " - Spec: "
+    target_width = width - len(target_pre)
+    spec_width = width - len(spec_pre)
+    recurse = lambda s, e: format_target_spec_trace(s, width, depth + 1, e, prev_target)
+    if depth:
+        segments.append(indent + "Failed Branch:")
     for scope, spec, target, branches in _unpack_stack(scope):
+        segments.extend([recurse(s, e) for s, e in branches])
+        # ^ to disable branch printing remove this line ^
         if target is not prev_target:
-            segments.append(" - Target: " + _format_trace_value(target, target_width))
+            segments.append(target_pre + _format_trace_value(target, target_width))
         prev_target = target
-        segments.append(" - Spec: " + _format_trace_value(spec, spec_width))
+        segments.append(spec_pre + _format_trace_value(spec, spec_width))
+    if branch_error:
+        segments.append(indent + " " + str(branch_error))
     return "\n".join(segments)
 
 
