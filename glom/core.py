@@ -199,7 +199,7 @@ def _format_trace_value(value, maxlen):
     return s
 
 
-def format_target_spec_trace(scope, width=TRACE_WIDTH, depth=0, branch_error=None, prev_target=_MISSING):
+def format_target_spec_trace(scope, width=TRACE_WIDTH, depth=0, prev_error=None, prev_target=_MISSING):
     """
     unpack a scope into a multi-line but short summary
     """
@@ -211,9 +211,22 @@ def format_target_spec_trace(scope, width=TRACE_WIDTH, depth=0, branch_error=Non
         return lambda v: pre + _format_trace_value(v, fmt_width)
     fmt_t = mk_fmt("Target")
     fmt_s = mk_fmt("Spec")
+    # TODO: is this helper function too clunky?
+    def mk_fmt_err(pre, post):
+        pre = indent + pre
+        fmt_width = width - len(pre) - len(post)
+        def fmt_err(err):
+            if isinstance(err, GlomError):
+                inner = str(err)
+            else:
+                inner = format_target_spec_trace(err,fmt_width)
+            return pre + inner + post
+        return fmt_err
+    fmt_branch = mk_fmt_err(" Failed Branch (", "):")
+    fmt_err = mk_fmt_err(" ", "")
     recurse = lambda s, e: format_target_spec_trace(s, width, depth + 1, e, prev_target)
     if depth:
-        segments.append(indent + "Failed Branch:")
+        segments.append(fmt_branch(prev_error))
     for scope, spec, target, branches in _unpack_stack(scope):
         segments.extend([recurse(s, e) for s, e in branches])
         # ^ to disable branch printing remove this line ^
@@ -221,8 +234,6 @@ def format_target_spec_trace(scope, width=TRACE_WIDTH, depth=0, branch_error=Non
             segments.append(fmt_t(target))
         prev_target = target
         segments.append(fmt_s(spec))
-    if branch_error:
-        segments.append(indent + " " + str(branch_error))  # _format_trace_value(branch_error, width - len(indent) - 1))
     return "\n".join(segments)
 
 
