@@ -189,7 +189,7 @@ def _unpack_stack(scope):
 
 
 def _format_trace_value(value, maxlen):
-    s = bbrepr(value)  # TODO: integrate bbrepr with an option for reprlib
+    s = bbrepr(value)
     if len(s) > maxlen:
         try:
             suffix = '... (len=%s)' % len(value)
@@ -205,10 +205,12 @@ def format_target_spec_trace(scope, width=TRACE_WIDTH, depth=0, branch_error=Non
     """
     segments = []
     indent = " " * 2 * depth
-    target_pre = indent + " - Target: "
-    spec_pre = indent + " - Spec: "
-    target_width = width - len(target_pre)
-    spec_width = width - len(spec_pre)
+    def mk_fmt(label):
+        pre = indent + " - " + label + ": "
+        fmt_width = width - len(pre)
+        return lambda v: pre + _format_trace_value(v, fmt_width)
+    fmt_t = mk_fmt("Target")
+    fmt_s = mk_fmt("Spec")
     recurse = lambda s, e: format_target_spec_trace(s, width, depth + 1, e, prev_target)
     if depth:
         segments.append(indent + "Failed Branch:")
@@ -216,11 +218,11 @@ def format_target_spec_trace(scope, width=TRACE_WIDTH, depth=0, branch_error=Non
         segments.extend([recurse(s, e) for s, e in branches])
         # ^ to disable branch printing remove this line ^
         if target is not prev_target:
-            segments.append(target_pre + _format_trace_value(target, target_width))
+            segments.append(fmt_t(target))
         prev_target = target
-        segments.append(spec_pre + _format_trace_value(spec, spec_width))
+        segments.append(fmt_s(spec))
     if branch_error:
-        segments.append(indent + " " + str(branch_error))
+        segments.append(indent + " " + str(branch_error))  # _format_trace_value(branch_error, width - len(indent) - 1))
     return "\n".join(segments)
 
 
