@@ -105,6 +105,12 @@ CHILD_ERRORS.__doc__ = """
 failed child branches of the current scope.
 """
 
+CUR_ERROR = make_sentinel('CUR_ERROR')
+CUR_ERROR.__doc__ = """
+``CUR_ERROR`` is used by glom internals to keep track of
+thrown exceptions.
+"""
+
 _PKG_DIR_PATH = os.path.dirname(os.path.abspath(__file__))
 
 class GlomError(Exception):
@@ -165,27 +171,18 @@ class GlomError(Exception):
 
 def _unpack_stack(scope):
     """
-    convert scope to [(scope, spec, target)]
+    convert scope to [(scope, spec, target, error, [children])]
+
+    this is a convenience method to make iteration simpler
     """
-    # impl notes:
-    # the spec and target are extracted from each level of the
-    # scope using cursors.
-    #
-    # scope[T] -- target cursor
-    # scope[Spec] -- spec cursor (for dict + tuple type specs)
-    #
-    # root glom call generates two scopes up at the top that aren't part
-    # of execution
     stack = []
     scope = scope.maps[0]
     while LAST_CHILD_SCOPE in scope:
-        branches = scope[CHILD_ERRORS][:-1]
-        # use LAST_CHILD_SCOPE for direct child so that this
-        # is useful even for stacks that are still executing
         child = scope[LAST_CHILD_SCOPE]
-        stack.append((scope, scope[Spec], scope[T], branches))
+        branches = scope[CHILD_ERRORS][:-1]
+        stack.append((scope, scope[Spec], scope[T], scope.get(CUR_ERROR), branches))
         scope = child.maps[0]
-    stack.append((scope, scope[Spec], scope[T], []))
+    stack.append((scope, scope[Spec], scope[T], scope.get(CUR_ERROR), []))
     return stack
 
 
@@ -200,7 +197,7 @@ def _format_trace_value(value, maxlen):
     return s
 
 
-def format_target_spec_trace(scope, width=TRACE_WIDTH, depth=0, prev_error=None, prev_target=_MISSING):
+def format_target_spec_trace(scope, width=TRACE_WIDTH, depth=0, prev_target=_MISSING):
     """
     unpack a scope into a multi-line but short summary
     """
@@ -212,28 +209,22 @@ def format_target_spec_trace(scope, width=TRACE_WIDTH, depth=0, prev_error=None,
         return lambda v: pre + _format_trace_value(v, fmt_width)
     fmt_t = mk_fmt("Target")
     fmt_s = mk_fmt("Spec")
-    # TODO: is this helper function too clunky?
-    def mk_fmt_err(pre, post):
-        pre = indent + pre
-        fmt_width = width - len(pre) - len(post)
-        def fmt_err(err):
-            if isinstance(err, GlomError):
-                inner = str(err)
-            else:
-                inner = format_target_spec_trace(err,fmt_width)
-            return pre + inner + post
-        return fmt_err
-    fmt_branch = mk_fmt_err(" Failed Branch (", "):")
-    fmt_err = mk_fmt_err(" ", "")
-    recurse = lambda s, e: format_target_spec_trace(s, width, depth + 1, e, prev_target)
+    recurse = lambda s: format_target_spec_trace(s, width, depth + 1, prev_target)
+    fmt_e = lambda e: indent + e.__class__.__name__ + ": " + str(e)
     if depth:
-        segments.append(fmt_branch(prev_error))
-    for scope, spec, target, branches in _unpack_stack(scope):
+        segments.append(indent + "Failed Branch:")
+    stack = _unpack_stack(scope)
+    for i in range(len(stack)):
+        scope, spec, target, error, branches = stack[i]
         if target is not prev_target:
             segments.append(fmt_t(target))
         prev_target = target
         segments.append(fmt_s(spec))
-        segments.extend([recurse(s, e) for s, e in branches])
+        # print error at the lowest spec it occurs in
+        if error is not None and depth:  # don't print when depth=0
+            if i == len(stack) - 1 or error != stack[i + 1][3]:
+                segments.append(fmt_e(error))
+        segments.extend([recurse(s) for s in branches])
         # ^ to disable branch printing remove this line ^
     return "\n".join(segments)
 
@@ -248,7 +239,7 @@ def format_oneline_trace(scope):
     # if the target is the same, don't repeat it
     segments = []
     prev_target = _MISSING
-    for scope, spec, target, branches in _unpack_stack(scope):
+    for scope, spec, target, error, branches in _unpack_stack(scope):
         segments.append('/')
         if type(spec) in (TType, Path):
             segments.append(bbrepr(spec))
@@ -1881,8 +1872,8 @@ def _glom(target, spec, scope):
 
         return scope[MODE](target, spec, scope)
     except Exception as e:
-        errs = scope.maps[1][CHILD_ERRORS]
-        errs.append((scope, e))
+        scope.maps[1][CHILD_ERRORS].append(scope)
+        scope.maps[0][CUR_ERROR] = e
         raise
 
 

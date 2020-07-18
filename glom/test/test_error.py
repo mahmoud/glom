@@ -5,7 +5,7 @@ import traceback
 
 import pytest
 
-from glom import glom, S, T, GlomError, Switch
+from glom import glom, S, T, GlomError, Switch, Coalesce
 from glom.core import format_oneline_trace, format_target_spec_trace, bbrepr, ROOT, LAST_CHILD_SCOPE
 from glom.matching import M, MatchError, TypeMatchError, Match
 
@@ -243,12 +243,37 @@ glom.matching.MatchError: error raised while processing, details below.
  - Target: [None]
  - Spec: Match(Switch([(1, 1), ('a', 'a'), (T.a, T.a)]))
  - Spec: Switch([(1, 1), ('a', 'a'), (T.a, T.a)])
-   Failed Branch ([None] does not match 1):
+  Failed Branch:
    - Spec: 1
-   Failed Branch ([None] does not match 'a'):
+  glom.matching.MatchError: [None] does not match 1
+  Failed Branch:
    - Spec: 'a'
+  glom.matching.MatchError: [None] does not match 'a'
  - Spec: T.a
 glom.matching.MatchError: no matches for target in Switch
+"""
+
+def test_coalesce_stack():
+    val = {'a': {'b': 'c'},  # basic dictionary nesting
+       'd': {'e': ['f'],    # list in dictionary
+             'g': 'h'},
+       'i': [{'j': 'k', 'l': 'm'}],  # list of dictionaries
+       'n': 'o'}
+    assert _make_stack(Coalesce('xxx', 'yyy'), target=val) == """\
+Traceback (most recent call last):
+  File "test_error.py", line ___, in _make_stack
+    glom(target, spec)
+  File "core.py", line ___, in glom
+    raise err
+glom.core.CoalesceError: error raised while processing, details below.
+ Target-spec trace (most recent last):
+ - Target: {'a': {'b': 'c'}, 'd': {'e': ['f'], 'g': 'h'}, 'i': [{'j... (len=4)
+ - Spec: Coalesce('xxx', 'yyy')
+  Failed Branch:
+   - Spec: 'xxx'
+  PathAccessError: could not access 'xxx', part 0 of Path('xxx'), got error: KeyError('xxx')
+ - Spec: 'yyy'
+glom.core.CoalesceError: no valid values found. Tried ('xxx', 'yyy') and got (PathAccessError, PathAccessError) (at path [])
 """
 
 

@@ -70,17 +70,6 @@ def test_coalesce():
     assert glom(val, 'a.b') == 'c'
     assert glom(val, Coalesce('xxx', 'yyy', 'a.b')) == 'c'
 
-    with pytest.raises(CoalesceError) as exc_info:
-        glom(val, Coalesce('xxx', 'yyy'))
-
-    msg = exc_info.exconly()
-    assert "'xxx'" in msg
-    assert "'yyy'" in msg
-    assert msg.count('PathAccessError') == 2
-    expected = "[PathAccessError(KeyError('xxx',), Path('xxx'), 0), PathAccessError(KeyError('yyy',), Path('yyy'), 0)], [])"
-    received = repr(exc_info.value)
-    assert expected.replace(',', '') in received.replace(',', '')  # normalize commas for py3.7+ repr change
-
     # check that defaulting works
     spec = Coalesce('xxx', 'yyy', default='zzz')
     assert glom(val, spec) == 'zzz'
