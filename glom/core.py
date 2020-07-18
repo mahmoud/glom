@@ -177,14 +177,15 @@ def _unpack_stack(scope):
     # root glom call generates two scopes up at the top that aren't part
     # of execution
     stack = []
-    while LAST_CHILD_SCOPE in scope.maps[0]:
-        branches = scope.maps[0][CHILD_ERRORS][:-1]
+    scope = scope.maps[0]
+    while LAST_CHILD_SCOPE in scope:
+        branches = scope[CHILD_ERRORS][:-1]
         # use LAST_CHILD_SCOPE for direct child so that this
         # is useful even for stacks that are still executing
-        child = scope.maps[0][LAST_CHILD_SCOPE]
-        stack.append((scope.maps[0], scope[Spec], scope[T], branches))
-        scope = child
-    stack.append((scope.maps[0], scope[Spec], scope[T], []))
+        child = scope[LAST_CHILD_SCOPE]
+        stack.append((scope, scope[Spec], scope[T], branches))
+        scope = child.maps[0]
+    stack.append((scope, scope[Spec], scope[T], []))
     return stack
 
 
