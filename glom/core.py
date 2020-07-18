@@ -171,18 +171,27 @@ class GlomError(Exception):
 
 def _unpack_stack(scope):
     """
-    convert scope to [(scope, spec, target, error, [children])]
+    convert scope to [[scope, spec, target, error, [children]]]
 
-    this is a convenience method to make iteration simpler
+    this is a convenience method for printing stacks
     """
     stack = []
     scope = scope.maps[0]
     while LAST_CHILD_SCOPE in scope:
         child = scope[LAST_CHILD_SCOPE]
-        branches = scope[CHILD_ERRORS][:-1]
-        stack.append((scope, scope[Spec], scope[T], scope.get(CUR_ERROR), branches))
+        branches = scope[CHILD_ERRORS]
+        if branches == [child]:
+            branches = []  # if there's only one branch, count it as linear
+        stack.append([scope, scope[Spec], scope[T], scope.get(CUR_ERROR), branches])
+        if child in branches:
+            break  # if child already covered by branches, stop the linear descent
         scope = child.maps[0]
-    stack.append((scope, scope[Spec], scope[T], scope.get(CUR_ERROR), []))
+    stack.append([scope, scope[Spec], scope[T], scope.get(CUR_ERROR), []])
+    # push errors "down" to where they were first raised / first observed
+    for i in range(len(stack) - 1):
+        cur, nxt = stack[i], stack[i + 1]
+        if cur[3] == nxt[3]:
+            cur[3] = None
     return stack
 
 
@@ -210,7 +219,8 @@ def format_target_spec_trace(scope, width=TRACE_WIDTH, depth=0, prev_target=_MIS
     fmt_t = mk_fmt("Target")
     fmt_s = mk_fmt("Spec")
     recurse = lambda s: format_target_spec_trace(s, width, depth + 1, prev_target)
-    fmt_e = lambda e: indent + e.__class__.__name__ + ": " + str(e)
+    tb_exc_line = lambda e: "".join(traceback.format_exception_only(type(e), e))[:-1]
+    fmt_e = lambda e: indent + " - " + tb_exc_line(e)
     if depth:
         segments.append(indent + "Failed Branch:")
     stack = _unpack_stack(scope)
@@ -220,12 +230,9 @@ def format_target_spec_trace(scope, width=TRACE_WIDTH, depth=0, prev_target=_MIS
             segments.append(fmt_t(target))
         prev_target = target
         segments.append(fmt_s(spec))
-        # print error at the lowest spec it occurs in
-        if error is not None and depth:  # don't print when depth=0
-            if i == len(stack) - 1 or error != stack[i + 1][3]:
-                segments.append(fmt_e(error))
+        if error is not None and depth:
+            segments.append(fmt_e(error))
         segments.extend([recurse(s) for s in branches])
-        # ^ to disable branch printing remove this line ^
     return "\n".join(segments)
 
 
