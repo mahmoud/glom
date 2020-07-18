@@ -14,7 +14,7 @@ from pprint import pprint
 from boltons.iterutils import is_iterable
 from boltons.typeutils import make_sentinel
 
-from .core import GlomError, glom, T, MODE, bbrepr, bbformat, format_invocation, Path, LAST_CHILD_SCOPE, Literal
+from .core import GlomError, glom, T, MODE, bbrepr, bbformat, format_invocation, Path, chain_child, Literal
 
 
 _MISSING = make_sentinel('_MISSING')
@@ -828,8 +828,7 @@ class Switch(object):
                 scope[glom](target, keyspec, scope)
             except GlomError as ge:
                 continue
-            scope = scope[LAST_CHILD_SCOPE]  # valspec child of keyspec so e.g. var capture
-            return scope[glom](target, valspec, scope)
+            return scope[glom](target, valspec, chain_child(scope))
         if self.default is not _MISSING:
             return self.default
         raise MatchError("no matches for target in %s"  % self.__class__.__name__)

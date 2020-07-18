@@ -97,6 +97,14 @@ scope executed.  Useful for "lifting" results out of child scopes
 for scopes that want to chain the scopes of their children together
 similar to tuple.
 """
+
+NO_PYFRAME = make_sentinel('NO_PYFRAME')
+NO_PYFRAME.__doc__ = """
+Used internally to mark scopes which are no longer wrapped
+in a recursive glom() call, so that they can be cleaned up correctly
+in case of exceptions
+"""
+
 MODE =  make_sentinel('MODE')
 
 CHILD_ERRORS = make_sentinel('CHILD_ERRORS')
@@ -186,7 +194,8 @@ def _unpack_stack(scope):
         if child in branches:
             break  # if child already covered by branches, stop the linear descent
         scope = child.maps[0]
-    stack.append([scope, scope[Spec], scope[T], scope.get(CUR_ERROR), []])
+    else:  # if break executed above, cur scope was already added
+        stack.append([scope, scope[Spec], scope[T], scope.get(CUR_ERROR), []])
     # push errors "down" to where they were first raised / first observed
     for i in range(len(stack) - 1):
         cur, nxt = stack[i], stack[i + 1]
@@ -223,9 +232,7 @@ def format_target_spec_trace(scope, width=TRACE_WIDTH, depth=0, prev_target=_MIS
     fmt_e = lambda e: indent + " - " + tb_exc_line(e)
     if depth:
         segments.append(indent + "Failed Branch:")
-    stack = _unpack_stack(scope)
-    for i in range(len(stack)):
-        scope, spec, target, error, branches = stack[i]
+    for scope, spec, target, error, branches in _unpack_stack(scope):
         if target is not prev_target:
             segments.append(fmt_t(target))
         prev_target = target
@@ -1563,14 +1570,13 @@ def _handle_list(target, spec, scope):
 def _handle_tuple(target, spec, scope):
     res = target
     for subspec in spec:
+        scope = chain_child(scope)
         nxt = scope[glom](res, subspec, scope)
         if nxt is SKIP:
             continue
         if nxt is STOP:
             break
         res = nxt
-        # this makes it so that specs in a tuple effectively nest.
-        scope = scope[LAST_CHILD_SCOPE]
         if not isinstance(subspec, list):
             scope[Path] += [getattr(subspec, '__name__', subspec)]
     return res
@@ -1861,6 +1867,24 @@ def glom(target, spec, **kwargs):
     return ret
 
 
+def chain_child(scope):
+    """
+    used for specs like Auto(tuple), Switch(), etc
+    that want to chain their child scopes together
+
+    returns a new scope that can be passed to
+    the next recursive glom call, e.g.
+
+    scope[glom](target, spec, chain_child(scope))
+    """
+    cur_vars = scope.maps[0]
+    if LAST_CHILD_SCOPE not in cur_vars:
+        return scope  # no children yet, nothing to do
+    nxt_in_chain = scope[LAST_CHILD_SCOPE]
+    nxt_in_chain.maps[0][NO_PYFRAME] = True
+    return nxt_in_chain
+
+
 def _glom(target, spec, scope):
     parent = scope
     scope = scope.new_child({
@@ -1869,7 +1893,7 @@ def _glom(target, spec, scope):
         UP: parent,
         CHILD_ERRORS: [],
     })
-    parent.maps[0][LAST_CHILD_SCOPE] = scope
+    parent[LAST_CHILD_SCOPE] = scope
 
     try:
         if isinstance(spec, TType):  # must go first, due to callability
@@ -1881,6 +1905,12 @@ def _glom(target, spec, scope):
     except Exception as e:
         scope.maps[1][CHILD_ERRORS].append(scope)
         scope.maps[0][CUR_ERROR] = e
+        if NO_PYFRAME in scope.maps[1]:
+            cur_scope = scope[UP]
+            while NO_PYFRAME in cur_scope.maps[0]:
+                cur_scope.maps[1][CHILD_ERRORS].append(cur_scope)
+                cur_scope.maps[0][CUR_ERROR] = e
+                cur_scope = cur_scope[UP]
         raise
 
 

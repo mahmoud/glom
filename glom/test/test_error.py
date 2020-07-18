@@ -253,7 +253,6 @@ glom.matching.MatchError: error raised while processing, details below.
   Failed Branch:
    - Spec: T.a
    - glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
- - Spec: Switch([(1, 1), ('a', 'a'), (T.a, T.a)])
 glom.matching.MatchError: no matches for target in Switch
 """
 
@@ -278,8 +277,10 @@ glom.core.PathAccessError: error raised while processing, details below.
   Failed Branch:
    - Spec: 'a'
    - glom.matching.MatchError: [None] does not match 'a'
- - Spec: [None]
- - Spec: T.a
+  Failed Branch:
+   - Spec: [None]
+   - Spec: T.a
+   - glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
 glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
 """
     # branch and another branch
@@ -302,18 +303,23 @@ glom.core.PathAccessError: error raised while processing, details below.
   Failed Branch:
    - Spec: 'a'
    - glom.matching.MatchError: [None] does not match 'a'
- - Spec: [None]
- - Spec: Switch([(1, 1), ('a', 'a'), ([None], T.a)])
   Failed Branch:
-   - Spec: 1
-   - glom.matching.MatchError: [None] does not match 1
-  Failed Branch:
-   - Spec: 'a'
-   - glom.matching.MatchError: [None] does not match 'a'
- - Spec: [None]
- - Spec: T.a
+   - Spec: [None]
+   - Spec: Switch([(1, 1), ('a', 'a'), ([None], T.a)])
+   - glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
+    Failed Branch:
+     - Spec: 1
+     - glom.matching.MatchError: [None] does not match 1
+    Failed Branch:
+     - Spec: 'a'
+     - glom.matching.MatchError: [None] does not match 'a'
+    Failed Branch:
+     - Spec: [None]
+     - Spec: T.a
+     - glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
 glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
 """
+
 
 def test_coalesce_stack():
     val = {'a': {'b': 'c'},  # basic dictionary nesting
@@ -337,8 +343,28 @@ glom.core.CoalesceError: error raised while processing, details below.
   Failed Branch:
    - Spec: 'yyy'
    - glom.core.PathAccessError: could not access 'yyy', part 0 of Path('yyy'), got error: KeyError('yyy')
- - Spec: Coalesce('xxx', 'yyy')
 glom.core.CoalesceError: no valid values found. Tried ('xxx', 'yyy') and got (PathAccessError, PathAccessError) (at path [])
+"""
+
+
+def test_nesting_stack():
+    # check behavior when a glom stack is nested via data structure not python call stack
+    assert _make_stack(('a', 'b', 'c'), target={'a': {'b': {}}}) == """\
+Traceback (most recent call last):
+  File "test_error.py", line ___, in _make_stack
+    glom(target, spec)
+  File "core.py", line ___, in glom
+    raise err
+glom.core.PathAccessError: error raised while processing, details below.
+ Target-spec trace (most recent last):
+ - Target: {'a': {'b': {}}}
+ - Spec: ('a', 'b', 'c')
+ - Spec: 'a'
+ - Target: {'b': {}}
+ - Spec: 'b'
+ - Target: {}
+ - Spec: 'c'
+glom.core.PathAccessError: could not access 'c', part 0 of Path('c'), got error: KeyError('c')
 """
 
 
