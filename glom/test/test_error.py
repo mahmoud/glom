@@ -48,7 +48,7 @@ def test_line_trace():
 def test_short_trace():
     stacklifier = ([{'data': S}],)
     scope = glom([1], stacklifier)[0]['data'][ROOT][LAST_CHILD_SCOPE]
-    fmtd_stack = format_target_spec_trace(scope)
+    fmtd_stack = format_target_spec_trace(scope, None)
     exp_lines = [
         " - Target: [1]",
         " - Spec: ([{'data': S}],)",
@@ -280,7 +280,6 @@ glom.core.PathAccessError: error raised while processing, details below.
   Failed Branch:
    - Spec: [None]
    - Spec: T.a
-   - glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
 glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
 """
     # branch and another branch
@@ -306,7 +305,6 @@ glom.core.PathAccessError: error raised while processing, details below.
   Failed Branch:
    - Spec: [None]
    - Spec: Switch([(1, 1), ('a', 'a'), ([None], T.a)])
-   - glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
     Failed Branch:
      - Spec: 1
      - glom.matching.MatchError: [None] does not match 1
@@ -316,7 +314,6 @@ glom.core.PathAccessError: error raised while processing, details below.
     Failed Branch:
      - Spec: [None]
      - Spec: T.a
-     - glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
 glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
 """
 
