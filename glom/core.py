@@ -1316,10 +1316,11 @@ class TType(object):
 
     .. note::
 
-       ``T`` attributes starting with __ are reserved to avoid colliding
-       with operator overloading methods.  The ``T.__()`` method is
-       available for cases where they are needed.  For example,
-       ``T.__('class__')`` is equivalent to type.
+       ``T`` attributes starting with __ are reserved to avoid
+       colliding with many built-in Python behaviors, current and
+       future.  The ``T.__()`` method is available for cases where
+       they are needed.  For example, ``T.__('class__')`` is
+       equivalent to accessing the ``__class__`` attribute.
 
     """
     __slots__ = ('__weakref__',)
