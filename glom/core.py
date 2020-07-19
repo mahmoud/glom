@@ -244,8 +244,6 @@ def format_target_spec_trace(scope, root_error, width=TRACE_WIDTH, depth=0, prev
         segments.append(fmt_s(spec))
         if error is not None and error is not root_error:
             segments.append(fmt_e(error))
-            print(error.__class__.__name__, str(error), " is not ", root_error.__class__.__name__)
-            print(id(error) % 1000, "is not", id(root_error) % 1000)
         segments.extend([recurse(s) for s in branches])
     return "\n".join(segments)
 
@@ -1887,8 +1885,14 @@ def chain_child(scope):
     """
     if LAST_CHILD_SCOPE not in scope.maps[0]:
         return scope  # no children yet, nothing to do
+    # NOTE: an option here is to drill down on LAST_CHILD_SCOPE;
+    # this would have some interesting consequences for scoping
+    # of tuples
     nxt_in_chain = scope[LAST_CHILD_SCOPE]
     nxt_in_chain.maps[0][NO_PYFRAME] = True
+    # previous failed branches are forgiven as the
+    # scope is re-wired into a new stack
+    del nxt_in_chain.maps[0][CHILD_ERRORS][:]
     return nxt_in_chain
 
 

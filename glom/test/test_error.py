@@ -5,7 +5,7 @@ import traceback
 
 import pytest
 
-from glom import glom, S, T, GlomError, Switch, Coalesce
+from glom import glom, S, T, GlomError, Switch, Coalesce, Or
 from glom.core import format_oneline_trace, format_target_spec_trace, bbrepr, ROOT, LAST_CHILD_SCOPE
 from glom.matching import M, MatchError, TypeMatchError, Match
 
@@ -315,6 +315,28 @@ glom.core.PathAccessError: error raised while processing, details below.
      - Spec: [None]
      - Spec: T.a
 glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
+"""
+
+
+def test_partially_failing_branch():
+    # what happens when part of an Or() etc fails,
+    # but another part succeeds and then an error happens further down?
+    assert _make_stack((Or('a', [T]), Or('b', [T]), 'c')) == """\
+Traceback (most recent call last):
+  File "test_error.py", line ___, in _make_stack
+    glom(target, spec)
+  File "core.py", line ___, in glom
+    raise err
+glom.core.PathAccessError: error raised while processing, details below.
+ Target-spec trace (most recent last):
+ - Target: [None]
+ - Spec: (Or('a', [T]), Or('b', [T]), 'c')
+ - Spec: Or('a', [T])
+ - Target: [None]
+ - Spec: Or('b', [T])
+ - Target: [None]
+ - Spec: 'c'
+glom.core.PathAccessError: could not access 'c', part 0 of Path('c'), got error: ValueError("invalid literal for int() with base 10: 'c'")
 """
 
 
