@@ -230,6 +230,9 @@ def test_t_dict_key():
 
 
 def test_t_dunders():
-    with raises(AttributeError):
+    with raises(AttributeError) as exc_info:
         T.__name__
-    assert glom(1, T.__('class__')) == int
+
+    assert 'use T.__("name__")' in str(exc_info.value)
+
+    assert glom(1, T.__('class__')) is int

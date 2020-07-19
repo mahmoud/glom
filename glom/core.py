@@ -1326,7 +1326,9 @@ class TType(object):
 
     def __getattr__(self, name):
         if name.startswith('__'):
-            raise AttributeError('T instances reserve dunder attributes, use T.__()')
+            raise AttributeError('T instances reserve dunder attributes.'
+                                 ' To access the "{name}" attribute, use'
+                                 ' T.__("{d_name}")'.format(name=name, d_name=name[2:]))
         return _t_child(self, '.', name)
 
     def __getitem__(self, item):
