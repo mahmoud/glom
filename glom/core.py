@@ -1314,6 +1314,13 @@ class TType(object):
        method calls and attribute/item access are considered
        experimental and should not be relied upon.
 
+    .. note::
+
+       ``T`` attributes starting with __ are reserved to avoid colliding
+       with operator overloading methods.  The ``T.__()`` method is
+       available for cases where they are needed.  For example,
+       ``T.__('class__')`` is equivalent to type.
+
     """
     __slots__ = ('__weakref__',)
 
