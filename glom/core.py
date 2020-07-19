@@ -1319,7 +1319,7 @@ class TType(object):
 
     def __getattr__(self, name):
         if name.startswith('__'):
-            raise AttributeError('T instances reserve dunder attributes')
+            raise AttributeError('T instances reserve dunder attributes, use T.__()')
         return _t_child(self, '.', name)
 
     def __getitem__(self, item):
@@ -1327,6 +1327,9 @@ class TType(object):
 
     def __call__(self, *args, **kwargs):
         return _t_child(self, '(', (args, kwargs))
+
+    def __(self, name):
+        return _t_child(self, '.', '__' + name)
 
     def __repr__(self):
         t_path = _T_PATHS[self]
