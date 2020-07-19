@@ -321,7 +321,7 @@ glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: Attri
 def test_partially_failing_branch():
     # what happens when part of an Or() etc fails,
     # but another part succeeds and then an error happens further down?
-    assert _make_stack((Or('a', [T]), Or('b', [T]), 'c')) == """\
+    assert _make_stack((Or('a', T), Or('b', T), 'c'), target=None) == """\
 Traceback (most recent call last):
   File "test_error.py", line ___, in _make_stack
     glom(target, spec)
@@ -329,14 +329,12 @@ Traceback (most recent call last):
     raise err
 glom.core.PathAccessError: error raised while processing, details below.
  Target-spec trace (most recent last):
- - Target: [None]
- - Spec: (Or('a', [T]), Or('b', [T]), 'c')
- - Spec: Or('a', [T])
- - Target: [None]
- - Spec: Or('b', [T])
- - Target: [None]
+ - Target: None
+ - Spec: (Or('a', T), Or('b', T), 'c')
+ - Spec: Or('a', T)
+ - Spec: Or('b', T)
  - Spec: 'c'
-glom.core.PathAccessError: could not access 'c', part 0 of Path('c'), got error: ValueError("invalid literal for int() with base 10: 'c'")
+glom.core.PathAccessError: could not access 'c', part 0 of Path('c'), got error: AttributeError("'NoneType' object has no attribute 'c'")
 """
 
 
