@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from glom import glom, S, Val, T, Merge, Fill, Let, Ref, Coalesce, STOP, Switch, GlomError
+from glom import glom, S, Val, T, A, Merge, Fill, Let, Ref, Coalesce, STOP, Switch, GlomError
 from glom.matching import (
     Match, M, MatchError, TypeMatchError, And, Or, Not,
     Optional, Required, Regex)
@@ -484,8 +484,6 @@ def test_check_ported_tests():
     return
 
 
-
-
 def test_switch():
     data = {'a': 1, 'b': 2}
     cases = [('c', lambda t: 3), ('a', 'a')]
@@ -504,3 +502,7 @@ def test_switch():
     	Switch("wrong type")
     assert glom(None, Switch({Let(a=lambda t: 1): S['a']})) == 1
     repr(Switch(cases))
+
+
+def test_nested_dict():
+    assert glom({1: 2}, Match({A.t: S.t})) == {1: 1}

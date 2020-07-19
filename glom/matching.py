@@ -698,7 +698,7 @@ def _handle_dict(target, spec, scope):
             except GlomError:
                 pass
             else:
-                result[key] = scope[glom](val, spec[spec_key], scope)
+                result[key] = scope[glom](val, spec[spec_key], chain_child(scope))
                 required.discard(spec_key)
                 break
         else:
