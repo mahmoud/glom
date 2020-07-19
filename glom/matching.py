@@ -650,9 +650,6 @@ class Required(object):
             raise ValueError("== match constants are already required: " + bbrepr(key))
         self.key = key
 
-    def glomit(self, target, scope):
-        return scope[glom](target, self.key, scope)
-
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, bbrepr(self.key))
 
@@ -686,20 +683,25 @@ def _handle_dict(target, spec, scope):
         spec_keys = sorted(spec_keys, key=_precedence)
     required = {
         key for key in spec_keys
-        if _precedence(key) == 0 and type(key) != Optional
-        or type(key) == Required}
+        if _precedence(key) == 0 and type(key) is not Optional
+        or type(key) is Required}
     result = {  # pre-load result with defaults
         key.key: key.default for key in spec_keys
         if type(key) is Optional and key.default is not _MISSING}
     for key, val in target.items():
-        for spec_key in spec_keys:
+        for maybe_spec_key in spec_keys:
+            # handle Required as a special case here rather than letting it be a stand-alone spec
+            if type(maybe_spec_key) is Required:
+                spec_key = maybe_spec_key.key
+            else:
+                spec_key = maybe_spec_key
             try:
                 key = scope[glom](key, spec_key, scope)
             except GlomError:
                 pass
             else:
-                result[key] = scope[glom](val, spec[spec_key], chain_child(scope))
-                required.discard(spec_key)
+                result[key] = scope[glom](val, spec[maybe_spec_key], chain_child(scope))
+                required.discard(maybe_spec_key)
                 break
         else:
             raise MatchError("key {!r} didn't match any of {!r}", key, spec_keys)
