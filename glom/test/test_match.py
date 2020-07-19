@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from glom import glom, S, Literal, T, Merge, Fill, Let, Ref, Coalesce, STOP, Switch, GlomError
+from glom import glom, S, Val, T, Merge, Fill, Let, Ref, Coalesce, STOP, Switch, GlomError
 from glom.matching import (
     Match, M, MatchError, TypeMatchError, And, Or, Not,
     Optional, Required, Regex)
@@ -166,9 +166,9 @@ def test_precedence():
     """test corner cases of dict key precedence"""
     glom({(0, 1): 3},
         Match({
-            (0, 1): Literal(1),  # this should match
-            (0, int): Literal(2),  # optional
-            (0, M == 1): Literal(3),  # optional
+            (0, 1): Val(1),  # this should match
+            (0, int): Val(2),  # optional
+            (0, M == 1): Val(3),  # optional
         })
     )
     with pytest.raises(ValueError):
@@ -191,9 +191,9 @@ def test_cruddy_json():
 
 def test_pattern_matching():
     pattern_matcher = Or(
-        And(Match(1), Literal('one')),
-        And(Match(2), Literal('two')),
-        And(Match(float), Literal('float'))
+        And(Match(1), Val('one')),
+        And(Match(2), Val('two')),
+        And(Match(float), Val('float'))
         )
     assert glom(1, pattern_matcher) == 'one'
     assert glom(1.1, pattern_matcher) == 'float'
@@ -215,9 +215,9 @@ def test_pattern_matching():
 
 
 def test_examples():
-    assert glom(8, (M > 7) & Literal(7)) == 7
-    assert glom(range(10), [(M > 7) & Literal(7) | T]) == [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]
-    assert glom(range(10), [(M > 7) & Literal(SKIP) | T]) == [0, 1, 2, 3, 4, 5, 6, 7]
+    assert glom(8, (M > 7) & Val(7)) == 7
+    assert glom(range(10), [(M > 7) & Val(7) | T]) == [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]
+    assert glom(range(10), [(M > 7) & Val(SKIP) | T]) == [0, 1, 2, 3, 4, 5, 6, 7]
 
 
 def test_reprs():
@@ -368,8 +368,8 @@ def test_sky():
 
 
 def test_clamp():
-    assert glom(range(10), [(M < 7) | Literal(7)]) == [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]
-    assert glom(range(10), [(M < 7) | Literal(SKIP)]) == [0, 1, 2, 3, 4, 5, 6]
+    assert glom(range(10), [(M < 7) | Val(7)]) == [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]
+    assert glom(range(10), [(M < 7) | Val(SKIP)]) == [0, 1, 2, 3, 4, 5, 6]
 
 
 def test_json_ref():
@@ -379,7 +379,7 @@ def test_json_ref():
             Match(Or(
                 And(dict, {Ref('json'): Ref('json')}),
                 And(list, [Ref('json')]),
-                And(0, Literal(None)),
+                And(0, Val(None)),
                 object)))) == {'a': {'b': [None, 1]}}
 
 
@@ -441,7 +441,7 @@ def test_check_ported_tests():
     assert glom(target, [Match({'id': And(int, M <= 1)}, default=STOP)]) == [{'id': 0}, {'id': 1}]
 
     # check that stopping chain execution on non-passing values works
-    spec = (Or(Match(len), Literal(STOP)), T[0])
+    spec = (Or(Match(len), Val(STOP)), T[0])
     assert glom('hello', spec, glom_debug=True) == 'h'
     assert glom('', spec) == ''  # would fail with IndexError if STOP didn't work
 

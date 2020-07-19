@@ -11,7 +11,7 @@ import operator
 from pprint import pprint
 
 from .core import Path, T, S, Spec, glom, UnregisteredTarget, GlomError, PathAccessError, UP
-from .core import TType, register_op, TargetRegistry, bbrepr
+from .core import TType, register_op, TargetRegistry, bbrepr, PathAssignError
 
 try:
     basestring
@@ -23,41 +23,6 @@ if getattr(__builtins__, '__dict__', None) is not None:
     # pypy's __builtins__ is a module, as is CPython's REPL, but at
     # normal execution time it's a dict?
     __builtins__ = __builtins__.__dict__
-
-
-class PathAssignError(GlomError):
-    """This :exc:`GlomError` subtype is raised when an assignment fails,
-    stemming from an :func:`~glom.assign` call or other
-    :class:`~glom.Assign` usage.
-
-    One example would be assigning to an out-of-range position in a list::
-
-      >>> assign(["short", "list"], Path(5), 'too far')
-      Traceback (most recent call last):
-      ...
-      PathAssignError: could not assign 5 on object at Path(), got error: IndexError(...
-
-    Other assignment failures could be due to assigning to an
-    ``@property`` or exception being raised inside a ``__setattr__()``.
-
-    """
-    def __init__(self, exc, path, dest_name):
-        self.exc = exc
-        self.path = path
-        self.dest_name = dest_name
-
-    def __copy__(self):
-        # py27 struggles to copy PAE without this method
-        return type(self)(self.exc, self.path, self.dest_name)
-
-    def get_message(self):
-        return ('could not assign %r on object at %r, got error: %r'
-                % (self.dest_name, self.path, self.exc))
-
-    def __repr__(self):
-        cn = self.__class__.__name__
-        return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.dest_name)
-
 
 
 class PathDeleteError(PathAssignError):
