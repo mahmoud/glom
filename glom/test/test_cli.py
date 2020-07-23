@@ -145,4 +145,4 @@ def test_main(tmp_path):
     # subprocess boundaries...
     os.chdir(str(tmp_path))
     res = subprocess.check_output(['glom', 'a', '{"a": 3}'])
-    assert res.decode('utf8') == '3\n'
+    assert res.decode('utf8') in ('3\n', '3\r\n')  # unix or windows line end okay

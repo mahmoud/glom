@@ -1,3 +1,4 @@
+
 from glom.core import (glom,
                        Fill,
                        Auto,
@@ -13,20 +14,38 @@ from glom.core import (glom,
                        UP,
                        ROOT,
                        MODE,
-                       Check,
                        Path,
-                       Literal,
+                       Let,
+                       Vars,
+                       Val,
+                       Literal,  # backwards compat
+                       Let,
                        Coalesce,
                        Inspect,
                        GlomError,
                        BadSpec,
-                       CheckError,
                        PathAccessError,
+                       PathAssignError,
                        CoalesceError,
                        UnregisteredTarget,
-                       T, S)
-from glom.mutation import Assign, Delete, assign, delete, PathAssignError, PathDeleteError
+                       T, S, A)
+
 from glom.reduction import Sum, Fold, Flatten, flatten, FoldError, Merge, merge
+from glom.matching import (M,
+                           Or,
+                           And,
+                           Not,
+                           Match,
+                           MatchError,
+                           TypeMatchError,
+                           Regex,
+                           Optional,
+                           Required,
+                           Switch,
+                           Check,
+                           CheckError)
+from glom.mutation import Assign, Delete, assign, delete, PathDeleteError
+
 # there's no -ion word that really fits what "streaming" means.
 # generation, production, iteration, all have more relevant meanings
 # elsewhere. (maybe procrastination :P)

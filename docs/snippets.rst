@@ -1,5 +1,5 @@
-Snippets
-========
+Examples & Snippets
+===================
 
 glom can do a lot of things, in the right hands. This doc makes those
 hands yours, through sample code of useful building blocks and common
@@ -233,6 +233,29 @@ with a dict:
     glom('1', ({1: float, 2: int}, T.values()))
 
 
+Clamp Values
+------------
+
+A common numerical operation is to clamp values -- if they
+are above or below a certain value, assign them to that value.
+
+Using a pattern-matching glom idiom, this can be implemented
+simply:
+
+.. code-block:: python
+
+    glom(range(10), [(M < 7) | Val(7)])
+    # [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]
+
+
+What if you want to drop rather than clamp out-of-range values?
+
+.. code-block:: python
+
+    glom(range(10), [(M < 7) | Val(SKIP)])
+    # [0, 1, 2, 3, 4, 5, 6]
+
+
 Transform Tree
 --------------
 
@@ -276,3 +299,37 @@ Will translate to the following tuples:
     >>> etree = ElementTree.fromstring(html_text)
     >>> glom(etree, etree2tuples)
     ('html', [('head', [('title', [])]), ('body', [('p', [])])])
+
+
+Fix Up Strings in Parsed JSON
+-----------------------------
+
+Tree-walking with :class:`~glom.Ref()` combines powerfully with
+pattern matching from :class:`~glom.Match()`.
+
+In this case, consider that we want to transform parsed JSON recursively,
+such that all unicodes are converted to native strings.
+
+
+.. code-block:: python
+
+    glom(json.loads(data),
+        Ref('json',
+            Match(Or(
+                And(dict, {Ref('json'): Ref('json')}),
+                And(list, [Ref('json')]),
+                And(type(u''), Auto(str)),
+                object))))
+
+
+:class:`~glom.Match()` above splits the :class:`~glom.Ref()` evaluation into 4 cases:
+
+* on :class:`dict`, use :class:`~glom.Ref()` to recurse for all keys and values
+* on :class:`list`, use :class:`~glom.Ref()` to recurse on each item
+* on text objects (``type(u'')``) -- py3 :class:`str` or py2
+  :class:`unicode` -- transform the target with :class:`str`
+* for all other values (``object``), pass them through
+
+As motivation for why this might come up: attributes, class names,
+function names, and identifiers must be the native string type for a
+given Python, i.e., bytestrings in Python 2 and unicode in Python 3.

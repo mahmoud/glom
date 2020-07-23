@@ -1,7 +1,7 @@
 
 from pytest import raises
 
-from glom import glom, Path, S, T, PathAccessError, GlomError
+from glom import glom, Path, S, T, A, PathAccessError, GlomError, BadSpec
 
 def test_list_path_access():
     assert glom(list(range(10)), Path(1)) == 1
@@ -29,6 +29,8 @@ def test_empty_path_access():
 def test_path_t_roundtrip():
     # check that T repr roundrips
     assert repr(T['a'].b.c()) == "T['a'].b.c()"
+    assert repr(T[1:]) == "T[1:]"
+    assert repr(T[::3, 1:, 1:2, :2:3]) == "T[::3, 1:, 1:2, :2:3]"
 
     # check that Path repr roundtrips
     assert repr(Path('a', 1, 'b.b', -1.0)) == "Path('a', 1, 'b.b', -1.0)"
@@ -95,6 +97,25 @@ def test_t_picklability():
 
     s_spec = S.attribute
     assert repr(s_spec) == repr(pickle.loads(pickle.dumps(s_spec)))
+
+
+def test_a_forbidden():
+    with raises(BadSpec):
+        A()  # cannot assign to function call
+    with raises(BadSpec):
+        glom(1, A)  # cannot assign without destination
+
+
+def test_s_magic():
+    assert glom(None, S.test, scope={'test': 'value'}) == 'value'
+
+    with raises(PathAccessError):
+        glom(1, S.a)  # ref to 'a' which doesn't exist in scope
+
+    with raises(PathAccessError):
+        glom(1, A.b.c)
+
+    return
 
 
 def test_path_len():
@@ -206,3 +227,12 @@ def test_from_t_identity():
 def test_t_dict_key():
     target = {'a': 'A'}
     assert glom(target, {T['a']: 'a'}) == {'A': 'A'}
+
+
+def test_t_dunders():
+    with raises(AttributeError) as exc_info:
+        T.__name__
+
+    assert 'use T.__("name__")' in str(exc_info.value)
+
+    assert glom(1, T.__('class__')) is int

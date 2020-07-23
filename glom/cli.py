@@ -97,7 +97,7 @@ def main(argv):
 
 
 def console_main():
-    _enable_debug = os.getenv('GLOM_ENABLE_DEBUG')
+    _enable_debug = os.getenv('GLOM_CLI_DEBUG')
     if _enable_debug:
         print(sys.argv)
     try:

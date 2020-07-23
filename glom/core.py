@@ -1,11 +1,8 @@
 """*glom gets results.*
 
-If there was ever a Python example of "big things come in small
-packages", ``glom`` might be it.
-
 The ``glom`` package has one central entrypoint,
 :func:`glom.glom`. Everything else in the package revolves around that
-one function.
+one function. Sometimes, big things come in small packages.
 
 A couple of conventional terms you'll see repeated many times below:
 
@@ -22,14 +19,19 @@ semantics.
 
 from __future__ import print_function
 
+import os
 import sys
 import pdb
+import copy
 import weakref
 import operator
 from abc import ABCMeta
 from pprint import pprint
+import string
 from collections import OrderedDict
+import traceback
 
+from face.helpers import get_wrap_width
 from boltons.typeutils import make_sentinel
 from boltons.iterutils import is_iterable
 #from boltons.funcutils import format_invocation
@@ -38,11 +40,17 @@ PY2 = (sys.version_info[0] == 2)
 if PY2:
     _AbstractIterableBase = object
     from .chainmap_backport import ChainMap
+    from repr import Repr
 else:
     basestring = str
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
     from collections import ChainMap
+    from reprlib import Repr
 
+GLOM_DEBUG = os.getenv('GLOM_DEBUG', '').strip().lower()
+GLOM_DEBUG = False if (GLOM_DEBUG in ('', '0', 'false')) else True
+
+TRACE_WIDTH = max(get_wrap_width(max_width=110), 50)   # min width
 
 _type_type = type
 
@@ -50,7 +58,7 @@ _MISSING = make_sentinel('_MISSING')
 SKIP =  make_sentinel('SKIP')
 SKIP.__doc__ = """
 The ``SKIP`` singleton can be returned from a function or included
-via a :class:`~glom.Literal` to cancel assignment into the output
+via a :class:`~glom.Val` to cancel assignment into the output
 object.
 
 >>> target = {'a': 'b'}
@@ -91,6 +99,13 @@ similar to tuple.
 """
 MODE =  make_sentinel('MODE')
 
+ERROR_SCOPE = make_sentinel('ERROR_SCOPE')
+ERROR_SCOPE.__doc__ = """
+``ERROR_SCOPE`` is used by glom internals to store the scope
+from which an exception was raised when processing fails.
+"""
+
+_PKG_DIR_PATH = os.path.dirname(os.path.abspath(__file__))
 
 class GlomError(Exception):
     """The base exception for all the errors that might be raised from
@@ -100,10 +115,126 @@ class GlomError(Exception):
     (e.g., ``len``, ``sum``, any ``lambda``) will not be wrapped in a
     GlomError.
     """
-    pass
+    @classmethod
+    def wrap(cls, exc):
+        # TODO: need to test this against a wide array of exception types
+        # this approach to wrapping errors works for exceptions
+        # defined in pure-python as well as C
+        exc_type = type(exc)
+        bases = (GlomError,) if issubclass(GlomError, exc_type) else (exc_type, GlomError)
+        exc_wrapper_type = type("GlomError.wrap({})".format(exc_type.__name__), bases, {})
+        try:
+            return exc_wrapper_type(*exc.args)
+        except Exception:  # maybe exception can't be re-created
+            return exc
+
+    def _finalize(self, scope):
+        # careful when changing how this functionality works; pytest seems to mess with
+        # the traceback module or sys.exc_info(). we saw different stacks when originally
+        # developing this in June 2020.
+        etype, evalue, _ = sys.exc_info()
+        tb_lines = traceback.format_exc().strip().splitlines()
+        limit = 0
+        for line in reversed(tb_lines):
+            if _PKG_DIR_PATH in line:
+                limit -= 1
+                break
+            limit += 1
+        self._tb_lines = tb_lines[-limit:]
+        self._scope = scope
+
+    def __str__(self):
+        if getattr(self, '_finalized_str', None):
+            return self._finalized_str
+        elif getattr(self, '_scope', None) is not None:
+            self._target_spec_trace = format_target_spec_trace(self._scope)
+            parts = ["error raised while processing, details below.",
+                     " Target-spec trace (most recent last):",
+                     self._target_spec_trace]
+            parts.extend(self._tb_lines)
+            self._finalized_str = "\n".join(parts)
+            return self._finalized_str
+
+        # else, not finalized
+        try:
+            exc_get_message = self.get_message
+        except AttributeError:
+            exc_get_message = super(GlomError, self).__str__
+        return exc_get_message()
 
 
-class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
+def _unpack_stack(scope):
+    """
+    convert scope to [(scope, spec, target)]
+    """
+    # impl notes:
+    # the spec and target are extracted from each level of the
+    # scope using cursors.
+    #
+    # scope[T] -- target cursor
+    # scope[Spec] -- spec cursor (for dict + tuple type specs)
+    #
+    # root glom call generates two scopes up at the top that aren't part
+    # of execution
+    return [(scope, scope[Spec], scope[T]) for scope in list(reversed(scope.maps[:-2]))]
+
+
+def _format_trace_value(value, maxlen):
+    s = bbrepr(value)  # TODO: integrate bbrepr with an option for reprlib
+    if len(s) > maxlen:
+        try:
+            suffix = '... (len=%s)' % len(value)
+        except Exception:
+            suffix = '...'
+        s = s[:maxlen - len(suffix)] + suffix
+    return s
+
+
+def format_target_spec_trace(scope, width=TRACE_WIDTH):
+    """
+    unpack a scope into a multi-line but short summary
+    """
+    segments = []
+    prev_target = _MISSING
+    target_width = width - len(" - Target: ")
+    spec_width = width - len(" - Spec: ")
+    for scope, spec, target in _unpack_stack(scope):
+        if target is not prev_target:
+            segments.append(" - Target: " + _format_trace_value(target, target_width))
+        prev_target = target
+        segments.append(" - Spec: " + _format_trace_value(spec, spec_width))
+    return "\n".join(segments)
+
+
+# TODO: not used (yet)
+def format_oneline_trace(scope):
+    """
+    unpack a scope into a single line summary
+    (shortest summary possible)
+    """
+    # the goal here is to do a kind of delta-compression --
+    # if the target is the same, don't repeat it
+    segments = []
+    prev_target = _MISSING
+    for scope, spec, target in _unpack_stack(scope):
+        segments.append('/')
+        if type(spec) in (TType, Path):
+            segments.append(bbrepr(spec))
+        else:
+            segments.append(type(spec).__name__)
+        if target != prev_target:
+            segments.append('!')
+            segments.append(type(target).__name__)
+        if Path in scope:
+            segments.append('<')
+            segments.append('->'.join([str(p) for p in scope[Path]]))
+            segments.append('>')
+        prev_target = target
+
+    return "".join(segments)
+
+
+class PathAccessError(GlomError, AttributeError, KeyError, IndexError):
     """This :exc:`GlomError` subtype represents a failure to access an
     attribute as dictated by the spec. The most commonly-seen error
     when using glom, it maintains a copy of the original exception and
@@ -140,13 +271,52 @@ class PathAccessError(AttributeError, KeyError, IndexError, GlomError):
         self.path = path
         self.part_idx = part_idx
 
+    def __copy__(self):
+        # py27 struggles to copy PAE without this method
+        return type(self)(self.exc, self.path, self.part_idx)
+
+    def get_message(self):
+        path_part = Path(self.path).values()[self.part_idx]
+        return ('could not access %r, part %r of %r, got error: %r'
+                % (path_part, self.part_idx, self.path, self.exc))
+
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.part_idx)
 
-    def __str__(self):
-        return ('could not access %r, part %r of %r, got error: %r'
-                % (self.path.values()[self.part_idx], self.part_idx, self.path, self.exc))
+
+class PathAssignError(GlomError):
+    """This :exc:`GlomError` subtype is raised when an assignment fails,
+    stemming from an :func:`~glom.assign` call or other
+    :class:`~glom.Assign` usage.
+
+    One example would be assigning to an out-of-range position in a list::
+
+      >>> assign(["short", "list"], Path(5), 'too far')  # doctest: +SKIP
+      Traceback (most recent call last):
+      ...
+      PathAssignError: could not assign 5 on object at Path(), got error: IndexError(...
+
+    Other assignment failures could be due to assigning to an
+    ``@property`` or exception being raised inside a ``__setattr__()``.
+
+    """
+    def __init__(self, exc, path, dest_name):
+        self.exc = exc
+        self.path = path
+        self.dest_name = dest_name
+
+    def __copy__(self):
+        # py27 struggles to copy PAE without this method
+        return type(self)(self.exc, self.path, self.dest_name)
+
+    def get_message(self):
+        return ('could not assign %r on object at %r, got error: %r'
+                % (self.dest_name, self.path, self.exc))
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.dest_name)
 
 
 class CoalesceError(GlomError):
@@ -177,11 +347,15 @@ class CoalesceError(GlomError):
         self.skipped = skipped
         self.path = path
 
+    def __copy__(self):
+        # py27 struggles to copy PAE without this method
+        return type(self)(self.coal_obj, self.skipped, self.path)
+
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r, %r, %r)' % (cn, self.coal_obj, self.skipped, self.path)
 
-    def __str__(self):
+    def get_message(self):
         missed_specs = tuple(self.coal_obj.subspecs)
         skipped_vals = [v.__class__.__name__
                         if isinstance(v, self.coal_obj.skip_exc)
@@ -231,6 +405,7 @@ class UnregisteredTarget(GlomError):
         self.target_type = target_type
         self.type_map = type_map
         self.path = path
+        super(UnregisteredTarget, self).__init__(op, target_type, type_map, path)
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -239,7 +414,7 @@ class UnregisteredTarget(GlomError):
         return ('%s(%r, <type %r>, %r, %r)'
                 % (cn, self.op, self.target_type.__name__, self.type_map, self.path))
 
-    def __str__(self):
+    def get_message(self):
         if not self.type_map:
             return ("glom() called without registering any types for operation '%s'. see"
                     " glom.register() or Glommer's constructor for details." % (self.op,))
@@ -261,14 +436,40 @@ if getattr(__builtins__, '__dict__', None) is not None:
 _BUILTIN_ID_NAME_MAP = dict([(id(v), k)
                              for k, v in __builtins__.items()])
 
-def bbrepr(obj):
+
+# on py27, Repr is an old-style class, hence the lack of super() below
+class _BBRepr(Repr):
     """A better repr for builtins, when the built-in repr isn't
     roundtrippable.
     """
-    ret = repr(obj)
-    if not ret.startswith('<'):
-        return ret
-    return _BUILTIN_ID_NAME_MAP.get(id(obj), ret)
+    def __init__(self):
+        Repr.__init__(self)
+        # turn up all the length limits very high
+        for name in self.__dict__:
+            setattr(self, name, 1024)
+
+    def repr1(self, x, level):
+        ret = Repr.repr1(self, x, level)
+        if not ret.startswith('<'):
+            return ret
+        return _BUILTIN_ID_NAME_MAP.get(id(x), ret)
+
+
+bbrepr = _BBRepr().repr
+
+
+class _BBReprFormatter(string.Formatter):
+    """
+    allow format strings to be evaluated where {!r} will use bbrepr
+    instead of repr
+    """
+    def convert_field(self, value, conversion):
+        if conversion == 'r':
+            return bbrepr(value)
+        return super(_BBReprFormatter, self).convert_field(value, conversion)
+
+
+bbformat = _BBReprFormatter().format
 
 
 # TODO: push this back up to boltons with repr kwarg
@@ -284,7 +485,7 @@ def format_invocation(name='', args=(), kwargs=None, **kw):
     kw_func(a=1, b=2)
 
     """
-    _repr = kw.pop('repr', repr)
+    _repr = kw.pop('repr', bbrepr)
     if kw:
         raise TypeError('unexpected keyword args: %r' % ', '.join(kw.keys()))
     kwargs = kwargs or {}
@@ -478,40 +679,6 @@ def _format_path(t_path):
     return _format_t(cur_t_path)
 
 
-class Literal(object):
-    """Literal objects specify literal values in rare cases when part of
-    the spec should not be interpreted as a glommable
-    subspec. Wherever a Literal object is encountered in a spec, it is
-    replaced with its wrapped *value* in the output.
-
-    >>> target = {'a': {'b': 'c'}}
-    >>> spec = {'a': 'a.b', 'readability': Literal('counts')}
-    >>> pprint(glom(target, spec))
-    {'a': 'c', 'readability': 'counts'}
-
-    Instead of accessing ``'counts'`` as a key like it did with
-    ``'a.b'``, :func:`~glom.glom` just unwrapped the literal and
-    included the value.
-
-    :class:`~glom.Literal` takes one argument, the literal value that should appear
-    in the glom output.
-
-    This could also be achieved with a callable, e.g., ``lambda x:
-    'literal_string'`` in the spec, but using a :class:`~glom.Literal`
-    object adds explicitness, code clarity, and a clean :func:`repr`.
-
-    """
-    def __init__(self, value):
-        self.value = value
-
-    def glomit(self, target, scope):
-        return self.value
-
-    def __repr__(self):
-        cn = self.__class__.__name__
-        return '%s(%s)' % (cn, bbrepr(self.value))
-
-
 class Spec(object):
     """Spec objects serve three purposes, here they are, roughly ordered
     by utility:
@@ -523,7 +690,7 @@ class Spec(object):
       3. A way to update the scope within another Spec.
 
     In the second usage, Spec objects are the complement to
-    :class:`~glom.Literal`, wrapping a value and marking that it
+    :class:`~glom.Val`, wrapping a value and marking that it
     should be interpreted as a glom spec, rather than a literal value.
     This is useful in places where it would be interpreted as a value
     by default. (Such as T[key], Call(func) where key and func are
@@ -1076,9 +1243,9 @@ class Ref(object):
 
     def __repr__(self):
         if self.subspec is _MISSING:
-            args = repr(self.name)
+            args = bbrepr(self.name)
         else:
-            args = repr((self.name, self.subspec))[1:-1]
+            args = bbrepr((self.name, self.subspec))[1:-1]
         return "Ref(" + args + ")"
 
 
@@ -1147,12 +1314,22 @@ class TType(object):
        method calls and attribute/item access are considered
        experimental and should not be relied upon.
 
+    .. note::
+
+       ``T`` attributes starting with __ are reserved to avoid
+       colliding with many built-in Python behaviors, current and
+       future.  The ``T.__()`` method is available for cases where
+       they are needed.  For example, ``T.__('class__')`` is
+       equivalent to accessing the ``__class__`` attribute.
+
     """
     __slots__ = ('__weakref__',)
 
     def __getattr__(self, name):
         if name.startswith('__'):
-            raise AttributeError('T instances reserve dunder attributes')
+            raise AttributeError('T instances reserve dunder attributes.'
+                                 ' To access the "{name}" attribute, use'
+                                 ' T.__("{d_name}")'.format(name=name, d_name=name[2:]))
         return _t_child(self, '.', name)
 
     def __getitem__(self, item):
@@ -1161,16 +1338,19 @@ class TType(object):
     def __call__(self, *args, **kwargs):
         return _t_child(self, '(', (args, kwargs))
 
+    def __(self, name):
+        return _t_child(self, '.', '__' + name)
+
     def __repr__(self):
         t_path = _T_PATHS[self]
         return _format_t(t_path[1:], t_path[0])
 
     def __getstate__(self):
         t_path = _T_PATHS[self]
-        return tuple(('T' if t_path[0] is T else 'S',) + t_path[1:])
+        return tuple(({T: 'T', S: 'S', A: 'A'}[t_path[0]],) + t_path[1:])
 
     def __setstate__(self, state):
-        _T_PATHS[self] = (T if state[0] == 'T' else S,) + state[1:]
+        _T_PATHS[self] = ({'T': T, 'S': S, 'A': A}[state[0]],) + state[1:]
 
 
 _T_PATHS = weakref.WeakKeyDictionary()
@@ -1178,40 +1358,71 @@ _T_PATHS = weakref.WeakKeyDictionary()
 
 def _t_child(parent, operation, arg):
     t = TType()
-    _T_PATHS[t] = _T_PATHS[parent] + (operation, arg)
+    base = _T_PATHS[parent]
+    if base[0] is A and operation not in ('.', '[', 'P'):
+        # whitelist rather than blacklist assignment friendly operations
+        # TODO: error type?
+        raise BadSpec("operation not allowed on A assignment path")
+    _T_PATHS[t] = base + (operation, arg)
     return t
+
+
+def _s_first_magic(scope, key, _t):
+    """
+    enable S.a to do S['a'] or S['a'].val as a special
+    case for accessing user defined string variables
+    """
+    err = None
+    try:
+        cur = scope[key]
+    except KeyError as e:
+        err = PathAccessError(e, _t, 0)  # always only one level depth, hence 0
+    if err:
+        raise err
+    return cur
 
 
 def _t_eval(target, _t, scope):
     t_path = _T_PATHS[_t]
     i = 1
-    if t_path[0] is T:
+    fetch_till = len(t_path)
+    root = t_path[0]
+    if root is T:
         cur = target
-    elif t_path[0] is S:
+    elif root is S or root is A:
+        # A is basically the same as S, but last step is assign
+        if root is A:
+            fetch_till -= 2
+            if fetch_till < 1:
+                raise BadSpec('cannot assign without destination')
         cur = scope
+        if fetch_till > 1 and t_path[1] in ('.', 'P'):
+            cur = _s_first_magic(cur, t_path[2], _t)
+            i += 2
     else:
-        raise ValueError('TType instance with invalid root object')
-    while i < len(t_path):
+        raise ValueError('TType instance with invalid root')  # pragma: no cover
+    pae = None
+    while i < fetch_till:
         op, arg = t_path[i], t_path[i + 1]
-        if type(arg) in (Spec, TType, Literal):
+        if type(arg) in (Spec, TType, Val):
             arg = scope[glom](target, arg, scope)
         if op == '.':
             try:
                 cur = getattr(cur, arg)
             except AttributeError as e:
-                raise PathAccessError(e, Path(_t), i // 2)
+                pae = PathAccessError(e, _t, i // 2)
         elif op == '[':
             try:
                 cur = cur[arg]
             except (KeyError, IndexError, TypeError) as e:
-                raise PathAccessError(e, Path(_t), i // 2)
+                pae = PathAccessError(e, _t, i // 2)
         elif op == 'P':
             # Path type stuff (fuzzy match)
             get = scope[TargetRegistry].get_handler('get', cur, path=t_path[2:i+2:2])
             try:
                 cur = get(cur, arg)
             except Exception as e:
-                raise PathAccessError(e, Path(_t), i // 2)
+                pae = PathAccessError(e, _t, i // 2)
         elif op == '(':
             args, kwargs = arg
             scope[Path] += t_path[2:i+2:2]
@@ -1222,17 +1433,151 @@ def _t_eval(target, _t, scope):
             # if args to the call "reset" their path
             # e.g. "T.a" should mean the same thing
             # in both of these specs: T.a and T.b(T.a)
+        if pae:
+            raise pae
         i += 2
+    if root is A:
+        op, arg = t_path[-2:]
+        if op == '[' or cur is scope:  # all assignment on scope is setitem
+            cur[arg] = target
+        elif op == '.':
+            setattr(cur, arg, target)
+        elif op == 'P':
+            _assign = scope[TargetRegistry].get_handler('assign', cur)
+            try:
+                _assign(cur, arg, target)
+            except Exception as e:
+                raise PathAssignError(e, _t, i // 2 + 1)
+        else:  # pragma: no cover
+            raise ValueError('unsupported operation for assignment')
+        return target  # A should not change the target
     return cur
 
 
 T = TType()  # target aka Mr. T aka "this"
 S = TType()  # like T, but means grab stuff from Scope, not Target
+A = TType()  # like S, but shorthand to assign target to scope
 
 _T_PATHS[T] = (T,)
 _T_PATHS[S] = (S,)
+_T_PATHS[A] = (A,)
+
 UP = make_sentinel('UP')
 ROOT = make_sentinel('ROOT')
+
+
+def _format_slice(x):
+    if type(x) is not slice:
+        return bbrepr(x)
+    fmt = lambda v: "" if v is None else bbrepr(v)
+    if x.step is None:
+        return fmt(x.start) + ":" + fmt(x.stop)
+    return fmt(x.start) + ":" + fmt(x.stop) + ":" + fmt(x.step)
+
+
+def _format_t(path, root=T):
+    prepr = [{T: 'T', S: 'S', A: 'A'}[root]]
+    i = 0
+    while i < len(path):
+        op, arg = path[i], path[i + 1]
+        if op == '.':
+            prepr.append('.' + arg)
+        elif op == '[':
+            if type(arg) is tuple:
+                index = ", ".join([_format_slice(x) for x in arg])
+            else:
+                index = _format_slice(arg)
+            prepr.append("[%s]" % (index,))
+        elif op == '(':
+            args, kwargs = arg
+            prepr.append(format_invocation(args=args, kwargs=kwargs, repr=bbrepr))
+        elif op == 'P':
+            return _format_path(path)
+        i += 2
+    return "".join(prepr)
+
+
+class Val(object):
+    """Val objects are specs which evaluate to the wrapped *value*.
+
+    >>> target = {'a': {'b': 'c'}}
+    >>> spec = {'a': 'a.b', 'readability': Val('counts')}
+    >>> pprint(glom(target, spec))
+    {'a': 'c', 'readability': 'counts'}
+
+    Instead of accessing ``'counts'`` as a key like it did with
+    ``'a.b'``, :func:`~glom.glom` just unwrapped the Val and
+    included the value.
+
+    :class:`~glom.Val` takes one argument, the value to be returned.
+
+    .. note::
+
+       :class:`Val` was named ``Literal`` in versions of glom before
+       20.7.0. An alias has been preserved for backwards
+       compatibility, but reprs have changed.
+
+    """
+    def __init__(self, value):
+        self.value = value
+
+    def glomit(self, target, scope):
+        return self.value
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return '%s(%s)' % (cn, bbrepr(self.value))
+
+
+Literal = Val  # backwards compat for pre-20.7.0
+
+
+class ScopeVars(object):
+    """This is the runtime partner of :class:`Vars` -- this is what
+    actually lives in the scope and stores runtime values.
+
+    While not part of the importable API of glom, it's half expected
+    that some folks may write sepcs to populate and export scopes, at
+    which point this type makes it easy to access values by attribute
+    access or by converting to a dict.
+
+    """
+    def __init__(self, base, defaults):
+        self.__dict__ = dict(base)
+        self.__dict__.update(defaults)
+
+    def __iter__(self):
+        return iter(self.__dict__.items())
+
+    def __repr__(self):
+        return "%s(%s)" % (self.__class__.__name__, bbrepr(self.__dict__))
+
+
+class Vars(object):
+    """
+    :class:`Vars` is a helper that can be used with :class:`Let` in order to
+    store shared mutable state.
+
+    Takes the same arguments as :class:`dict()`.
+
+    Arguments here should be thought of the same way as default arguments
+    to a function.  Each time the spec is evaluated, the same arguments
+    will be referenced; so, think carefully about mutable data structures.
+    """
+    def __init__(self, base=(), **kw):
+        dict(base)  # ensure it is a dict-compatible first arg
+        self.base = base
+        self.defaults = kw
+
+    def glomit(self, target, spec):
+        return ScopeVars(self.base, self.defaults)
+
+    def __repr__(self):
+        ret = format_invocation(self.__class__.__name__,
+                                args=(self.base,) if self.base else (),
+                                kwargs=self.defaults,
+                                repr=bbrepr)
+        return ret
 
 
 class Let(object):
@@ -1259,227 +1604,6 @@ class Let(object):
         return format_invocation(cn, kwargs=self._binding, repr=bbrepr)
 
 
-def _format_t(path, root=T):
-    prepr = ['T' if root is T else 'S']
-    i = 0
-    while i < len(path):
-        op, arg = path[i], path[i + 1]
-        if op == '.':
-            prepr.append('.' + arg)
-        elif op == '[':
-            prepr.append("[%s]" % (bbrepr(arg),))
-        elif op == '(':
-            args, kwargs = arg
-            prepr.append(format_invocation(args=args, kwargs=kwargs, repr=bbrepr))
-        elif op == 'P':
-            return _format_path(path)
-        i += 2
-    return "".join(prepr)
-
-
-class CheckError(GlomError):
-    """This :exc:`GlomError` subtype is raised when target data fails to
-    pass a :class:`Check`'s specified validation.
-
-    An uncaught ``CheckError`` looks like this::
-
-       >>> target = {'a': {'b': 'c'}}
-       >>> glom(target, {'b': ('a.b', Check(type=int))})
-       Traceback (most recent call last):
-       ...
-       CheckError: target at path ['a.b'] failed check, got error: "expected type to be 'int', found type 'str'"
-
-    If the ``Check`` contains more than one condition, there may be
-    more than one error message. The string rendition of the
-    ``CheckError`` will include all messages.
-
-    You can also catch the ``CheckError`` and programmatically access
-    messages through the ``msgs`` attribute on the ``CheckError``
-    instance.
-
-    .. note::
-
-       As of 2018-07-05 (glom v18.2.0), the validation subsystem is
-       still very new. Exact error message formatting may be enhanced
-       in future releases.
-
-    """
-    def __init__(self, msgs, check, path):
-        self.msgs = msgs
-        self.check_obj = check
-        self.path = path
-
-    def __repr__(self):
-        cn = self.__class__.__name__
-        return '%s(%r, %r, %r)' % (cn, self.msgs, self.check_obj, self.path)
-
-    def __str__(self):
-        msg = 'target at path %s failed check,' % self.path
-        if self.check_obj.spec is not T:
-            msg += ' subtarget at %r' % (self.check_obj.spec,)
-        if len(self.msgs) == 1:
-            msg += ' got error: %r' % (self.msgs[0],)
-        else:
-            msg += ' got %s errors: %r' % (len(self.msgs), self.msgs)
-        return msg
-
-
-RAISE = make_sentinel('RAISE')  # flag object for "raise on check failure"
-
-
-class Check(object):
-    """Check objects are used to make assertions about the target data,
-    and either pass through the data or raise exceptions if there is a
-    problem.
-
-    If any check condition fails, a :class:`~glom.CheckError` is raised.
-
-    Args:
-
-       spec: a sub-spec to extract the data to which other assertions will
-          be checked (defaults to applying checks to the target itself)
-       type: a type or sequence of types to be checked for exact match
-       equal_to: a value to be checked for equality match ("==")
-       validate: a callable or list of callables, each representing a
-          check condition. If one or more return False or raise an
-          exception, the Check will fail.
-       instance_of: a type or sequence of types to be checked with isinstance()
-       one_of: an iterable of values, any of which can match the target ("in")
-       default: an optional default value to replace the value when the check fails
-                (if default is not specified, GlomCheckError will be raised)
-
-    Aside from *spec*, all arguments are keyword arguments. Each
-    argument, except for *default*, represent a check
-    condition. Multiple checks can be passed, and if all check
-    conditions are left unset, Check defaults to performing a basic
-    truthy check on the value.
-
-    """
-    # TODO: the next level of Check would be to play with the Scope to
-    # allow checking to continue across the same level of
-    # dictionary. Basically, collect as many errors as possible before
-    # raising the unified CheckError.
-    def __init__(self, spec=T, **kwargs):
-        self.spec = spec
-        self._orig_kwargs = dict(kwargs)
-        self.default = kwargs.pop('default', RAISE)
-
-        def _get_arg_val(name, cond, func, val, can_be_empty=True):
-            if val is _MISSING:
-                return ()
-            if not is_iterable(val):
-                val = (val,)
-            elif not val and not can_be_empty:
-                raise ValueError('expected %r argument to contain at least one value,'
-                                 ' not: %r' % (name, val))
-            for v in val:
-                if not func(v):
-                    raise ValueError('expected %r argument to be %s, not: %r'
-                                     % (name, cond, v))
-            return val
-
-        # if there are other common validation functions, maybe a
-        # small set of special strings would work as valid arguments
-        # to validate, too.
-        def truthy(val):
-            return bool(val)
-
-        validate = kwargs.pop('validate', _MISSING if kwargs else truthy)
-        type_arg = kwargs.pop('type', _MISSING)
-        instance_of = kwargs.pop('instance_of', _MISSING)
-        equal_to = kwargs.pop('equal_to', _MISSING)
-        one_of = kwargs.pop('one_of', _MISSING)
-        if kwargs:
-            raise TypeError('unexpected keyword arguments: %r' % kwargs.keys())
-
-        self.validators = _get_arg_val('validate', 'callable', callable, validate)
-        self.instance_of = _get_arg_val('instance_of', 'a type',
-                                        lambda x: isinstance(x, type), instance_of, False)
-        self.types = _get_arg_val('type', 'a type',
-                                  lambda x: isinstance(x, type), type_arg, False)
-
-        if equal_to is not _MISSING:
-            self.vals = (equal_to,)
-            if one_of is not _MISSING:
-                raise TypeError('expected "one_of" argument to be unset when'
-                                ' "equal_to" argument is passed')
-        elif one_of is not _MISSING:
-            if not is_iterable(one_of):
-                raise ValueError('expected "one_of" argument to be iterable'
-                                 ' , not: %r' % one_of)
-            if not one_of:
-                raise ValueError('expected "one_of" to contain at least'
-                                 ' one value, not: %r' % (one_of,))
-            self.vals = one_of
-        else:
-            self.vals = ()
-        return
-
-    class _ValidationError(Exception):
-        "for internal use inside of Check only"
-        pass
-
-    def glomit(self, target, scope):
-        ret = target
-        errs = []
-        if self.spec is not T:
-            target = scope[glom](target, self.spec, scope)
-        if self.types and type(target) not in self.types:
-            if self.default is not RAISE:
-                return self.default
-            errs.append('expected type to be %r, found type %r' %
-                        (self.types[0].__name__ if len(self.types) == 1
-                         else tuple([t.__name__ for t in self.types]),
-                         type(target).__name__))
-
-        if self.vals and target not in self.vals:
-            if self.default is not RAISE:
-                return self.default
-            if len(self.vals) == 1:
-                errs.append("expected {}, found {}".format(self.vals[0], target))
-            else:
-                errs.append('expected one of {}, found {}'.format(self.vals, target))
-
-        if self.validators:
-            for i, validator in enumerate(self.validators):
-                try:
-                    res = validator(target)
-                    if res is False:
-                        raise self._ValidationError
-                except Exception as e:
-                    msg = ('expected %r check to validate target'
-                           % getattr(validator, '__name__', None) or ('#%s' % i))
-                    if type(e) is self._ValidationError:
-                        if self.default is not RAISE:
-                            return self.default
-                    else:
-                        msg += ' (got exception: %r)' % e
-                    errs.append(msg)
-
-        if self.instance_of and not isinstance(target, self.instance_of):
-            # TODO: can these early returns be done without so much copy-paste?
-            # (early return to avoid potentially expensive or even error-causeing
-            # string formats)
-            if self.default is not RAISE:
-                return self.default
-            errs.append('expected instance of %r, found instance of %r' %
-                        (self.instance_of[0].__name__ if len(self.instance_of) == 1
-                         else tuple([t.__name__ for t in self.instance_of]),
-                         type(target).__name__))
-
-        if errs:
-            # TODO: due to the usage of basic path (not a Path
-            # object), the format can be a bit inconsistent here
-            # (e.g., 'a.b' and ['a', 'b'])
-            raise CheckError(errs, self, scope[Path])
-        return ret
-
-    def __repr__(self):
-        cn = self.__class__.__name__
-        posargs = (self.spec,) if self.spec is not T else ()
-        return format_invocation(cn, posargs, self._orig_kwargs, repr=bbrepr)
-
-
 class Auto(object):
     """
     Switch to Auto mode (the default)
@@ -1497,9 +1621,8 @@ class Auto(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        rpr = '' if self.spec is None else repr(self.spec)
+        rpr = '' if self.spec is None else bbrepr(self.spec)
         return '%s(%s)' % (cn, rpr)
-
 
 
 class _AbstractIterable(_AbstractIterableBase):
@@ -1803,7 +1926,7 @@ def glom(target, spec, **kwargs):
          omitted). If *skip_exc* and *default* are both not set,
          glom raises errors through.
        scope (dict): Additional data that can be accessed
-         via S inside the glom-spec.
+         via S inside the glom-spec. Read more: :ref:`scope`.
 
     It's a small API with big functionality, and glom's power is
     only surpassed by its intuitiveness. Give it a whirl!
@@ -1812,23 +1935,43 @@ def glom(target, spec, **kwargs):
     # TODO: check spec up front
     default = kwargs.pop('default', None if 'skip_exc' in kwargs else _MISSING)
     skip_exc = kwargs.pop('skip_exc', () if default is _MISSING else GlomError)
+    glom_debug = kwargs.pop('glom_debug', GLOM_DEBUG)
     scope = _DEFAULT_SCOPE.new_child({
         Path: kwargs.pop('path', []),
         Inspect: kwargs.pop('inspector', None),
         MODE: AUTO,
+        'globals': ScopeVars({}, {}),
     })
     scope[UP] = scope
     scope[ROOT] = scope
     scope[T] = target
     scope.update(kwargs.pop('scope', {}))
+    err = None
     if kwargs:
         raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
     try:
-        ret = _glom(target, spec, scope)
-    except skip_exc:
-        if default is _MISSING:
+        try:
+            ret = _glom(target, spec, scope)
+        except skip_exc:
+            if default is _MISSING:
+                raise
+            ret = default
+    except Exception as e:
+        if glom_debug:
             raise
-        ret = default
+        if isinstance(e, GlomError):
+            # need to change id or else py3 seems to not let us truncate the
+            # stack trace with the explicit "raise err" below
+            err = copy.copy(e)
+        else:
+            err = GlomError.wrap(e)
+        if isinstance(err, GlomError):
+            err._finalize(scope[ERROR_SCOPE])
+        else:  # wrapping failed, fall back to default behavior
+            raise
+
+    if err:
+        raise err
     return ret
 
 
@@ -1840,12 +1983,16 @@ def _glom(target, spec, scope):
     scope[Spec] = spec
     scope[UP] = parent
 
-    if isinstance(spec, TType):  # must go first, due to callability
-        return _t_eval(target, spec, scope)
-    elif callable(getattr(spec, 'glomit', None)):
-        return spec.glomit(target, scope)
+    try:
+        if isinstance(spec, TType):  # must go first, due to callability
+            return _t_eval(target, spec, scope)
+        elif callable(getattr(spec, 'glomit', None)):
+            return spec.glomit(target, scope)
 
-    return scope[MODE](target, spec, scope)
+        return scope[MODE](target, spec, scope)
+    except Exception:
+        scope[ROOT].setdefault(ERROR_SCOPE, scope)
+        raise
 
 
 def AUTO(target, spec, scope):
@@ -1910,13 +2057,12 @@ def register_op(op_name, **kwargs):
 
 
 class Glommer(object):
-    """All the wholesome goodness that it takes to make glom work. This
-    type mostly serves to encapsulate the type registration context so
-    that advanced uses of glom don't need to worry about stepping on
-    each other's toes.
+    """The :class:`Glommer` type mostly serves to encapsulate type
+    registration context so that advanced uses of glom don't need to
+    worry about stepping on each other.
 
     Glommer objects are lightweight and, once instantiated, provide
-    the :func:`glom()` method we know and love:
+    a :func:`glom()` method:
 
     >>> glommer = Glommer()
     >>> glommer.glom({}, 'a.b.c', default='d')
@@ -1933,6 +2079,7 @@ class Glommer(object):
           default actions include dict access, list and iterable
           iteration, and generic object attribute access. Defaults to
           True.
+
     """
     def __init__(self, **kwargs):
         register_default_types = kwargs.pop('register_default_types', True)

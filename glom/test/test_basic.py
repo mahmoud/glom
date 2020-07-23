@@ -4,11 +4,12 @@ from xml.etree import cElementTree as ElementTree
 
 import pytest
 
-from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Literal, Call, T, S, Invoke, Spec, Ref
-from glom import Auto, Fill, Iter
+from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Val, Call, T, S, Invoke, Spec, Ref
+from glom import Auto, Fill, Iter, Let, A, Vars, Val, Literal, GlomError
 
 import glom.core as glom_core
-from glom.core import UP, ROOT, Let
+from glom.core import UP, ROOT, Let, bbformat, bbrepr
+from glom.mutation import PathAssignError
 
 from glom import OMIT  # backwards compat
 
@@ -100,6 +101,16 @@ def test_coalesce():
     # check that arbitrary exceptions can be ignored
     assert glom(val, Coalesce(lambda x: 1/0, 'a.b', skip_exc=ZeroDivisionError)) == 'c'
 
+    target = {'a': 1, 'b': 3, 'c': 4}
+    spec = Coalesce('a', 'b', 'c', skip=lambda x: x % 2)
+    assert glom(target, spec) == 4
+
+    spec = Coalesce('a', 'b', 'c', skip=(1,))
+    assert glom(target, spec) == 3
+
+    with pytest.raises(TypeError):
+        Coalesce(bad_kwarg=True)
+
 
 
 def test_skip():
@@ -162,17 +173,19 @@ def test_top_level_default():
     return
 
 
-def test_literal():
+def test_val():
+    assert Literal is Val
     expected = {'value': 'c',
                 'type': 'a.b'}
     target = {'a': {'b': 'c'}}
     val = glom(target, {'value': 'a.b',
-                        'type': Literal('a.b')})
+                        'type': Val('a.b')})
 
     assert val == expected
 
-    assert glom(None, Literal('success')) == 'success'
-    assert repr(Literal(3.14)) == 'Literal(3.14)'
+    assert glom(None, Val('success')) == 'success'
+    assert repr(Val(3.14)) == 'Val(3.14)'
+    assert repr(Val(3.14)) == 'Val(3.14)'
 
 
 def test_abstract_iterable():
@@ -203,8 +216,8 @@ def test_call_and_target():
     assert glom([1], Call(F, args=T)).a == 1
     assert glom(F, T(T)).a == F
     assert glom([F, 1], T[0](T[1]).a) == 1
-    assert glom([[1]], S[UP][Literal(T)][0][0]) == 1
-    assert glom([[1]], S[UP][UP][UP][Literal(T)]) == [[1]]  # tops out
+    assert glom([[1]], S[UP][Val(T)][0][0]) == 1
+    assert glom([[1]], S[UP][UP][UP][Val(T)]) == [[1]]  # tops out
 
     assert list(glom({'a': 'b'}, Call(T.values))) == ['b']
 
@@ -400,20 +413,6 @@ def test_inspect():
     assert len(tracker) == 1
 
 
-def test_let():
-    data = {'a': 1, 'b': [{'c': 2}, {'c': 3}]}
-    output = [{'a': 1, 'c': 2}, {'a': 1, 'c': 3}]
-    assert glom(data, (Let(a='a'), ('b', [{'a': S['a'], 'c': 'c'}]))) == output
-    assert glom(data, ('b', [{'a': S[ROOT][Literal(T)]['a'], 'c': 'c'}])) == output
-
-    with pytest.raises(TypeError):
-        Let('posarg')
-    with pytest.raises(TypeError):
-        Let()
-
-    assert repr(Let(a=T.a.b)) == 'Let(a=T.a.b)'
-
-
 def test_ref():
     assert glom([[[]]], Ref('item', [Ref('item')])) == [[[]]]
     with pytest.raises(Exception):  # check that it recurses downards and dies on int iteration
@@ -449,3 +448,11 @@ def test_api_repr():
             spec_types_wo_reprs.append(k)  # pragma: no cover
 
     assert set(spec_types_wo_reprs) == set([])
+
+
+def test_bbformat():
+    assert bbformat("{0.__name__}", int) == "int"
+
+
+def test_bbrepr():
+    assert bbrepr({int: dict}) == "{int: dict}"

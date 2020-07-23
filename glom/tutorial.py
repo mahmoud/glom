@@ -12,9 +12,9 @@ Dealing with Data
 =================
 
 Every application deals with data, and these days, even the simplest
-applications deals with rich, heavily-nested data.
+applications deal with rich, heavily-nested data.
 
-What does nested data looks like? In its most basic form::
+What does nested data look like? In its most basic form::
 
   >>> data = {'a': {'b': {'c': 'd'}}}
   >>> data['a']['b']['c']
@@ -62,6 +62,10 @@ Well that's short, and reads fine, but what about in the error case?
 
 That's more like it! We have a function that can give us our data, or
 give us an error message we can read, understand, and act upon.
+
+.. seealso::
+
+   For more on glom's error messages, see :doc:`debugging`.
 
 Interactive Deep Get
 --------------------
@@ -215,6 +219,34 @@ You can see here we get the expected results, but say our target changes...
 
 Voila, the target can still be parsed and we can elegantly handle changes in our data formats.
 
+Data-Driven Assignment
+======================
+
+Quite often APIs deliver data in dictionaries without constant key values.
+They use parts of the data itself as a key. This we call data-driven assignment.
+
+The following example shows you a way to handle this situation.
+It extracts the moon count from a dictionary that has the planet names as a key.
+
+  >>> from glom import glom, T, Merge, Iter, Coalesce
+  >>> target = {
+  ...    "pluto": {"moons": 6, "population": None},
+  ...    "venus": {"population": {"aliens": 5}},
+  ...    "earth": {"moons": 1, "population": {"humans": 7700000000, "aliens": 1}},
+  ... }
+  >>> spec = {
+  ...     "moons": (
+  ...          T.items(),
+  ...          Iter({T[0]: (T[1], Coalesce("moons", default=0))}),
+  ...          Merge(),
+  ...     )
+  ... }
+  >>> pprint(glom(target, spec))
+  {'moons': {'earth': 1, 'pluto': 6, 'venus': 0}}
+
+Don't worry if you do not fully understand how this works at this
+point. If you would like to learn more, look up :class:`~glom.Iter()`,
+:data:`~glom.T`, or :class:`~glom.Merge` in the glom API reference.
 
 True Python Native
 ==================
@@ -256,7 +288,8 @@ a Contacts web service, like an address book, but backed by an
 ORM/database and compatible with web and mobile frontends.
 
 Let's create a Contact to familiarize ourselves with our test data:
-
+pri
+  >>> from glom.tutorial import *  # import the tutorial module members
   >>> contact = Contact('Julian',
   ...                   emails=[Email(email='jlahey@svtp.info')],
   ...                   location='Canada')
@@ -360,16 +393,17 @@ our case, ``primary_email`` can be None, so a further access of
 ``primary_email.email`` would, outside of glom, result in an
 AttributeError or TypeError like the one we described before the
 Contact example. Inside of a glom ``Coalesce``, exceptions are caught
-and we move on to the next spec. glom raises a ``CoalesceError`` when
-no specs match, so we use ``default`` to tell it to return None
-instead.
+and we move on to the next spec. glom raises a
+:class:`~glom.CoalesceError` when no specs match, so we use
+``default`` to tell it to return None instead.
 
 Some Contacts have nicknames or other names they prefer to go by, so
 for ``pref_name``, we want to return the stored ``pref_name``, or fall
-back to the normal name. Again, we use ``Coalesce``, but this time we
-tell it not only to ignore the default ``GlomError`` exceptions, but
-also ignore empty string values, and finally default to empty string
-if all specs result in empty strings or :exc:`~glom.GlomError`.
+back to the normal name. Again, we use :class:`~glom.Coalesce`, but
+this time we tell it not only to ignore the default
+:exc:`~glom.GlomError` exceptions, but also ignore empty string
+values, and finally default to empty string if all specs result in
+empty strings or :exc:`~glom.GlomError`.
 
 And finally, for our last field, ``detail``, we want to conjure up a
 bit of info that'll help jog the user's memory. We're going to include
