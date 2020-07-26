@@ -172,9 +172,10 @@ glom.core.PathAccessError: could not access 'value', part 0 of Path('value'), go
     #glom.core.GLOM_DEBUG = True
     actual = _make_stack({'results': [{u'valué': u'value'}]})
     print(actual)
-    if not _PY2:
-        # see https://github.com/pytest-dev/pytest/issues/1347
-        assert expected == actual
+    if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
+        assert len(actual.split("\n")) == len(expected.split("\n"))
+    else:
+        assert actual == expected
 
 
 # used by the test below, but at the module level to make stack traces
@@ -239,8 +240,7 @@ def test_branching_stack():
     # ends-in-branch
     actual = _make_stack(Match(Switch(
         [(1, 1), ('a', 'a'), (T.a, T.a)])))
-    if not _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
-        assert actual == """\
+    expected = """\
 Traceback (most recent call last):
   File "test_error.py", line ___, in _make_stack
     glom(target, spec)
@@ -262,14 +262,17 @@ glom.matching.MatchError: error raised while processing, details below.
    - glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
 glom.matching.MatchError: no matches for target in Switch
 """
+    if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
+        assert len(actual.split("\n")) == len(expected.split("\n"))
+    else:
+        assert actual == expected
 
 
 def test_midway_branch():
     # midway branch, but then continues
     actual = _make_stack(Match(Switch(
         [(1, 1), ('a', 'a'), ([None], T.a)])))
-    if not _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
-        assert actual == """\
+    expected = """\
 Traceback (most recent call last):
   File "test_error.py", line ___, in _make_stack
     glom(target, spec)
@@ -291,12 +294,15 @@ glom.core.PathAccessError: error raised while processing, details below.
    - Spec: T.a
 glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
 """
+    if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
+        assert len(actual.split("\n")) == len(expected.split("\n"))
+    else:
+        assert actual == expected
     # branch and another branch
     actual = _make_stack(Match(Switch(
         [(1, 1), ('a', 'a'), ([None], Switch(
             [(1, 1), ('a', 'a'), ([None], T.a)]))])))
-    if not _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
-        assert actual == """\
+    expected = """\
 Traceback (most recent call last):
   File "test_error.py", line ___, in _make_stack
     glom(target, spec)
@@ -327,6 +333,10 @@ glom.core.PathAccessError: error raised while processing, details below.
      - Spec: T.a
 glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
 """
+    if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
+        assert len(actual.split("\n")) == len(expected.split("\n"))
+    else:
+        assert actual == expected
 
 
 def test_partially_failing_branch():
@@ -356,8 +366,7 @@ def test_coalesce_stack():
        'i': [{'j': 'k', 'l': 'm'}],  # list of dictionaries
        'n': 'o'}
     actual = _make_stack(Coalesce('xxx', 'yyy'), target=val)
-    if not _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
-        assert actual == """\
+    expected = """\
 Traceback (most recent call last):
   File "test_error.py", line ___, in _make_stack
     glom(target, spec)
@@ -375,6 +384,10 @@ glom.core.CoalesceError: error raised while processing, details below.
    - glom.core.PathAccessError: could not access 'yyy', part 0 of Path('yyy'), got error: KeyError('yyy')
 glom.core.CoalesceError: no valid values found. Tried ('xxx', 'yyy') and got (PathAccessError, PathAccessError) (at path [])
 """
+    if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
+        assert len(actual.split("\n")) == len(expected.split("\n"))
+    else:
+        assert actual == expected
 
 
 def test_nesting_stack():
