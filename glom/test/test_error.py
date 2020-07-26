@@ -296,9 +296,7 @@ glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: Attri
         [(1, 1), ('a', 'a'), ([None], Switch(
             [(1, 1), ('a', 'a'), ([None], T.a)]))])))
     if not _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
-        if not sys.version_info[:2] == (3, 6):  # WTF, travis-ci only error cannot repro locally
-            # TODO: figure out what is going on in travis-ci
-            assert actual == """\
+        assert actual == """\
 Traceback (most recent call last):
   File "test_error.py", line ___, in _make_stack
     glom(target, spec)

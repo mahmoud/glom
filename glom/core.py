@@ -166,13 +166,16 @@ class GlomError(Exception):
         if getattr(self, '_finalized_str', None):
             return self._finalized_str
         elif getattr(self, '_scope', None) is not None:
-            self._target_spec_trace = format_target_spec_trace(self._scope, self.__wrapped)
-            parts = ["error raised while processing, details below.",
-                     " Target-spec trace (most recent last):",
-                     self._target_spec_trace]
-            parts.extend(self._tb_lines)
-            self._finalized_str = "\n".join(parts)
-            return self._finalized_str
+            try:
+                self._target_spec_trace = format_target_spec_trace(self._scope, self.__wrapped)
+                parts = ["error raised while processing, details below.",
+                         " Target-spec trace (most recent last):",
+                         self._target_spec_trace]
+                parts.extend(self._tb_lines)
+                self._finalized_str = "\n".join(parts)
+                return self._finalized_str
+            except Exception as e:
+                return "could not format:\n" + traceback.format_exc()
 
         # else, not finalized
         try:
