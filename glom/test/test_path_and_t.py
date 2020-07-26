@@ -227,3 +227,12 @@ def test_from_t_identity():
 def test_t_dict_key():
     target = {'a': 'A'}
     assert glom(target, {T['a']: 'a'}) == {'A': 'A'}
+
+
+def test_t_dunders():
+    with raises(AttributeError) as exc_info:
+        T.__name__
+
+    assert 'use T.__("name__")' in str(exc_info.value)
+
+    assert glom(1, T.__('class__')) is int

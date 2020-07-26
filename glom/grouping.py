@@ -42,8 +42,7 @@ def target_iter(target, scope):
 
 
 class Group(object):
-    """
-    supports nesting grouping operations --
+    """supports nesting grouping operations --
     think of a glom-style recursive boltons.iterutils.bucketize
 
     the "branches" of a Group spec are dicts;
@@ -51,12 +50,25 @@ class Group(object):
     an Aggregation object is any object that defines the
     method agg(target, accumulator)
 
+    For example, here we get a map of even and odd counts::
+
+    >>> glom(range(10), Group({lambda x: x % 2: T}))
+    {0: 8, 1: 9}
+
+    And here we create a `"bucketized"
+    <https://boltons.readthedocs.io/en/latest/iterutils.html#boltons.iterutils.bucketize>`_
+    map of even and odd numbers::
+
+    >>> glom(range(10), Group({lambda x: x % 2: [T]}))
+    {0: [0, 2, 4, 6, 8], 1: [1, 3, 5, 7, 9]}
+
     target is the current target, accumulator is a dict
     maintained by Group mode
 
     unlike Iter(), Group() converts an iterable target
     into a single result; Iter() converts an iterable
     target into an iterable result
+
     """
     def __init__(self, spec):
         self.spec = spec

@@ -1,11 +1,18 @@
+import imp
+import os
 import sys
+
 from setuptools import setup
 
 __author__ = 'Mahmoud Hashemi and Kurt Rose'
-__version__ = '20.5.1dev'
 __contact__ = 'mahmoud@hatnote.com'
 __url__ = 'https://github.com/mahmoud/glom'
 __license__ = 'BSD'
+
+CUR_PATH = os.path.abspath(os.path.dirname(__file__))
+_version_mod_path = os.path.join(CUR_PATH, 'glom', '_version.py')
+_version_mod = imp.load_source('_version', _version_mod_path)
+__version__ = _version_mod.__version__
 
 
 open_kwarg = {}
