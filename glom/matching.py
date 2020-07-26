@@ -234,10 +234,10 @@ class Regex(object):
     def glomit(self, target, scope):
         if type(target) not in _RE_TYPES:
             raise MatchError(
-                "{!r} not valid as a Regex target -- expected {!r}", type(target), _RE_TYPES)
+                "{0!r} not valid as a Regex target -- expected {1!r}", type(target), _RE_TYPES)
         match = self.match_func(target)
         if not match:
-            raise MatchError("target did not match pattern {!r}", self.pattern)
+            raise MatchError("target did not match pattern {0!r}", self.pattern)
         scope.update(match.groupdict())
         return target
 
@@ -418,7 +418,7 @@ class _MSubspec(object):
         match = scope[glom](target, self.spec, scope)
         if match:
             return target
-        raise MatchError('expected truthy value from {!r}, got {!r}', self.spec, match)
+        raise MatchError('expected truthy value from {0!r}, got {1!r}', self.spec, match)
 
 
 class _MExpr(object):
@@ -458,7 +458,7 @@ class _MExpr(object):
         )
         if matched:
             return target
-        raise MatchError("{!r} {} {!r}", lhs, _M_OP_MAP.get(op, op), rhs)
+        raise MatchError("{0!r} {1} {2!r}", lhs, _M_OP_MAP.get(op, op), rhs)
 
     def __repr__(self):
         op = _M_OP_MAP.get(self.op, self.op)
@@ -561,7 +561,7 @@ class _MType(object):
     def glomit(self, target, spec):
         if target:
             return target
-        raise MatchError("{!r} not truthy", target)
+        raise MatchError("{0!r} not truthy", target)
 
 
 M = _MType()
@@ -598,7 +598,7 @@ class Optional(object):
 
     def glomit(self, target, scope):
         if target != self.key:
-            raise MatchError("target {} != spec {}", target, self.key)
+            raise MatchError("target {0} != spec {1}", target, self.key)
         return target
 
     def __repr__(self):
@@ -704,9 +704,9 @@ def _handle_dict(target, spec, scope):
                 required.discard(maybe_spec_key)
                 break
         else:
-            raise MatchError("key {!r} didn't match any of {!r}", key, spec_keys)
+            raise MatchError("key {0!r} didn't match any of {1!r}", key, spec_keys)
     if required:
-        raise MatchError("target missing expected keys: {}", ', '.join([bbrepr(r) for r in required]))
+        raise MatchError("target missing expected keys: {0}", ', '.join([bbrepr(r) for r in required]))
     return result
 
 
@@ -730,7 +730,7 @@ def _glom_match(target, spec, scope):
             else:  # did not break, something went wrong
                 if target and not spec:
                     raise MatchError(
-                        "{!r} does not match empty {}", target, type(spec).__name__)
+                        "{0!r} does not match empty {1}", target, type(spec).__name__)
                 # NOTE: unless error happens above, break will skip else branch
                 # so last_error will have been assigned
                 raise last_error
@@ -741,7 +741,7 @@ def _glom_match(target, spec, scope):
         if not isinstance(target, tuple):
             raise TypeMatchError(type(target), tuple)
         if len(target) != len(spec):
-            raise MatchError("{!r} does not match {!r}", target, spec)
+            raise MatchError("{0!r} does not match {1!r}", target, spec)
         result = []
         for sub_target, sub_spec in zip(target, spec):
             result.append(scope[glom](sub_target, sub_spec, scope))
@@ -752,11 +752,11 @@ def _glom_match(target, spec, scope):
                 return target
         except Exception as e:
             raise MatchError(
-                "{}({!r}) did not validate (got exception {!r})", spec.__name__, target, e)
+                "{0}({1!r}) did not validate (got exception {2!r})", spec.__name__, target, e)
         raise MatchError(
-            "{}({!r}) did not validate (non truthy return)", spec.__name__, target)
+            "{0}({1!r}) did not validate (non truthy return)", spec.__name__, target)
     elif target != spec:
-        raise MatchError("{!r} does not match {!r}", target, spec)
+        raise MatchError("{0!r} does not match {1!r}", target, spec)
     return target
 
 

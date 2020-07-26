@@ -14,6 +14,8 @@ try:
 except NameError:
     unicode = str  # py3
 
+_PY2 = type("") != unicode
+
 # basic tests:
 
 def test_good_error():
@@ -63,7 +65,7 @@ def test_short_trace():
 
 def _norm_stack(formatted_stack, exc):
 
-    if not isinstance(formatted_stack, unicode):
+    if _PY2:
         # lil hack for py2
         # note that we only support the one unicode character
         formatted_stack = formatted_stack.decode('utf8') .replace(r'\xc3\xa9', u'é')
@@ -169,7 +171,9 @@ glom.core.PathAccessError: could not access 'value', part 0 of Path('value'), go
     #glom.core.GLOM_DEBUG = True
     actual = _make_stack({'results': [{u'valué': u'value'}]})
     print(actual)
-    assert expected == actual
+    if not _PY2:
+        # see https://github.com/pytest-dev/pytest/issues/1347
+        assert expected == actual
 
 
 # used by the test below, but at the module level to make stack traces
@@ -232,8 +236,10 @@ def test_long_target_repr():
 
 def test_branching_stack():
     # ends-in-branch
-    assert _make_stack(Match(Switch(
-        [(1, 1), ('a', 'a'), (T.a, T.a)]))) == """\
+    actual = _make_stack(Match(Switch(
+        [(1, 1), ('a', 'a'), (T.a, T.a)])))
+    if not _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
+        assert actual == """\
 Traceback (most recent call last):
   File "test_error.py", line ___, in _make_stack
     glom(target, spec)
@@ -259,8 +265,10 @@ glom.matching.MatchError: no matches for target in Switch
 
 def test_midway_branch():
     # midway branch, but then continues
-    assert _make_stack(Match(Switch(
-        [(1, 1), ('a', 'a'), ([None], T.a)]))) == """\
+    actual = _make_stack(Match(Switch(
+        [(1, 1), ('a', 'a'), ([None], T.a)])))
+    if not _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
+        assert actual == """\
 Traceback (most recent call last):
   File "test_error.py", line ___, in _make_stack
     glom(target, spec)
@@ -283,9 +291,11 @@ glom.core.PathAccessError: error raised while processing, details below.
 glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
 """
     # branch and another branch
-    assert _make_stack(Match(Switch(
+    actual = _make_stack(Match(Switch(
         [(1, 1), ('a', 'a'), ([None], Switch(
-            [(1, 1), ('a', 'a'), ([None], T.a)]))]))) == """\
+            [(1, 1), ('a', 'a'), ([None], T.a)]))])))
+    if not _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
+        assert actual == """\
 Traceback (most recent call last):
   File "test_error.py", line ___, in _make_stack
     glom(target, spec)
@@ -344,7 +354,9 @@ def test_coalesce_stack():
              'g': 'h'},
        'i': [{'j': 'k', 'l': 'm'}],  # list of dictionaries
        'n': 'o'}
-    assert _make_stack(Coalesce('xxx', 'yyy'), target=val) == """\
+    actual = _make_stack(Coalesce('xxx', 'yyy'), target=val)
+    if not _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
+        assert actual == """\
 Traceback (most recent call last):
   File "test_error.py", line ___, in _make_stack
     glom(target, spec)
@@ -503,4 +515,5 @@ def test_unicode_stack():
     val = {u'resumé': u'beyoncé'}
     stack = _make_stack(target=val, spec=u'a.é.i.o')
     assert 'beyonc' in stack
-    assert u'é' in stack
+    if not _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
+        assert u'é' in stack

@@ -210,7 +210,7 @@ def _unpack_stack(scope):
 
 
 def _format_trace_value(value, maxlen):
-    s = bbrepr(value)
+    s = bbrepr(value).replace("\\'", "'")
     if len(s) > maxlen:
         try:
             suffix = '... (len=%s)' % len(value)
@@ -507,7 +507,7 @@ class _BBReprFormatter(string.Formatter):
     """
     def convert_field(self, value, conversion):
         if conversion == 'r':
-            return bbrepr(value)
+            return bbrepr(value).replace("\\'", "'")
         return super(_BBReprFormatter, self).convert_field(value, conversion)
 
 
