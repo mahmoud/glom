@@ -12,3 +12,4 @@ source =
    */pypy/site-packages/glom
 omit =
    */flycheck_*
+   */chainmap_backport.py
