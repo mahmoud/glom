@@ -228,26 +228,30 @@ def format_target_spec_trace(scope, root_error, width=TRACE_WIDTH, depth=0, prev
     unpack a scope into a multi-line but short summary
     """
     segments = []
-    indent = " " * 2 * depth
-    def mk_fmt(label):
-        pre = indent + " - " + label + ": "
+    indent = " " + "|" * depth
+    def mk_fmt(label, tick="- "):
+        pre = indent + tick + label + ": "
         fmt_width = width - len(pre)
         return lambda v: pre + _format_trace_value(v, fmt_width)
     fmt_t = mk_fmt("Target")
     fmt_s = mk_fmt("Spec")
+    fmt_b = mk_fmt("Spec", "+ ")
     recurse = lambda s: format_target_spec_trace(s, root_error, width, depth + 1, prev_target)
     tb_exc_line = lambda e: "".join(traceback.format_exception_only(type(e), e))[:-1]
-    fmt_e = lambda e: indent + " - " + tb_exc_line(e)
+    fmt_e = lambda e: indent + "- " + tb_exc_line(e)
     if depth:
-        segments.append(indent + "Failed Branch:")
+        segments.append(indent + " Failed Branch:")
     for scope, spec, target, error, branches in _unpack_stack(scope):
         if target is not prev_target:
             segments.append(fmt_t(target))
         prev_target = target
-        segments.append(fmt_s(spec))
+        if branches:
+            segments.append(fmt_b(spec))
+            segments.extend([recurse(s) for s in branches])
+        else:
+            segments.append(fmt_s(spec))
         if error is not None and error is not root_error:
             segments.append(fmt_e(error))
-        segments.extend([recurse(s) for s in branches])
     return "\n".join(segments)
 
 
