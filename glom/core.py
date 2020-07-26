@@ -240,7 +240,7 @@ def format_target_spec_trace(scope, root_error, width=TRACE_WIDTH, depth=0, prev
     tb_exc_line = lambda e: "".join(traceback.format_exception_only(type(e), e))[:-1]
     fmt_e = lambda e: indent + "- " + tb_exc_line(e)
     if depth:
-        segments.append(indent + " Failed Branch:")
+        segments.append(indent[:-1] + "> Failed Branch:")
     for scope, spec, target, error, branches in _unpack_stack(scope):
         if target is not prev_target:
             segments.append(fmt_t(target))
