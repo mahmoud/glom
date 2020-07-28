@@ -166,16 +166,13 @@ class GlomError(Exception):
         if getattr(self, '_finalized_str', None):
             return self._finalized_str
         elif getattr(self, '_scope', None) is not None:
-            try:
-                self._target_spec_trace = format_target_spec_trace(self._scope, self.__wrapped)
-                parts = ["error raised while processing, details below.",
-                         " Target-spec trace (most recent last):",
-                         self._target_spec_trace]
-                parts.extend(self._tb_lines)
-                self._finalized_str = "\n".join(parts)
-                return self._finalized_str
-            except Exception as e:
-                return "could not format:\n" + traceback.format_exc()
+            self._target_spec_trace = format_target_spec_trace(self._scope, self.__wrapped)
+            parts = ["error raised while processing, details below.",
+                     " Target-spec trace (most recent last):",
+                     self._target_spec_trace]
+            parts.extend(self._tb_lines)
+            self._finalized_str = "\n".join(parts)
+            return self._finalized_str
 
         # else, not finalized
         try:
@@ -223,35 +220,43 @@ def _format_trace_value(value, maxlen):
     return s
 
 
-def format_target_spec_trace(scope, root_error, width=TRACE_WIDTH, depth=0, prev_target=_MISSING):
+def format_target_spec_trace(scope, root_error, width=TRACE_WIDTH, depth=0, prev_target=_MISSING, last_branch=True):
     """
     unpack a scope into a multi-line but short summary
     """
     segments = []
     indent = " " + "|" * depth
-    def mk_fmt(label, tick="- "):
-        pre = indent + tick + label + ": "
+    tick = "| " if depth else "- "
+    def mk_fmt(label, t=None):
+        pre = indent + (t or tick) + label + ": "
         fmt_width = width - len(pre)
         return lambda v: pre + _format_trace_value(v, fmt_width)
     fmt_t = mk_fmt("Target")
     fmt_s = mk_fmt("Spec")
     fmt_b = mk_fmt("Spec", "+ ")
-    recurse = lambda s: format_target_spec_trace(s, root_error, width, depth + 1, prev_target)
+    recurse = lambda s, last=False: format_target_spec_trace(s, root_error, width, depth + 1, prev_target, last)
     tb_exc_line = lambda e: "".join(traceback.format_exception_only(type(e), e))[:-1]
-    fmt_e = lambda e: indent + "- " + tb_exc_line(e)
-    if depth:
-        segments.append(indent[:-1] + "> Failed Branch:")
+    fmt_e = lambda e: indent + tick + tb_exc_line(e)
     for scope, spec, target, error, branches in _unpack_stack(scope):
         if target is not prev_target:
             segments.append(fmt_t(target))
         prev_target = target
         if branches:
             segments.append(fmt_b(spec))
-            segments.extend([recurse(s) for s in branches])
+            segments.extend([recurse(s) for s in branches[:-1]])
+            segments.append(recurse(branches[-1], last_branch))
         else:
             segments.append(fmt_s(spec))
         if error is not None and error is not root_error:
+            last_line_error = True
             segments.append(fmt_e(error))
+        else:
+            last_line_error = False
+    if depth:  # \ on first line, X on last line
+        remark = lambda s, m: s[:depth + 1] + m + s[depth + 2:]
+        segments[0] = remark(segments[0], "\\")
+        if not last_branch or last_line_error:
+            segments[-1] = remark(segments[-1], "X")
     return "\n".join(segments)
 
 

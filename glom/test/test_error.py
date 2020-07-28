@@ -251,15 +251,12 @@ glom.matching.MatchError: error raised while processing, details below.
  - Target: [None]
  - Spec: Match(Switch([(1, 1), ('a', 'a'), (T.a, T.a)]))
  + Spec: Switch([(1, 1), ('a', 'a'), (T.a, T.a)])
- > Failed Branch:
- |- Spec: 1
- |- glom.matching.MatchError: [None] does not match 1
- > Failed Branch:
- |- Spec: 'a'
- |- glom.matching.MatchError: [None] does not match 'a'
- > Failed Branch:
- |- Spec: T.a
- |- glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
+ |\\ Spec: 1
+ |X glom.matching.MatchError: [None] does not match 1
+ |\\ Spec: 'a'
+ |X glom.matching.MatchError: [None] does not match 'a'
+ |\\ Spec: T.a
+ |X glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
 glom.matching.MatchError: no matches for target in Switch
 """
     if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
@@ -283,15 +280,12 @@ glom.core.PathAccessError: error raised while processing, details below.
  - Target: [None]
  - Spec: Match(Switch([(1, 1), ('a', 'a'), ([None], T.a)]))
  + Spec: Switch([(1, 1), ('a', 'a'), ([None], T.a)])
- > Failed Branch:
- |- Spec: 1
- |- glom.matching.MatchError: [None] does not match 1
- > Failed Branch:
- |- Spec: 'a'
- |- glom.matching.MatchError: [None] does not match 'a'
- > Failed Branch:
- |- Spec: [None]
- |- Spec: T.a
+ |\\ Spec: 1
+ |X glom.matching.MatchError: [None] does not match 1
+ |\\ Spec: 'a'
+ |X glom.matching.MatchError: [None] does not match 'a'
+ |\\ Spec: [None]
+ || Spec: T.a
 glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
 """
     if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
@@ -313,24 +307,18 @@ glom.core.PathAccessError: error raised while processing, details below.
  - Target: [None]
  - Spec: Match(Switch([(1, 1), ('a', 'a'), ([None], Switch([(1, 1), ('a', '...
  + Spec: Switch([(1, 1), ('a', 'a'), ([None], Switch([(1, 1), ('a', 'a'), (...
- > Failed Branch:
- |- Spec: 1
- |- glom.matching.MatchError: [None] does not match 1
- > Failed Branch:
- |- Spec: 'a'
- |- glom.matching.MatchError: [None] does not match 'a'
- > Failed Branch:
- |- Spec: [None]
+ |\\ Spec: 1
+ |X glom.matching.MatchError: [None] does not match 1
+ |\\ Spec: 'a'
+ |X glom.matching.MatchError: [None] does not match 'a'
+ |\\ Spec: [None]
  |+ Spec: Switch([(1, 1), ('a', 'a'), ([None], T.a)])
- |> Failed Branch:
- ||- Spec: 1
- ||- glom.matching.MatchError: [None] does not match 1
- |> Failed Branch:
- ||- Spec: 'a'
- ||- glom.matching.MatchError: [None] does not match 'a'
- |> Failed Branch:
- ||- Spec: [None]
- ||- Spec: T.a
+ ||\\ Spec: 1
+ ||X glom.matching.MatchError: [None] does not match 1
+ ||\\ Spec: 'a'
+ ||X glom.matching.MatchError: [None] does not match 'a'
+ ||\\ Spec: [None]
+ ||| Spec: T.a
 glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
 """
     if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
@@ -376,12 +364,10 @@ glom.core.CoalesceError: error raised while processing, details below.
  Target-spec trace (most recent last):
  - Target: {'a': {'b': 'c'}, 'd': {'e': ['f'], 'g': 'h'}, 'i': [{'j... (len=4)
  + Spec: Coalesce('xxx', 'yyy')
- > Failed Branch:
- |- Spec: 'xxx'
- |- glom.core.PathAccessError: could not access 'xxx', part 0 of Path('xxx'), got error: KeyError('xxx')
- > Failed Branch:
- |- Spec: 'yyy'
- |- glom.core.PathAccessError: could not access 'yyy', part 0 of Path('yyy'), got error: KeyError('yyy')
+ |\\ Spec: 'xxx'
+ |X glom.core.PathAccessError: could not access 'xxx', part 0 of Path('xxx'), got error: KeyError('xxx')
+ |\\ Spec: 'yyy'
+ |X glom.core.PathAccessError: could not access 'yyy', part 0 of Path('yyy'), got error: KeyError('yyy')
 glom.core.CoalesceError: no valid values found. Tried ('xxx', 'yyy') and got (PathAccessError, PathAccessError) (at path [])
 """
     if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
