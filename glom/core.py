@@ -395,6 +395,14 @@ class CoalesceError(GlomError):
     Traceback (most recent call last):
     ...
     CoalesceError: no valid values found. Tried ('a', 'b') and got (PathAccessError, PathAccessError) ...
+
+    .. note::
+
+       Coalesce is a *branching* specifier type, so as of v20.7.0, its
+       exception messages feature an error tree. See
+       :ref:`branched-exceptions` for details on how to interpret these
+       exceptions.
+
     """
     def __init__(self, coal_obj, skipped, path):
         self.coal_obj = coal_obj
@@ -813,8 +821,18 @@ class Coalesce(object):
     CoalesceError: no valid values found. Tried ('a', 'b') and got (PathAccessError, PathAccessError) ...
 
     Same process, but because ``target`` is empty, we get a
-    :exc:`CoalesceError`. If we want to avoid an exception, and we
-    know which value we want by default, we can set *default*:
+    :exc:`CoalesceError`.
+
+    .. note::
+
+       Coalesce is a *branching* specifier type, so as of v20.7.0, its
+       exception messages feature an error tree. See
+       :ref:`branched-exceptions` for details on how to interpret these
+       exceptions.
+
+
+    If we want to avoid an exception, and we know which value we want
+    by default, we can set *default*:
 
     >>> target = {}
     >>> glom(target, Coalesce('a', 'b', 'c'), default='d-fault')
