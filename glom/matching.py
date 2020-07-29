@@ -784,19 +784,39 @@ class Switch(object):
 
     If no keyspec succeeds, a :class:`MatchError` is raised. Our spec
     only works on characters (strings of length 1). Let's try a
-    non-character, ``3``:
+    non-character, the integer ``3``:
 
       >>> glom(3, switch_spec)
       Traceback (most recent call last):
       ...
-      MatchError: error raised while processing, details below.
+      glom.matching.MatchError: error raised while processing, details below.
        Target-spec trace (most recent last):
        - Target: 3
-       - Spec: Match(Switch([(Or('a', 'e', 'i', 'o', 'u'), Val('vowel')), (An...
-       - Spec: Switch([(Or('a', 'e', 'i', 'o', 'u'), Val('vowel')), (And(str,...
-       - Spec: Or('a', 'e', 'i', 'o', 'u')
-       - Spec: 'a'
-      MatchError: no matches for target in Switch
+       - Spec: Match(Switch([(Or('a', 'e', 'i', 'o', 'u'), Val('vowel')), (And(str, M, (M(T[2:]) == '')), Val('...
+       + Spec: Switch([(Or('a', 'e', 'i', 'o', 'u'), Val('vowel')), (And(str, M, (M(T[2:]) == '')), Val('conson...
+       |\ Spec: Or('a', 'e', 'i', 'o', 'u')
+       ||\ Spec: 'a'
+       ||X glom.matching.MatchError: 3 does not match 'a'
+       ||\ Spec: 'e'
+       ||X glom.matching.MatchError: 3 does not match 'e'
+       ||\ Spec: 'i'
+       ||X glom.matching.MatchError: 3 does not match 'i'
+       ||\ Spec: 'o'
+       ||X glom.matching.MatchError: 3 does not match 'o'
+       ||\ Spec: 'u'
+       ||X glom.matching.MatchError: 3 does not match 'u'
+       |X glom.matching.MatchError: 3 does not match 'u'
+       |\ Spec: And(str, M, (M(T[2:]) == ''))
+       || Spec: str
+       |X glom.matching.TypeMatchError: expected type str, not int
+      glom.matching.MatchError: no matches for target in Switch
+
+
+    .. note::
+
+       :class:`~glom.Switch` is one of several *branching* specifier
+       types in glom. See ":ref:`branched-exceptions`" for details on
+       interpreting its exception messages.
 
     A *default* value can be passed to the spec to be returned instead
     of raising a :class:`MatchError`.
