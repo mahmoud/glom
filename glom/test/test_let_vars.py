@@ -74,3 +74,14 @@ def test_max_skip():
                  S.max)
     result = glom(target, max_spec)
     assert result.max == 9
+
+
+def test_s_scope_assign():
+    spec = (S(a='x'), S.a)
+    assert glom({'x': 'y'}, spec) == 'y'
+
+    with pytest.raises(TypeError):
+        S()
+    with pytest.raises(TypeError):
+        S('nope')
+    return

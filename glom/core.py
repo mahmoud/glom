@@ -1336,6 +1336,12 @@ class TType(object):
         return _t_child(self, '[', item)
 
     def __call__(self, *args, **kwargs):
+        if self is S:
+            if args:
+                raise TypeError('S() takes no positional arguments, got: %r' % (args,))
+            if not kwargs:
+                raise TypeError('S() expected at least one kwarg, got none')
+            # TODO: typecheck kwarg vals?
         return _t_child(self, '(', (args, kwargs))
 
     def __(self, name):
@@ -1425,6 +1431,11 @@ def _t_eval(target, _t, scope):
                 pae = PathAccessError(e, _t, i // 2)
         elif op == '(':
             args, kwargs = arg
+            if cur is scope:
+                scope.update({
+                    k: scope[glom](target, v, scope) for k, v in kwargs.items()})
+                return target
+
             scope[Path] += t_path[2:i+2:2]
             cur = scope[glom](
                 target, Call(cur, args, kwargs), scope)
