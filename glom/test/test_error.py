@@ -106,7 +106,7 @@ def _make_stack(spec, **kwargs):
     assert not kwargs
     _orig_some_str = getattr(traceback, '_some_str', None)
 
-    def _debug_some_str(value):
+    def _debug_some_str(value, *a, **kw):
         # all to debug some CI flakiness
         try:
             return str(value)
