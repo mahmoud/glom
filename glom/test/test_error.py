@@ -104,10 +104,29 @@ def _norm_stack(formatted_stack, exc):
 def _make_stack(spec, **kwargs):
     target = kwargs.pop('target', [None])
     assert not kwargs
+    _orig_some_str = getattr(traceback, '_some_str', None)
+
+    def _debug_some_str(value):
+        # all to debug some CI flakiness
+        try:
+            return str(value)
+        except BaseException as be:
+            try:
+                print(' !! failed to stringify %s object, got %s' % (type(value).__name__, be))
+                traceback.print_exc()
+            except:
+                print(' !! unable to print trace')
+            return '<unprintable %s object got %s>' % (type(value).__name__, be)
+
+    traceback._some_str = _debug_some_str
+
     try:
-        glom(target, spec)
-    except GlomError as e:
-        stack = _norm_stack(traceback.format_exc(), e)
+        try:
+            glom(target, spec)
+        except GlomError as e:
+            stack = _norm_stack(traceback.format_exc(), e)
+    finally:
+        traceback._some_str = _orig_some_str
     return stack
 
 
