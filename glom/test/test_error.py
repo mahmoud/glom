@@ -110,8 +110,7 @@ def _make_stack(spec, **kwargs):
         # all to debug some CI flakiness
         try:
             return str(value)
-        except BaseException as be:
-            # pragma: no cover
+        except BaseException as be:  # pragma: no cover
             try:
                 print(' !! failed to stringify %s object, got %s' % (type(value).__name__, be))
                 traceback.print_exc()
