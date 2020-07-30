@@ -1405,6 +1405,13 @@ def _t_eval(target, _t, scope):
         if fetch_till > 1 and t_path[1] in ('.', 'P'):
             cur = _s_first_magic(cur, t_path[2], _t)
             i += 2
+        elif root is S and fetch_till > 1 and t_path[1] == '(':
+            # S(var='spec') style assignment
+            _, kwargs = t_path[2]
+            scope.update({
+                k: scope[glom](target, v, scope) for k, v in kwargs.items()})
+            return target
+
     else:
         raise ValueError('TType instance with invalid root')  # pragma: no cover
     pae = None
@@ -1431,11 +1438,6 @@ def _t_eval(target, _t, scope):
                 pae = PathAccessError(e, _t, i // 2)
         elif op == '(':
             args, kwargs = arg
-            if cur is scope:
-                scope.update({
-                    k: scope[glom](target, v, scope) for k, v in kwargs.items()})
-                return target
-
             scope[Path] += t_path[2:i+2:2]
             cur = scope[glom](
                 target, Call(cur, args, kwargs), scope)
