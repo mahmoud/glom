@@ -205,9 +205,9 @@ scopes can see and share the value.
      ``S.globals``. Any values saved there will be accessible
      throughout that given :func:`~glom.glom` call::
 
-     >>> last_spec = ([A.globals.last], S.globals.last)
-     >>> glom([3, 1, 4, 1, 5], last_spec)
-     5
+       >>> last_spec = ([A.globals.last], S.globals.last)
+       >>> glom([3, 1, 4, 1, 5], last_spec)
+       5
 
      While not shared across calls, most of the same care prescribed
      about using global state still applies.

@@ -66,7 +66,6 @@ object-oriented approach can be more suitable.
 
 .. autoclass:: glom.Not
 
-
 String matching
 ~~~~~~~~~~~~~~~
 

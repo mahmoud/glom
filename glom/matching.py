@@ -14,7 +14,7 @@ from pprint import pprint
 from boltons.iterutils import is_iterable
 from boltons.typeutils import make_sentinel
 
-from .core import GlomError, glom, T, MODE, bbrepr, bbformat, format_invocation, Path, LAST_CHILD_SCOPE, Val
+from .core import GlomError, glom, T, MODE, bbrepr, bbformat, format_invocation, Path, chain_child, Val
 
 
 _MISSING = make_sentinel('_MISSING')
@@ -234,10 +234,10 @@ class Regex(object):
     def glomit(self, target, scope):
         if type(target) not in _RE_TYPES:
             raise MatchError(
-                "{!r} not valid as a Regex target -- expected {!r}", type(target), _RE_TYPES)
+                "{0!r} not valid as a Regex target -- expected {1!r}", type(target), _RE_TYPES)
         match = self.match_func(target)
         if not match:
-            raise MatchError("target did not match pattern {!r}", self.pattern)
+            raise MatchError("target did not match pattern {0!r}", self.pattern)
         scope.update(match.groupdict())
         return target
 
@@ -418,7 +418,7 @@ class _MSubspec(object):
         match = scope[glom](target, self.spec, scope)
         if match:
             return target
-        raise MatchError('expected truthy value from {!r}, got {!r}', self.spec, match)
+        raise MatchError('expected truthy value from {0!r}, got {1!r}', self.spec, match)
 
 
 class _MExpr(object):
@@ -458,7 +458,7 @@ class _MExpr(object):
         )
         if matched:
             return target
-        raise MatchError("{!r} {} {!r}", lhs, _M_OP_MAP.get(op, op), rhs)
+        raise MatchError("{0!r} {1} {2!r}", lhs, _M_OP_MAP.get(op, op), rhs)
 
     def __repr__(self):
         op = _M_OP_MAP.get(self.op, self.op)
@@ -561,7 +561,7 @@ class _MType(object):
     def glomit(self, target, spec):
         if target:
             return target
-        raise MatchError("{!r} not truthy", target)
+        raise MatchError("{0!r} not truthy", target)
 
 
 M = _MType()
@@ -598,7 +598,7 @@ class Optional(object):
 
     def glomit(self, target, scope):
         if target != self.key:
-            raise MatchError("target {} != spec {}", target, self.key)
+            raise MatchError("target {0} != spec {1}", target, self.key)
         return target
 
     def __repr__(self):
@@ -650,9 +650,6 @@ class Required(object):
             raise ValueError("== match constants are already required: " + bbrepr(key))
         self.key = key
 
-    def glomit(self, target, scope):
-        return scope[glom](target, self.key, scope)
-
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, bbrepr(self.key))
 
@@ -686,25 +683,30 @@ def _handle_dict(target, spec, scope):
         spec_keys = sorted(spec_keys, key=_precedence)
     required = {
         key for key in spec_keys
-        if _precedence(key) == 0 and type(key) != Optional
-        or type(key) == Required}
+        if _precedence(key) == 0 and type(key) is not Optional
+        or type(key) is Required}
     result = {  # pre-load result with defaults
         key.key: key.default for key in spec_keys
         if type(key) is Optional and key.default is not _MISSING}
     for key, val in target.items():
-        for spec_key in spec_keys:
+        for maybe_spec_key in spec_keys:
+            # handle Required as a special case here rather than letting it be a stand-alone spec
+            if type(maybe_spec_key) is Required:
+                spec_key = maybe_spec_key.key
+            else:
+                spec_key = maybe_spec_key
             try:
                 key = scope[glom](key, spec_key, scope)
             except GlomError:
                 pass
             else:
-                result[key] = scope[glom](val, spec[spec_key], scope)
-                required.discard(spec_key)
+                result[key] = scope[glom](val, spec[maybe_spec_key], chain_child(scope))
+                required.discard(maybe_spec_key)
                 break
         else:
-            raise MatchError("key {!r} didn't match any of {!r}", key, spec_keys)
+            raise MatchError("key {0!r} didn't match any of {1!r}", key, spec_keys)
     if required:
-        raise MatchError("target missing expected keys: {}", ', '.join([bbrepr(r) for r in required]))
+        raise MatchError("target missing expected keys: {0}", ', '.join([bbrepr(r) for r in required]))
     return result
 
 
@@ -728,7 +730,7 @@ def _glom_match(target, spec, scope):
             else:  # did not break, something went wrong
                 if target and not spec:
                     raise MatchError(
-                        "{!r} does not match empty {}", target, type(spec).__name__)
+                        "{0!r} does not match empty {1}", target, type(spec).__name__)
                 # NOTE: unless error happens above, break will skip else branch
                 # so last_error will have been assigned
                 raise last_error
@@ -739,7 +741,7 @@ def _glom_match(target, spec, scope):
         if not isinstance(target, tuple):
             raise TypeMatchError(type(target), tuple)
         if len(target) != len(spec):
-            raise MatchError("{!r} does not match {!r}", target, spec)
+            raise MatchError("{0!r} does not match {1!r}", target, spec)
         result = []
         for sub_target, sub_spec in zip(target, spec):
             result.append(scope[glom](sub_target, sub_spec, scope))
@@ -750,11 +752,11 @@ def _glom_match(target, spec, scope):
                 return target
         except Exception as e:
             raise MatchError(
-                "{}({!r}) did not validate (got exception {!r})", spec.__name__, target, e)
+                "{0}({1!r}) did not validate (got exception {2!r})", spec.__name__, target, e)
         raise MatchError(
-            "{}({!r}) did not validate (non truthy return)", spec.__name__, target)
+            "{0}({1!r}) did not validate (non truthy return)", spec.__name__, target)
     elif target != spec:
-        raise MatchError("{!r} does not match {!r}", target, spec)
+        raise MatchError("{0!r} does not match {1!r}", target, spec)
     return target
 
 
@@ -782,19 +784,39 @@ class Switch(object):
 
     If no keyspec succeeds, a :class:`MatchError` is raised. Our spec
     only works on characters (strings of length 1). Let's try a
-    non-character, ``3``:
+    non-character, the integer ``3``:
 
       >>> glom(3, switch_spec)
       Traceback (most recent call last):
       ...
-      MatchError: error raised while processing, details below.
+      glom.matching.MatchError: error raised while processing, details below.
        Target-spec trace (most recent last):
        - Target: 3
-       - Spec: Match(Switch([(Or('a', 'e', 'i', 'o', 'u'), Val('vowel')), (An...
-       - Spec: Switch([(Or('a', 'e', 'i', 'o', 'u'), Val('vowel')), (And(str,...
-       - Spec: Or('a', 'e', 'i', 'o', 'u')
-       - Spec: 'a'
-      MatchError: no matches for target in Switch
+       - Spec: Match(Switch([(Or('a', 'e', 'i', 'o', 'u'), Val('vowel')), (And(str, M, (M(T[2:]) == '')), Val('...
+       + Spec: Switch([(Or('a', 'e', 'i', 'o', 'u'), Val('vowel')), (And(str, M, (M(T[2:]) == '')), Val('conson...
+       |\ Spec: Or('a', 'e', 'i', 'o', 'u')
+       ||\ Spec: 'a'
+       ||X glom.matching.MatchError: 3 does not match 'a'
+       ||\ Spec: 'e'
+       ||X glom.matching.MatchError: 3 does not match 'e'
+       ||\ Spec: 'i'
+       ||X glom.matching.MatchError: 3 does not match 'i'
+       ||\ Spec: 'o'
+       ||X glom.matching.MatchError: 3 does not match 'o'
+       ||\ Spec: 'u'
+       ||X glom.matching.MatchError: 3 does not match 'u'
+       |X glom.matching.MatchError: 3 does not match 'u'
+       |\ Spec: And(str, M, (M(T[2:]) == ''))
+       || Spec: str
+       |X glom.matching.TypeMatchError: expected type str, not int
+      glom.matching.MatchError: no matches for target in Switch
+
+
+    .. note::
+
+       :class:`~glom.Switch` is one of several *branching* specifier
+       types in glom. See ":ref:`branched-exceptions`" for details on
+       interpreting its exception messages.
 
     A *default* value can be passed to the spec to be returned instead
     of raising a :class:`MatchError`.
@@ -828,8 +850,7 @@ class Switch(object):
                 scope[glom](target, keyspec, scope)
             except GlomError as ge:
                 continue
-            scope = scope[LAST_CHILD_SCOPE]  # valspec child of keyspec so e.g. var capture
-            return scope[glom](target, valspec, scope)
+            return scope[glom](target, valspec, chain_child(scope))
         if self.default is not _MISSING:
             return self.default
         raise MatchError("no matches for target in %s"  % self.__class__.__name__)

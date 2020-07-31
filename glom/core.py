@@ -97,12 +97,26 @@ scope executed.  Useful for "lifting" results out of child scopes
 for scopes that want to chain the scopes of their children together
 similar to tuple.
 """
+
+NO_PYFRAME = make_sentinel('NO_PYFRAME')
+NO_PYFRAME.__doc__ = """
+Used internally to mark scopes which are no longer wrapped
+in a recursive glom() call, so that they can be cleaned up correctly
+in case of exceptions
+"""
+
 MODE =  make_sentinel('MODE')
 
-ERROR_SCOPE = make_sentinel('ERROR_SCOPE')
-ERROR_SCOPE.__doc__ = """
-``ERROR_SCOPE`` is used by glom internals to store the scope
-from which an exception was raised when processing fails.
+CHILD_ERRORS = make_sentinel('CHILD_ERRORS')
+CHILD_ERRORS.__doc__ = """
+``CHILD_ERRORS`` is used by glom internals to keep track of
+failed child branches of the current scope.
+"""
+
+CUR_ERROR = make_sentinel('CUR_ERROR')
+CUR_ERROR.__doc__ = """
+``CUR_ERROR`` is used by glom internals to keep track of
+thrown exceptions.
 """
 
 _PKG_DIR_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -124,9 +138,14 @@ class GlomError(Exception):
         bases = (GlomError,) if issubclass(GlomError, exc_type) else (exc_type, GlomError)
         exc_wrapper_type = type("GlomError.wrap({})".format(exc_type.__name__), bases, {})
         try:
-            return exc_wrapper_type(*exc.args)
+            wrapper = exc_wrapper_type(*exc.args)
+            wrapper.__wrapped = exc
+            return wrapper
         except Exception:  # maybe exception can't be re-created
             return exc
+
+    def _set_wrapped(self, exc):
+        self.__wrapped = exc
 
     def _finalize(self, scope):
         # careful when changing how this functionality works; pytest seems to mess with
@@ -147,7 +166,7 @@ class GlomError(Exception):
         if getattr(self, '_finalized_str', None):
             return self._finalized_str
         elif getattr(self, '_scope', None) is not None:
-            self._target_spec_trace = format_target_spec_trace(self._scope)
+            self._target_spec_trace = format_target_spec_trace(self._scope, self.__wrapped)
             parts = ["error raised while processing, details below.",
                      " Target-spec trace (most recent last):",
                      self._target_spec_trace]
@@ -165,22 +184,33 @@ class GlomError(Exception):
 
 def _unpack_stack(scope):
     """
-    convert scope to [(scope, spec, target)]
+    convert scope to [[scope, spec, target, error, [children]]]
+
+    this is a convenience method for printing stacks
     """
-    # impl notes:
-    # the spec and target are extracted from each level of the
-    # scope using cursors.
-    #
-    # scope[T] -- target cursor
-    # scope[Spec] -- spec cursor (for dict + tuple type specs)
-    #
-    # root glom call generates two scopes up at the top that aren't part
-    # of execution
-    return [(scope, scope[Spec], scope[T]) for scope in list(reversed(scope.maps[:-2]))]
+    stack = []
+    scope = scope.maps[0]
+    while LAST_CHILD_SCOPE in scope:
+        child = scope[LAST_CHILD_SCOPE]
+        branches = scope[CHILD_ERRORS]
+        if branches == [child]:
+            branches = []  # if there's only one branch, count it as linear
+        stack.append([scope, scope[Spec], scope[T], scope.get(CUR_ERROR), branches])
+        if child in branches:
+            break  # if child already covered by branches, stop the linear descent
+        scope = child.maps[0]
+    else:  # if break executed above, cur scope was already added
+        stack.append([scope, scope[Spec], scope[T], scope.get(CUR_ERROR), []])
+    # push errors "down" to where they were first raised / first observed
+    for i in range(len(stack) - 1):
+        cur, nxt = stack[i], stack[i + 1]
+        if cur[3] == nxt[3]:
+            cur[3] = None
+    return stack
 
 
 def _format_trace_value(value, maxlen):
-    s = bbrepr(value)  # TODO: integrate bbrepr with an option for reprlib
+    s = bbrepr(value).replace("\\'", "'")
     if len(s) > maxlen:
         try:
             suffix = '... (len=%s)' % len(value)
@@ -190,19 +220,43 @@ def _format_trace_value(value, maxlen):
     return s
 
 
-def format_target_spec_trace(scope, width=TRACE_WIDTH):
+def format_target_spec_trace(scope, root_error, width=TRACE_WIDTH, depth=0, prev_target=_MISSING, last_branch=True):
     """
     unpack a scope into a multi-line but short summary
     """
     segments = []
-    prev_target = _MISSING
-    target_width = width - len(" - Target: ")
-    spec_width = width - len(" - Spec: ")
-    for scope, spec, target in _unpack_stack(scope):
+    indent = " " + "|" * depth
+    tick = "| " if depth else "- "
+    def mk_fmt(label, t=None):
+        pre = indent + (t or tick) + label + ": "
+        fmt_width = width - len(pre)
+        return lambda v: pre + _format_trace_value(v, fmt_width)
+    fmt_t = mk_fmt("Target")
+    fmt_s = mk_fmt("Spec")
+    fmt_b = mk_fmt("Spec", "+ ")
+    recurse = lambda s, last=False: format_target_spec_trace(s, root_error, width, depth + 1, prev_target, last)
+    tb_exc_line = lambda e: "".join(traceback.format_exception_only(type(e), e))[:-1]
+    fmt_e = lambda e: indent + tick + tb_exc_line(e)
+    for scope, spec, target, error, branches in _unpack_stack(scope):
         if target is not prev_target:
-            segments.append(" - Target: " + _format_trace_value(target, target_width))
+            segments.append(fmt_t(target))
         prev_target = target
-        segments.append(" - Spec: " + _format_trace_value(spec, spec_width))
+        if branches:
+            segments.append(fmt_b(spec))
+            segments.extend([recurse(s) for s in branches[:-1]])
+            segments.append(recurse(branches[-1], last_branch))
+        else:
+            segments.append(fmt_s(spec))
+        if error is not None and error is not root_error:
+            last_line_error = True
+            segments.append(fmt_e(error))
+        else:
+            last_line_error = False
+    if depth:  # \ on first line, X on last line
+        remark = lambda s, m: s[:depth + 1] + m + s[depth + 2:]
+        segments[0] = remark(segments[0], "\\")
+        if not last_branch or last_line_error:
+            segments[-1] = remark(segments[-1], "X")
     return "\n".join(segments)
 
 
@@ -216,7 +270,7 @@ def format_oneline_trace(scope):
     # if the target is the same, don't repeat it
     segments = []
     prev_target = _MISSING
-    for scope, spec, target in _unpack_stack(scope):
+    for scope, spec, target, error, branches in _unpack_stack(scope):
         segments.append('/')
         if type(spec) in (TType, Path):
             segments.append(bbrepr(spec))
@@ -341,6 +395,14 @@ class CoalesceError(GlomError):
     Traceback (most recent call last):
     ...
     CoalesceError: no valid values found. Tried ('a', 'b') and got (PathAccessError, PathAccessError) ...
+
+    .. note::
+
+       Coalesce is a *branching* specifier type, so as of v20.7.0, its
+       exception messages feature an error tree. See
+       :ref:`branched-exceptions` for details on how to interpret these
+       exceptions.
+
     """
     def __init__(self, coal_obj, skipped, path):
         self.coal_obj = coal_obj
@@ -465,7 +527,7 @@ class _BBReprFormatter(string.Formatter):
     """
     def convert_field(self, value, conversion):
         if conversion == 'r':
-            return bbrepr(value)
+            return bbrepr(value).replace("\\'", "'")
         return super(_BBReprFormatter, self).convert_field(value, conversion)
 
 
@@ -759,8 +821,18 @@ class Coalesce(object):
     CoalesceError: no valid values found. Tried ('a', 'b') and got (PathAccessError, PathAccessError) ...
 
     Same process, but because ``target`` is empty, we get a
-    :exc:`CoalesceError`. If we want to avoid an exception, and we
-    know which value we want by default, we can set *default*:
+    :exc:`CoalesceError`.
+
+    .. note::
+
+       Coalesce is a *branching* specifier type, so as of v20.7.0, its
+       exception messages feature an error tree. See
+       :ref:`branched-exceptions` for details on how to interpret these
+       exceptions.
+
+
+    If we want to avoid an exception, and we know which value we want
+    by default, we can set *default*:
 
     >>> target = {}
     >>> glom(target, Coalesce('a', 'b', 'c'), default='d-fault')
@@ -1677,14 +1749,13 @@ def _handle_list(target, spec, scope):
 def _handle_tuple(target, spec, scope):
     res = target
     for subspec in spec:
+        scope = chain_child(scope)
         nxt = scope[glom](res, subspec, scope)
         if nxt is SKIP:
             continue
         if nxt is STOP:
             break
         res = nxt
-        # this makes it so that specs in a tuple effectively nest.
-        scope = scope[LAST_CHILD_SCOPE]
         if not isinstance(subspec, list):
             scope[Path] += [getattr(subspec, '__name__', subspec)]
     return res
@@ -1940,6 +2011,7 @@ def glom(target, spec, **kwargs):
         Path: kwargs.pop('path', []),
         Inspect: kwargs.pop('inspector', None),
         MODE: AUTO,
+        CHILD_ERRORS: [],
         'globals': ScopeVars({}, {}),
     })
     scope[UP] = scope
@@ -1963,10 +2035,11 @@ def glom(target, spec, **kwargs):
             # need to change id or else py3 seems to not let us truncate the
             # stack trace with the explicit "raise err" below
             err = copy.copy(e)
+            err._set_wrapped(e)
         else:
             err = GlomError.wrap(e)
         if isinstance(err, GlomError):
-            err._finalize(scope[ERROR_SCOPE])
+            err._finalize(scope[LAST_CHILD_SCOPE])
         else:  # wrapping failed, fall back to default behavior
             raise
 
@@ -1975,13 +2048,38 @@ def glom(target, spec, **kwargs):
     return ret
 
 
+def chain_child(scope):
+    """
+    used for specs like Auto(tuple), Switch(), etc
+    that want to chain their child scopes together
+
+    returns a new scope that can be passed to
+    the next recursive glom call, e.g.
+
+    scope[glom](target, spec, chain_child(scope))
+    """
+    if LAST_CHILD_SCOPE not in scope.maps[0]:
+        return scope  # no children yet, nothing to do
+    # NOTE: an option here is to drill down on LAST_CHILD_SCOPE;
+    # this would have some interesting consequences for scoping
+    # of tuples
+    nxt_in_chain = scope[LAST_CHILD_SCOPE]
+    nxt_in_chain.maps[0][NO_PYFRAME] = True
+    # previous failed branches are forgiven as the
+    # scope is re-wired into a new stack
+    del nxt_in_chain.maps[0][CHILD_ERRORS][:]
+    return nxt_in_chain
+
+
 def _glom(target, spec, scope):
     parent = scope
-    scope = scope.new_child()
+    scope = scope.new_child({
+        T: target,
+        Spec: spec,
+        UP: parent,
+        CHILD_ERRORS: [],
+    })
     parent[LAST_CHILD_SCOPE] = scope
-    scope[T] = target
-    scope[Spec] = spec
-    scope[UP] = parent
 
     try:
         if isinstance(spec, TType):  # must go first, due to callability
@@ -1990,8 +2088,15 @@ def _glom(target, spec, scope):
             return spec.glomit(target, scope)
 
         return scope[MODE](target, spec, scope)
-    except Exception:
-        scope[ROOT].setdefault(ERROR_SCOPE, scope)
+    except Exception as e:
+        scope.maps[1][CHILD_ERRORS].append(scope)
+        scope.maps[0][CUR_ERROR] = e
+        if NO_PYFRAME in scope.maps[1]:
+            cur_scope = scope[UP]
+            while NO_PYFRAME in cur_scope.maps[0]:
+                cur_scope.maps[1][CHILD_ERRORS].append(cur_scope)
+                cur_scope.maps[0][CUR_ERROR] = e
+                cur_scope = cur_scope[UP]
         raise
 
 

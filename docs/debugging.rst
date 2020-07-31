@@ -39,6 +39,7 @@ Here is a short list of links to all public exception types in glom.
      * :exc:`~glom.UnregisteredTarget`
      * :exc:`~glom.BadSpec`
 
+.. _reading-exceptions:
 
 Reading a glom Exception
 ------------------------
@@ -101,8 +102,64 @@ truncated to terminal width to maximize readability.
    glom data traceback, pass ``glom_debug=True`` to the top-level glom
    call.
 
-.. _debugging:
+.. _branched-exceptions:
 
+Reading Branched Exceptions
+---------------------------
+
+Some glom spec types, like :class:`~glom.Coalesce` and
+:class:`~glom.Switch`, can try multiple specs in succession. These
+"branching" specs can also get multiple exceptions.
+
+Initially, debugging data for these branching specs was limited. But
+in v20.7.0, branching error trees were introduced, exposing
+information about every spec and target attempted before raising the
+final exception.
+
+All the exception reading advice in the ":ref:`reading-exceptions`"
+section applies, but there's a bit of extra formatting to visualize
+the error tree in the target-spec trace.
+
+Let's step line by line through a :class:`~glom.Coalesce` error tree:
+
+.. code-block:: default
+   :linenos:
+
+    >>> target = {'n': 'nope', 'xxx': {'z': {'v': 0}}}
+    >>> glom(target, Coalesce(('xxx', 'z', 'n'), 'yyy'))
+    Traceback (most recent call last):
+      File "tmp.py", line 9, in _make_stack
+        glom(target, spec)
+      File "/home/mahmoud/projects/glom/glom/core.py", line 2029, in glom
+        raise err
+    glom.core.CoalesceError: error raised while processing, details below.
+     Target-spec trace (most recent last):
+     - Target: {'n': 'nope', 'xxx': {'z': {'v': 0}}}
+     + Spec: Coalesce(('xxx', 'z', 'n'), 'yyy')
+     |\ Spec: ('xxx', 'z', 'n')
+     || Spec: 'xxx'
+     || Target: {'z': {'v': 0}}
+     || Spec: 'z'
+     || Target: {'v': 0}
+     || Spec: 'n'
+     |X glom.core.PathAccessError: could not access 'n', part 0 of Path('n'), got error: KeyError('n')
+     |\ Spec: 'yyy'
+     |X glom.core.PathAccessError: could not access 'yyy', part 0 of Path('yyy'), got error: KeyError('yyy')
+    glom.core.CoalesceError: no valid values found. Tried (('xxx', 'z', 'n'), 'yyy') and got (PathAccessError, PathAccessError) (at path ['xxx', 'z'])
+
+* Line **1-10**: Standard fare for glom use and error behavior, see ":ref:`reading-exceptions`"
+* Line **11**: We see a "**+**" when starting a branching spec. Each level of branch adds a "**|**" on the left to help track nesting level.
+* Line **12**: We see a "**\\**" indicating a new branch of the root branching spec.
+* Line **13-17**: Traversing downward as usual until...
+* Line **18**: We see an "**X**" indicating our first exception, causing the failure of this branch.
+* Line **19**: We see a "**\\**" which starts our next branch.
+* Line **20**: We see an "**X**" indicating our second and last exception, causing the failure of this branch.
+* Line **21**: The last line is our root level exception, dedented, same as any other glom error.
+
+Apart from the formatting, error branching doesn't change any other
+semantics of the glom exception being raised.
+
+.. _debugging:
 
 Debugging
 ---------
