@@ -315,11 +315,13 @@ such that all unicodes are converted to native strings.
 
     glom(json.loads(data),
         Ref('json',
-            Match(Or(
-                And(dict, {Ref('json'): Ref('json')}),
-                And(list, [Ref('json')]),
-                And(type(u''), Auto(str)),
-                object))))
+            Match(Switch({
+                dict: {Ref('json'): Ref('json')},
+                list: [Ref('json')],
+                type(u''): Auto(str),
+                object: T}))
+            )
+        )
 
 
 :class:`~glom.Match()` above splits the :class:`~glom.Ref()` evaluation into 4 cases:
@@ -333,3 +335,22 @@ such that all unicodes are converted to native strings.
 As motivation for why this might come up: attributes, class names,
 function names, and identifiers must be the native string type for a
 given Python, i.e., bytestrings in Python 2 and unicode in Python 3.
+
+
+
+Store and Retrieve Current Target
+---------------------------------
+
+The :data:`~glom.A` scope assignment helper makes it extremely
+convenient to hold on to the current target and then reset it.
+
+The `(A.t, ..., S.t)` "sandwhich" is a convenient idiom for these
+cases.
+
+For example, we could use this to update a `dict`:
+
+
+.. code-block:: python
+
+    glom({}, (A.t, T.update({1: 1}), S.t))
+
