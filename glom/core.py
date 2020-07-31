@@ -1640,7 +1640,7 @@ class ScopeVars(object):
 
 class Vars(object):
     """
-    :class:`Vars` is a helper that can be used with :class:`Let` in order to
+    :class:`Vars` is a helper that can be used with **S** in order to
     store shared mutable state.
 
     Takes the same arguments as :class:`dict()`.
@@ -1667,12 +1667,13 @@ class Vars(object):
 
 class Let(object):
     """
-    This specifier type assigns variables to the scope.
+    Deprecated, kept for backwards compat. Use S(x='y') instead.
 
     >>> target = {'data': {'val': 9}}
     >>> spec = (Let(value=T['data']['val']), {'val': S['value']})
     >>> glom(target, spec)
     {'val': 9}
+
     """
     def __init__(self, **kw):
         if not kw:

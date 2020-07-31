@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from glom import glom, S, Val, T, A, Merge, Fill, Let, Ref, Coalesce, STOP, Switch, GlomError
+from glom import glom, S, Val, T, A, Fill, Ref, Coalesce, STOP, Switch
 from glom.matching import (
     Match, M, MatchError, TypeMatchError, And, Or, Not,
     Optional, Required, Regex)
@@ -208,8 +208,8 @@ def test_pattern_matching():
         lambda t: t + 1, Ref('fact', (
             lambda t: t - 1,
             (M == 0) & Fill(1) |
-            (Let(r=Ref('fact')),
-                S, lambda s: s['r'] * s[T]))))
+            (S(r=Ref('fact')),
+             S, lambda s: s['r'] * s[T]))))
 
     assert glom(4, factorial) == 4 * 3 * 2
 
@@ -500,7 +500,7 @@ def test_switch():
     	Switch({})
     with pytest.raises(TypeError):
     	Switch("wrong type")
-    assert glom(None, Switch({Let(a=lambda t: 1): S['a']})) == 1
+    assert glom(None, Switch({S(a=lambda t: 1): S['a']})) == 1
     repr(Switch(cases))
 
 
