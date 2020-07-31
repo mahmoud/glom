@@ -1,18 +1,21 @@
-
+# -*- coding: utf-8 -*-
 import os
 import re
+import sys
 import traceback
 
 import pytest
 
-from glom import glom, S, T, GlomError
-from glom.core import format_oneline_trace, format_target_spec_trace, bbrepr
+from glom import glom, S, T, GlomError, Switch, Coalesce, Or
+from glom.core import format_oneline_trace, format_target_spec_trace, bbrepr, ROOT, LAST_CHILD_SCOPE
 from glom.matching import M, MatchError, TypeMatchError, Match
 
 try:
     unicode
 except NameError:
     unicode = str  # py3
+
+_PY2 = type("") != unicode
 
 # basic tests:
 
@@ -40,15 +43,15 @@ def test_unfinalized_glomerror_repr():
 
 def test_line_trace():
     stacklifier = ([{'data': S}],)
-    scope = glom([1], stacklifier)[0]['data']
+    scope = glom([1], stacklifier)[0]['data'][ROOT][LAST_CHILD_SCOPE]
     fmtd_stack = format_oneline_trace(scope)
     assert fmtd_stack == '/tuple!list/list<0>/dict!int/S'
 
 
 def test_short_trace():
     stacklifier = ([{'data': S}],)
-    scope = glom([1], stacklifier)[0]['data']
-    fmtd_stack = format_target_spec_trace(scope)
+    scope = glom([1], stacklifier)[0]['data'][ROOT][LAST_CHILD_SCOPE]
+    fmtd_stack = format_target_spec_trace(scope, None)
     exp_lines = [
         " - Target: [1]",
         " - Spec: ([{'data': S}],)",
@@ -63,7 +66,7 @@ def test_short_trace():
 
 def _norm_stack(formatted_stack, exc):
 
-    if not isinstance(formatted_stack, unicode):
+    if _PY2:
         # lil hack for py2
         # note that we only support the one unicode character
         formatted_stack = formatted_stack.decode('utf8') .replace(r'\xc3\xa9', u'é')
@@ -101,10 +104,29 @@ def _norm_stack(formatted_stack, exc):
 def _make_stack(spec, **kwargs):
     target = kwargs.pop('target', [None])
     assert not kwargs
+    _orig_some_str = getattr(traceback, '_some_str', None)
+
+    def _debug_some_str(value, *a, **kw):
+        # all to debug some CI flakiness
+        try:
+            return str(value)
+        except BaseException as be:  # pragma: no cover
+            try:
+                print(' !! failed to stringify %s object, got %s' % (type(value).__name__, be))
+                traceback.print_exc()
+            except:
+                print(' !! unable to print trace')
+            return '<unprintable %s object got %s>' % (type(value).__name__, be)
+
+    traceback._some_str = _debug_some_str
+
     try:
-        glom(target, spec)
-    except GlomError as e:
-        stack = _norm_stack(traceback.format_exc(), e)
+        try:
+            glom(target, spec)
+        except GlomError as e:
+            stack = _norm_stack(traceback.format_exc(), e)
+    finally:
+        traceback._some_str = _orig_some_str
     return stack
 
 
@@ -169,7 +191,10 @@ glom.core.PathAccessError: could not access 'value', part 0 of Path('value'), go
     #glom.core.GLOM_DEBUG = True
     actual = _make_stack({'results': [{u'valué': u'value'}]})
     print(actual)
-    assert expected == actual
+    if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
+        assert len(actual.split("\n")) == len(expected.split("\n"))
+    else:
+        assert actual == expected
 
 
 # used by the test below, but at the module level to make stack traces
@@ -229,6 +254,166 @@ def test_long_target_repr():
     assert '...' in actual
     assert '(len=' not in actual  # no length on a single object
 
+
+def test_branching_stack():
+    # ends-in-branch
+    actual = _make_stack(Match(Switch(
+        [(1, 1), ('a', 'a'), (T.a, T.a)])))
+    expected = """\
+Traceback (most recent call last):
+  File "test_error.py", line ___, in _make_stack
+    glom(target, spec)
+  File "core.py", line ___, in glom
+    raise err
+glom.matching.MatchError: error raised while processing, details below.
+ Target-spec trace (most recent last):
+ - Target: [None]
+ - Spec: Match(Switch([(1, 1), ('a', 'a'), (T.a, T.a)]))
+ + Spec: Switch([(1, 1), ('a', 'a'), (T.a, T.a)])
+ |\\ Spec: 1
+ |X glom.matching.MatchError: [None] does not match 1
+ |\\ Spec: 'a'
+ |X glom.matching.MatchError: [None] does not match 'a'
+ |\\ Spec: T.a
+ |X glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
+glom.matching.MatchError: no matches for target in Switch
+"""
+    if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
+        assert len(actual.split("\n")) == len(expected.split("\n"))
+    else:
+        assert actual == expected
+
+
+def test_midway_branch():
+    # midway branch, but then continues
+    actual = _make_stack(Match(Switch(
+        [(1, 1), ('a', 'a'), ([None], T.a)])))
+    expected = """\
+Traceback (most recent call last):
+  File "test_error.py", line ___, in _make_stack
+    glom(target, spec)
+  File "core.py", line ___, in glom
+    raise err
+glom.core.PathAccessError: error raised while processing, details below.
+ Target-spec trace (most recent last):
+ - Target: [None]
+ - Spec: Match(Switch([(1, 1), ('a', 'a'), ([None], T.a)]))
+ + Spec: Switch([(1, 1), ('a', 'a'), ([None], T.a)])
+ |\\ Spec: 1
+ |X glom.matching.MatchError: [None] does not match 1
+ |\\ Spec: 'a'
+ |X glom.matching.MatchError: [None] does not match 'a'
+ |\\ Spec: [None]
+ || Spec: T.a
+glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
+"""
+    if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
+        assert len(actual.split("\n")) == len(expected.split("\n"))
+    else:
+        assert actual == expected
+    # branch and another branch
+    actual = _make_stack(Match(Switch(
+        [(1, 1), ('a', 'a'), ([None], Switch(
+            [(1, 1), ('a', 'a'), ([None], T.a)]))])))
+    expected = """\
+Traceback (most recent call last):
+  File "test_error.py", line ___, in _make_stack
+    glom(target, spec)
+  File "core.py", line ___, in glom
+    raise err
+glom.core.PathAccessError: error raised while processing, details below.
+ Target-spec trace (most recent last):
+ - Target: [None]
+ - Spec: Match(Switch([(1, 1), ('a', 'a'), ([None], Switch([(1, 1), ('a', '...
+ + Spec: Switch([(1, 1), ('a', 'a'), ([None], Switch([(1, 1), ('a', 'a'), (...
+ |\\ Spec: 1
+ |X glom.matching.MatchError: [None] does not match 1
+ |\\ Spec: 'a'
+ |X glom.matching.MatchError: [None] does not match 'a'
+ |\\ Spec: [None]
+ |+ Spec: Switch([(1, 1), ('a', 'a'), ([None], T.a)])
+ ||\\ Spec: 1
+ ||X glom.matching.MatchError: [None] does not match 1
+ ||\\ Spec: 'a'
+ ||X glom.matching.MatchError: [None] does not match 'a'
+ ||\\ Spec: [None]
+ ||| Spec: T.a
+glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
+"""
+    if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
+        assert len(actual.split("\n")) == len(expected.split("\n"))
+    else:
+        assert actual == expected
+
+
+def test_partially_failing_branch():
+    # what happens when part of an Or() etc fails,
+    # but another part succeeds and then an error happens further down?
+    assert _make_stack((Or('a', T), Or('b', T), 'c'), target=None) == """\
+Traceback (most recent call last):
+  File "test_error.py", line ___, in _make_stack
+    glom(target, spec)
+  File "core.py", line ___, in glom
+    raise err
+glom.core.PathAccessError: error raised while processing, details below.
+ Target-spec trace (most recent last):
+ - Target: None
+ - Spec: (Or('a', T), Or('b', T), 'c')
+ - Spec: Or('a', T)
+ - Spec: Or('b', T)
+ - Spec: 'c'
+glom.core.PathAccessError: could not access 'c', part 0 of Path('c'), got error: AttributeError("'NoneType' object has no attribute 'c'")
+"""
+
+
+def test_coalesce_stack():
+    val = {'a': {'b': 'c'},  # basic dictionary nesting
+       'd': {'e': ['f'],    # list in dictionary
+             'g': 'h'},
+       'i': [{'j': 'k', 'l': 'm'}],  # list of dictionaries
+       'n': 'o'}
+    actual = _make_stack(Coalesce('xxx', 'yyy'), target=val)
+    expected = """\
+Traceback (most recent call last):
+  File "test_error.py", line ___, in _make_stack
+    glom(target, spec)
+  File "core.py", line ___, in glom
+    raise err
+glom.core.CoalesceError: error raised while processing, details below.
+ Target-spec trace (most recent last):
+ - Target: {'a': {'b': 'c'}, 'd': {'e': ['f'], 'g': 'h'}, 'i': [{'j... (len=4)
+ + Spec: Coalesce('xxx', 'yyy')
+ |\\ Spec: 'xxx'
+ |X glom.core.PathAccessError: could not access 'xxx', part 0 of Path('xxx'), got error: KeyError('xxx')
+ |\\ Spec: 'yyy'
+ |X glom.core.PathAccessError: could not access 'yyy', part 0 of Path('yyy'), got error: KeyError('yyy')
+glom.core.CoalesceError: no valid values found. Tried ('xxx', 'yyy') and got (PathAccessError, PathAccessError) (at path [])
+"""
+    if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
+        assert len(actual.split("\n")) == len(expected.split("\n"))
+    else:
+        assert actual == expected
+
+
+def test_nesting_stack():
+    # check behavior when a glom stack is nested via data structure not python call stack
+    assert _make_stack(('a', 'b', 'c'), target={'a': {'b': {}}}) == """\
+Traceback (most recent call last):
+  File "test_error.py", line ___, in _make_stack
+    glom(target, spec)
+  File "core.py", line ___, in glom
+    raise err
+glom.core.PathAccessError: error raised while processing, details below.
+ Target-spec trace (most recent last):
+ - Target: {'a': {'b': {}}}
+ - Spec: ('a', 'b', 'c')
+ - Spec: 'a'
+ - Target: {'b': {}}
+ - Spec: 'b'
+ - Target: {}
+ - Spec: 'c'
+glom.core.PathAccessError: could not access 'c', part 0 of Path('c'), got error: KeyError('c')
+"""
 
 
 ERROR_CLASSES = (
@@ -349,4 +534,5 @@ def test_unicode_stack():
     val = {u'resumé': u'beyoncé'}
     stack = _make_stack(target=val, spec=u'a.é.i.o')
     assert 'beyonc' in stack
-    assert u'é' in stack
+    if not _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
+        assert u'é' in stack
