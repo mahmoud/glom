@@ -5,13 +5,13 @@ from xml.etree import cElementTree as ElementTree
 import pytest
 
 from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Val, Call, T, S, Invoke, Spec, Ref
-from glom import Auto, Fill, Iter, Let, A, Vars, Val, Literal, GlomError
+from glom import Auto, Fill, Iter, A, Vars, Val, Literal, GlomError
 
 import glom.core as glom_core
-from glom.core import UP, ROOT, Let, bbformat, bbrepr
+from glom.core import UP, ROOT, bbformat, bbrepr
 from glom.mutation import PathAssignError
 
-from glom import OMIT  # backwards compat
+from glom import OMIT, Let, Literal  # backwards compat
 
 
 def test_initial_integration():

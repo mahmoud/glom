@@ -15,11 +15,10 @@ from glom.core import (glom,
                        ROOT,
                        MODE,
                        Path,
-                       Let,
                        Vars,
                        Val,
-                       Literal,  # backwards compat
-                       Let,
+                       Literal,  # backwards compat 2020-07
+                       Let,  # backwards compat 2020-07
                        Coalesce,
                        Inspect,
                        GlomError,

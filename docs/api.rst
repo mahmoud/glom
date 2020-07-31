@@ -160,19 +160,26 @@ supported.
    :doc:`the custom spec doc<custom_spec_types>` to learn about more
    advanced, reserved cases.
 
-Updating the scope - ``Let`` & ``A``
+Updating the scope - ``S()`` & ``A``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 glom's scope isn't only set once when the top-level :func:`glom`
 function is called. It's dynamic and updatable.
 
 If your use case requires saving a value from one part of the target
-for usage elsewhere, then :class:`Let` will allow you to save values
-to the scope.
+for usage elsewhere, then **S** will allow you to save values
+to the scope::
 
-.. autoclass:: glom.Let
+    >>> target = {'data': {'val': 9}}
+    >>> spec = (S(value=T['data']['val']), {'val': S['value']})
+    >>> glom(target, spec)
+    {'val': 9}
 
-When only the target is being assigned, you can use the **A**
+Any keyword arguments to the **S** will have their values evaluated as
+a spec, with the result being saved to the keyword argument name in
+the scope.
+
+When only the target is being assigned, you can use the **A** as a
 shortcut::
 
     >>> target = {'data': {'val': 9}}

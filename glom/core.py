@@ -1408,6 +1408,12 @@ class TType(object):
         return _t_child(self, '[', item)
 
     def __call__(self, *args, **kwargs):
+        if self is S:
+            if args:
+                raise TypeError('S() takes no positional arguments, got: %r' % (args,))
+            if not kwargs:
+                raise TypeError('S() expected at least one kwarg, got none')
+            # TODO: typecheck kwarg vals?
         return _t_child(self, '(', (args, kwargs))
 
     def __(self, name):
@@ -1471,6 +1477,13 @@ def _t_eval(target, _t, scope):
         if fetch_till > 1 and t_path[1] in ('.', 'P'):
             cur = _s_first_magic(cur, t_path[2], _t)
             i += 2
+        elif root is S and fetch_till > 1 and t_path[1] == '(':
+            # S(var='spec') style assignment
+            _, kwargs = t_path[2]
+            scope.update({
+                k: scope[glom](target, v, scope) for k, v in kwargs.items()})
+            return target
+
     else:
         raise ValueError('TType instance with invalid root')  # pragma: no cover
     pae = None
@@ -1627,7 +1640,7 @@ class ScopeVars(object):
 
 class Vars(object):
     """
-    :class:`Vars` is a helper that can be used with :class:`Let` in order to
+    :class:`Vars` is a helper that can be used with **S** in order to
     store shared mutable state.
 
     Takes the same arguments as :class:`dict()`.
@@ -1654,12 +1667,13 @@ class Vars(object):
 
 class Let(object):
     """
-    This specifier type assigns variables to the scope.
+    Deprecated, kept for backwards compat. Use S(x='y') instead.
 
     >>> target = {'data': {'val': 9}}
     >>> spec = (Let(value=T['data']['val']), {'val': S['value']})
     >>> glom(target, spec)
     {'val': 9}
+
     """
     def __init__(self, **kw):
         if not kw:
