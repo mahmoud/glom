@@ -6,7 +6,7 @@ import traceback
 
 import pytest
 
-from glom import glom, S, T, GlomError, Switch, Coalesce, Or
+from glom import glom, S, T, GlomError, Switch, Coalesce, Or, Ref
 from glom.core import format_oneline_trace, format_target_spec_trace, bbrepr, ROOT, LAST_CHILD_SCOPE
 from glom.matching import M, MatchError, TypeMatchError, Match
 
@@ -236,6 +236,119 @@ glom.core.PathAccessError: error raised while processing, details below.
  - Target: 'Nested'
  - Spec: 'val'
 glom.core.PathAccessError: could not access 'val', part 0 of Path('val'), got error: AttributeError("'str' object has no attribute 'val'")
+"""
+    assert expected == actual
+
+
+def test_better_than_json():
+    """is our error stack at non-json-serializable data better than JSON?"""
+    # NOTE: we could replace dict + list with Iterable and Mapping
+    spec = Ref('json',
+        Match(Switch({
+            dict: {str: Ref('json')},
+            list: [Ref('json')],
+            Or(str, int, float, bool, None): T})))
+    target1 = {'a': [{'b': 1j}]}
+    target2 = {'a': [{'b': {1: 2}}]}
+    actual = _make_stack(spec, target=target1)
+    expected = """\
+Traceback (most recent call last):
+  File "test_error.py", line ___, in _make_stack
+    glom(target, spec)
+  File "core.py", line ___, in glom
+    raise err
+glom.matching.MatchError: error raised while processing, details below.
+ Target-spec trace (most recent last):
+ - Target: {'a': [{'b': 1j}]}
+ - Spec: Ref('json', Match(Switch([(dict, {str: Ref('json')}), (list, [Ref(...
+ - Spec: Match(Switch([(dict, {str: Ref('json')}), (list, [Ref('json')]), (...
+ - Spec: Switch([(dict, {str: Ref('json')}), (list, [Ref('json')]), (Or(str...
+ - Spec: dict
+ - Spec: {str: Ref('json')}
+ - Target: 'a'
+ - Spec: str
+ - Target: [{'b': 1j}]
+ - Spec: Ref('json')
+ - Spec: Match(Switch([(dict, {str: Ref('json')}), (list, [Ref('json')]), (...
+ + Spec: Switch([(dict, {str: Ref('json')}), (list, [Ref('json')]), (Or(str...
+ |\\ Spec: dict
+ |X glom.matching.Typeglom.matching.MatchError: expected type dict, not list
+ |\\ Spec: list
+ || Spec: [Ref('json')]
+ || Target: {'b': 1j}
+ || Spec: Ref('json')
+ || Spec: Match(Switch([(dict, {str: Ref('json')}), (list, [Ref('json')]), ...
+ || Spec: Switch([(dict, {str: Ref('json')}), (list, [Ref('json')]), (Or(st...
+ || Spec: dict
+ || Spec: {str: Ref('json')}
+ || Target: 'b'
+ || Spec: str
+ || Target: 1j
+ || Spec: Ref('json')
+ || Spec: Match(Switch([(dict, {str: Ref('json')}), (list, [Ref('json')]), ...
+ |+ Spec: Switch([(dict, {str: Ref('json')}), (list, [Ref('json')]), (Or(st...
+ ||\\ Spec: dict
+ ||X glom.matching.Typeglom.matching.MatchError: expected type dict, not complex
+ ||\\ Spec: list
+ ||X glom.matching.Typeglom.matching.MatchError: expected type list, not complex
+ ||\\ Spec: Or(str, int, float, bool, None)
+ |||\\ Spec: str
+ |||X glom.matching.Typeglom.matching.MatchError: expected type str, not complex
+ |||\\ Spec: int
+ |||X glom.matching.Typeglom.matching.MatchError: expected type int, not complex
+ |||\\ Spec: float
+ |||X glom.matching.Typeglom.matching.MatchError: expected type float, not complex
+ |||\\ Spec: bool
+ |||X glom.matching.Typeglom.matching.MatchError: expected type bool, not complex
+ |||\\ Spec: None
+ |||X glom.matching.MatchError: 1j does not match None
+ ||X glom.matching.MatchError: 1j does not match None
+glom.matching.MatchError: no matches for target in Switch
+"""
+    assert expected == actual
+    actual = _make_stack(spec, target=target2)
+    expected = """\
+Traceback (most recent call last):
+  File "test_error.py", line ___, in _make_stack
+    glom(target, spec)
+  File "core.py", line ___, in glom
+    raise err
+glom.matching.MatchError: error raised while processing, details below.
+ Target-spec trace (most recent last):
+ - Target: {'a': [{'b': {1: 2}}]}
+ - Spec: Ref('json', Match(Switch([(dict, {str: Ref('json')}), (list, [Ref(...
+ - Spec: Match(Switch([(dict, {str: Ref('json')}), (list, [Ref('json')]), (...
+ - Spec: Switch([(dict, {str: Ref('json')}), (list, [Ref('json')]), (Or(str...
+ - Spec: dict
+ - Spec: {str: Ref('json')}
+ - Target: 'a'
+ - Spec: str
+ - Target: [{'b': {1: 2}}]
+ - Spec: Ref('json')
+ - Spec: Match(Switch([(dict, {str: Ref('json')}), (list, [Ref('json')]), (...
+ + Spec: Switch([(dict, {str: Ref('json')}), (list, [Ref('json')]), (Or(str...
+ |\\ Spec: dict
+ |X glom.matching.Typeglom.matching.MatchError: expected type dict, not list
+ |\\ Spec: list
+ || Spec: [Ref('json')]
+ || Target: {'b': {1: 2}}
+ || Spec: Ref('json')
+ || Spec: Match(Switch([(dict, {str: Ref('json')}), (list, [Ref('json')]), ...
+ || Spec: Switch([(dict, {str: Ref('json')}), (list, [Ref('json')]), (Or(st...
+ || Spec: dict
+ || Spec: {str: Ref('json')}
+ || Target: 'b'
+ || Spec: str
+ || Target: {1: 2}
+ || Spec: Ref('json')
+ || Spec: Match(Switch([(dict, {str: Ref('json')}), (list, [Ref('json')]), ...
+ || Spec: Switch([(dict, {str: Ref('json')}), (list, [Ref('json')]), (Or(st...
+ || Spec: dict
+ || Spec: {str: Ref('json')}
+ || Target: 1
+ || Spec: str
+ |X glom.matching.Typeglom.matching.MatchError: expected type str, not int
+glom.matching.MatchError: key 1 didn't match any of {str: Ref('json')}
 """
     assert expected == actual
 
