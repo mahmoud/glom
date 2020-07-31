@@ -81,10 +81,6 @@ def test_max_skip():
     assert result.max == 9
 
 
-def test_s_scope_assign():
-    return
-
-
 def test_let():  # backwards compat 2020-07
     data = {'a': 1, 'b': [{'c': 2}, {'c': 3}]}
     output = [{'a': 1, 'c': 2}, {'a': 1, 'c': 3}]
