@@ -1,12 +1,12 @@
 
 import pytest
 
-from glom import glom, Path, S, A, T, Vars, Val, GlomError, M, SKIP
+from glom import glom, Path, S, A, T, Vars, Val, GlomError, M, SKIP, Let
 
 from glom.core import ROOT
 from glom.mutation import PathAssignError
 
-def test_let():
+def test_s_scope_assign():
     data = {'a': 1, 'b': [{'c': 2}, {'c': 3}]}
     output = [{'a': 1, 'c': 2}, {'a': 1, 'c': 3}]
     assert glom(data, (S(a='a'), ('b', [{'a': S['a'], 'c': 'c'}]))) == output
@@ -30,6 +30,11 @@ def test_let():
         glom(1, (S(v=lambda t: FailAssign()), Path(A.v, 'a')))
 
     assert repr(S(a=T.a.b)) == 'S(a=T.a.b)'
+
+    spec = (S(a='x'), S.a)
+    assert glom({'x': 'y'}, spec) == 'y'
+
+    return
 
 
 def test_globals():
@@ -77,13 +82,30 @@ def test_max_skip():
 
 
 def test_s_scope_assign():
-    spec = (S(a='x'), S.a)
-    assert glom({'x': 'y'}, spec) == 'y'
-
-    assert repr(S(a=T)) == 'S(a=T)'
-
-    with pytest.raises(TypeError):
-        S()
-    with pytest.raises(TypeError):
-        S('nope')
     return
+
+
+def test_let():  # backwards compat 2020-07
+    data = {'a': 1, 'b': [{'c': 2}, {'c': 3}]}
+    output = [{'a': 1, 'c': 2}, {'a': 1, 'c': 3}]
+    assert glom(data, (Let(a='a'), ('b', [{'a': S['a'], 'c': 'c'}]))) == output
+    assert glom(data, ('b', [{'a': S[ROOT][Val(T)]['a'], 'c': 'c'}])) == output
+
+    with pytest.raises(TypeError):
+        Let('posarg')
+    with pytest.raises(TypeError):
+        Let()
+
+    assert glom([[1]], (Let(v=Vars()), [[A.v.a]], S.v.a)) == 1
+    assert glom(1, (Let(v=lambda t: {}), A.v['a'], S.v['a'])) == 1
+    with pytest.raises(GlomError):
+        glom(1, (Let(v=lambda t: 1), A.v.a))
+
+    class FailAssign(object):
+        def __setattr__(self, name, val):
+            raise Exception('nope')
+
+    with pytest.raises(PathAssignError):
+        glom(1, (Let(v=lambda t: FailAssign()), Path(A.v, 'a')))
+
+    assert repr(Let(a=T.a.b)) == 'Let(a=T.a.b)'
