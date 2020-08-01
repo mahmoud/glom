@@ -61,7 +61,7 @@ A brief checklist for release:
 
 * tox
 * git commit (if applicable)
-* Bump setup.py version off of -dev
+* Bump glom/_version.py off of -dev
 * git commit -a -m "bump version for vx.y.z release"
 * rm -rf dist/*
 * python setup.py sdist bdist_wheel
