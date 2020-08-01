@@ -344,7 +344,7 @@ Store and Retrieve Current Target
 The :data:`~glom.A` scope assignment helper makes it extremely
 convenient to hold on to the current target and then reset it.
 
-The `(A.t, ..., S.t)` "sandwhich" is a convenient idiom for these
+The `(A.t, ..., S.t)` "sandwich" is a convenient idiom for these
 cases.
 
 For example, we could use this to update a `dict`:
@@ -353,4 +353,3 @@ For example, we could use this to update a `dict`:
 .. code-block:: python
 
     glom({}, (A.t, T.update({1: 1}), S.t))
-
