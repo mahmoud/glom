@@ -71,7 +71,7 @@ A brief checklist for release:
 * git tag -a vx.y.z -m "brief summary"
 * write CHANGELOG
 * git commit
-* bump setup.py version onto n+1 dev
+* bump glom/_version.py onto n+1 dev
 * git commit
 * git push
 
