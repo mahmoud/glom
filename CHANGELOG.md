@@ -17,6 +17,8 @@ summarized and well-linked.
 ------
 *(July 31, 2020)*
 
+glom releases don't come bigger than this.
+
 * [Match mode][matching] - Data validation and pattern matching. You're
   going to have to read the docs to believe it.
 * Complete documenation refactor
