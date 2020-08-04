@@ -121,6 +121,9 @@ class _SkipType(object):
     def glomit(self, target, scope):
         raise GlomSkip()
 
+    def __repr__(self):
+        return "SKIP"
+
 
 class _StopType(object):
     """
@@ -134,6 +137,9 @@ class _StopType(object):
     """
     def glomit(self, target, scope):
         raise GlomStop()
+
+    def __repr__(self):
+        return "STOP"
 
 SKIP = _SkipType()
 OMIT = SKIP  # backwards compat, remove in 19+
