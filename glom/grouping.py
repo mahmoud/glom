@@ -7,7 +7,7 @@ import random
 
 from boltons.typeutils import make_sentinel
 
-from .core import glom, MODE, SKIP, STOP, TargetRegistry, Path, T, BadSpec, _MISSING
+from .core import glom, MODE, GlomSkip, GlomStop, TargetRegistry, Path, T, BadSpec, _MISSING
 
 
 ACC_TREE = make_sentinel('ACC_TREE')
@@ -27,6 +27,12 @@ or not; this sentinel in the Scope allows a spec to decide
 if it is "closest" to the Group and so should behave
 like an aggregate, or if it is further away and so should
 have normal spec behavior.
+"""
+
+
+DONE = make_sentinel('DONE')
+DONE.__doc__ = """
+internal marker used to keep track that a branch has finished processing
 """
 
 
@@ -86,9 +92,10 @@ class Group(object):
             ret = None
 
         for t in target_iter(target, scope):
-            last, ret = ret, scope[glom](t, self.spec, scope)
-            if ret is STOP:
-                return last
+            try:
+                ret = scope[glom](t, self.spec, scope)
+            except GlomStop:
+                break
         return ret
 
     def __repr__(self):
@@ -118,28 +125,32 @@ def GROUP(target, spec, scope):
     if _spec_type is dict:
         done = True
         for keyspec, valspec in spec.items():
-            if tree.get(keyspec, None) is STOP:
+            if tree.get(keyspec, None) is DONE:
                 continue
-            key = recurse(keyspec)
-            if key is SKIP:
-                done = False  # SKIP means we still want more vals
+            try:
+                key = recurse(keyspec)
+            except GlomSkip:
+                done = False  # skip means we still want more vals
                 continue
-            if key is STOP:
-                tree[keyspec] = STOP
+            except GlomStop:
+                tree[keyspec] = DONE
                 continue
             if key not in acc:
                 # TODO: guard against key == id(spec)
                 tree[key] = {}
             scope[ACC_TREE] = tree[key]
-            result = recurse(valspec)
-            if result is STOP:
-                tree[keyspec] = STOP
+            try:
+                result = recurse(valspec)
+            except GlomStop:
+                tree[keyspec] = DONE
                 continue
-            done = False  # SKIP or returning a value means we still want more vals
-            if result is not SKIP:
+            except GlomSkip:
+                pass
+            else:
                 acc[key] = result
+            done = False  # skip or returning a value means we still want more vals
         if done:
-            return STOP
+            raise GlomStop()
         return acc
     elif _spec_type is list:
         for valspec in spec:
@@ -147,10 +158,11 @@ def GROUP(target, spec, scope):
                 # doesn't make sense due to arity mismatch. did you mean [Auto({...})] ?
                 raise BadSpec('dicts within lists are not'
                               ' allowed while in Group mode: %r' % spec)
-            result = recurse(valspec)
-            if result is STOP:
-                return STOP
-            if result is not SKIP:
+            try:
+                result = recurse(valspec)
+            except GlomSkip:  # let GlomStop bubble up
+                pass
+            else:
                 acc.append(result)
         return acc
     raise ValueError("{} not a valid spec type for Group mode".format(_spec_type))  # pragma: no cover
@@ -167,9 +179,9 @@ class First(object):
 
     def agg(self, target, tree):
         if self not in tree:
-            tree[self] = STOP
+            tree[self] = DONE
             return target
-        return STOP
+        raise GlomStop()
 
     def __repr__(self):
         return '%s()' % self.__class__.__name__
@@ -310,7 +322,7 @@ class Limit(object):
         scope[ACC_TREE] = tree[self][1]
         tree[self][0] += 1
         if tree[self][0] > self.n:
-            return STOP
+            raise GlomStop()
         return scope[glom](target, self.subspec, scope)
 
     def __repr__(self):

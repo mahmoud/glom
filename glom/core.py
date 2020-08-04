@@ -55,40 +55,6 @@ TRACE_WIDTH = max(get_wrap_width(max_width=110), 50)   # min width
 _type_type = type
 
 _MISSING = make_sentinel('_MISSING')
-SKIP =  make_sentinel('SKIP')
-SKIP.__doc__ = """
-The ``SKIP`` singleton can be returned from a function or included
-via a :class:`~glom.Val` to cancel assignment into the output
-object.
-
->>> target = {'a': 'b'}
->>> spec = {'a': lambda t: t['a'] if t['a'] == 'a' else SKIP}
->>> glom(target, spec)
-{}
->>> target = {'a': 'a'}
->>> glom(target, spec)
-{'a': 'a'}
-
-Mostly used to drop keys from dicts (as above) or filter objects from
-lists.
-
-.. note::
-
-   SKIP was known as OMIT in versions 18.3.1 and prior. Versions 19+
-   will remove the OMIT alias entirely.
-"""
-OMIT = SKIP  # backwards compat, remove in 19+
-
-STOP = make_sentinel('STOP')
-STOP.__doc__ = """
-The ``STOP`` singleton can be used to halt iteration of a list or
-execution of a tuple of subspecs.
-
->>> target = range(10)
->>> spec = [lambda x: x if x < 5 else STOP]
->>> glom(target, spec)
-[0, 1, 2, 3, 4]
-"""
 
 LAST_CHILD_SCOPE = make_sentinel('LAST_CHILD_SCOPE')
 LAST_CHILD_SCOPE.__doc__ = """
@@ -120,6 +86,59 @@ thrown exceptions.
 """
 
 _PKG_DIR_PATH = os.path.dirname(os.path.abspath(__file__))
+
+
+# these can't be sub-classes of GlomError b/c they are a different
+# type of flow control mechanism; we don't want Or() to change
+# its behavior b/c of skip or stop
+class GlomSkip(Exception): pass
+
+class GlomStop(Exception): pass
+
+
+class _SkipType(object):
+    """
+    The ``SKIP`` singleton can be returned from a function or included
+    via a :class:`~glom.Val` to cancel assignment into the output
+    object.
+
+    >>> target = {'a': 'b'}
+    >>> spec = {'a': lambda t: t['a'] if t['a'] == 'a' else SKIP}
+    >>> glom(target, spec)
+    {}
+    >>> target = {'a': 'a'}
+    >>> glom(target, spec)
+    {'a': 'a'}
+
+    Mostly used to drop keys from dicts (as above) or filter objects from
+    lists.
+
+    .. note::
+
+       SKIP was known as OMIT in versions 18.3.1 and prior. Versions 19+
+       will remove the OMIT alias entirely.
+    """
+    def glomit(self, target, scope):
+        raise GlomSkip()
+
+
+class _StopType(object):
+    """
+    The ``STOP`` singleton can be used to halt iteration of a list or
+    execution of a tuple of subspecs.
+
+    >>> target = range(10)
+    >>> spec = [lambda x: x if x < 5 else STOP]
+    >>> glom(target, spec)
+    [0, 1, 2, 3, 4]
+    """
+    def glomit(self, target, scope):
+        raise GlomStop()
+
+SKIP = _SkipType()
+OMIT = SKIP  # backwards compat, remove in 19+
+
+STOP = _StopType()
 
 class GlomError(Exception):
     """The base exception for all the errors that might be raised from
@@ -1730,9 +1749,12 @@ def _get_sequence_item(target, index):
 def _handle_dict(target, spec, scope):
     ret = type(spec)()  # TODO: works for dict + ordereddict, but sufficient for all?
     for field, subspec in spec.items():
-        val = scope[glom](target, subspec, scope)
-        if val is SKIP:
+        try:
+            val = scope[glom](target, subspec, scope)
+        except GlomSkip:
             continue
+        except GlomStop:
+            break
         if type(field) in (Spec, TType):
             field = scope[glom](target, field, scope)
         ret[field] = val
@@ -1751,10 +1773,11 @@ def _handle_list(target, spec, scope):
     base_path = scope[Path]
     for i, t in enumerate(iterator):
         scope[Path] = base_path + [i]
-        val = scope[glom](t, subspec, scope)
-        if val is SKIP:
+        try:
+            val = scope[glom](t, subspec, scope)
+        except GlomSkip:
             continue
-        if val is STOP:
+        except GlomStop:
             break
         ret.append(val)
     return ret
@@ -1764,10 +1787,11 @@ def _handle_tuple(target, spec, scope):
     res = target
     for subspec in spec:
         scope = chain_child(scope)
-        nxt = scope[glom](res, subspec, scope)
-        if nxt is SKIP:
+        try:
+            nxt = scope[glom](res, subspec, scope)
+        except GlomSkip:
             continue
-        if nxt is STOP:
+        except GlomStop:
             break
         res = nxt
         if not isinstance(subspec, list):
