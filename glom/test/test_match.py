@@ -217,7 +217,7 @@ def test_pattern_matching():
 def test_examples():
     assert glom(8, (M > 7) & Val(7)) == 7
     assert glom(range(10), [(M > 7) & Val(7) | T]) == [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]
-    assert glom(range(10), [(M > 7) & Val(SKIP) | T]) == [0, 1, 2, 3, 4, 5, 6, 7]
+    assert glom(range(10), [(M > 7) & SKIP | T]) == [0, 1, 2, 3, 4, 5, 6, 7]
 
 
 def test_reprs():
@@ -369,7 +369,7 @@ def test_sky():
 
 def test_clamp():
     assert glom(range(10), [(M < 7) | Val(7)]) == [0, 1, 2, 3, 4, 5, 6, 7, 7, 7]
-    assert glom(range(10), [(M < 7) | Val(SKIP)]) == [0, 1, 2, 3, 4, 5, 6]
+    assert glom(range(10), [(M < 7) | SKIP]) == [0, 1, 2, 3, 4, 5, 6]
 
 
 def test_json_ref():
@@ -433,20 +433,20 @@ def test_check_ported_tests():
     target = [{'id': 0}, {'id': 1}, {'id': 2}]
 
     # check that skipping non-passing values works
-    assert glom(target, [Coalesce(M(T['id']) == 0, default=SKIP)]) == [{'id': 0}]
+    assert glom(target, [Coalesce(M(T['id']) == 0, SKIP)]) == [{'id': 0}]
 
     # TODO: should M(subspec, default='') work? I lean no.
     # NB: this is not a very idiomatic use of Match, just brought over for Check reasons
-    assert glom(target, [Match({'id': And(int, M == 1)}, default=SKIP)]) == [{'id': 1}]
-    assert glom(target, [Match({'id': And(int, M <= 1)}, default=STOP)]) == [{'id': 0}, {'id': 1}]
+    assert glom(target, [Match(Or({'id': And(int, M == 1)}, SKIP))]) == [{'id': 1}]
+    assert glom(target, [Match(Or({'id': And(int, M <= 1)}, STOP))]) == [{'id': 0}, {'id': 1}]
 
     # check that stopping chain execution on non-passing values works
-    spec = (Or(Match(len), Val(STOP)), T[0])
+    spec = (Or(Match(len), STOP), T[0])
     assert glom('hello', spec, glom_debug=True) == 'h'
     assert glom('', spec) == ''  # would fail with IndexError if STOP didn't work
 
     target = [1, u'a']
-    assert glom(target, [Match(unicode, default=SKIP)]) == ['a']
+    assert glom(target, [Match(Or(unicode, SKIP))]) == ['a']
     assert glom(target, Match([Or(unicode, int)])) == [1, 'a']
 
     target = ['1']

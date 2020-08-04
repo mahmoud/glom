@@ -1,7 +1,7 @@
 
 from pytest import raises
 
-from glom import glom, Check, CheckError, Coalesce, SKIP, STOP, T
+from glom import glom, Check, CheckError, Coalesce, SKIP, STOP, T, Or
 
 try:
     unicode
@@ -10,19 +10,17 @@ except NameError:
 
 
 def test_check_basic():
-    assert glom([0, SKIP], [T]) == [0]  # sanity check SKIP
-
     target = [{'id': 0}, {'id': 1}, {'id': 2}]
 
     # check that skipping non-passing values works
-    assert glom(target, ([Coalesce(Check('id', equal_to=0), default=SKIP)], T[0])) == {'id': 0}
-    assert glom(target, ([Check('id', equal_to=0, default=SKIP)], T[0])) == {'id': 0}
+    assert glom(target, ([Coalesce(Check('id', equal_to=0), SKIP)], T[0])) == {'id': 0}
+    assert glom(target, ([Or(Check('id', equal_to=0), SKIP)], T[0])) == {'id': 0}
 
     # check that stopping iteration on non-passing values works
-    assert glom(target, [Check('id', equal_to=0, default=STOP)]) == [{'id': 0}]
+    assert glom(target, [Or(Check('id', equal_to=0), STOP)]) == [{'id': 0}]
 
     # check that stopping chain execution on non-passing values works
-    spec = (Check(validate=lambda x: len(x) > 0, default=STOP), T[0])
+    spec = (Or(Check(validate=lambda x: len(x) > 0), STOP), T[0])
     assert glom('hello', spec) == 'h'
     assert glom('', spec) == ''  # would fail with IndexError if STOP didn't work
 
@@ -33,9 +31,9 @@ def test_check_basic():
     assert repr(Check(T(len), validate=sum)) == 'Check(T(len), validate=sum)'
 
     target = [1, u'a']
-    assert glom(target, [Check(type=unicode, default=SKIP)]) == ['a']
+    assert glom(target, [Or(Check(type=unicode), SKIP)]) == ['a']
     assert glom(target, [Check(type=(unicode, int))]) == [1, 'a']
-    assert glom(target, [Check(instance_of=unicode, default=SKIP)]) == ['a']
+    assert glom(target, [Or(Check(instance_of=unicode), SKIP)]) == ['a']
     assert glom(target, [Check(instance_of=(unicode, int))]) == [1, 'a']
 
     target = ['1']

@@ -4,7 +4,7 @@ import pytest
 from itertools import count, dropwhile, chain
 
 from glom import Iter
-from glom import glom, SKIP, STOP, T, Call, Spec, Glommer, Check, SKIP
+from glom import glom, SKIP, STOP, T, Call, Spec, Glommer, Check, SKIP, M
 
 
 RANGE_5 = list(range(5))
@@ -19,9 +19,8 @@ def test_iter():
 
     assert list(glom(['1', '2', '3'], (Iter(int), enumerate))) == [(0, 1), (1, 2), (2, 3)]
 
-    assert list(glom([1, SKIP, 2], Iter())) == [1, 2]
-    assert list(glom([1, STOP, 2], Iter())) == [1]
-
+    assert list(glom([1, 2, 3], Iter((M != 2) | SKIP))) == [1, 3]
+    assert list(glom([1, 2, 3], Iter((M != 2) | STOP))) == [1]
     with pytest.raises(TypeError):
         Iter(nonexistent_kwarg=True)
 

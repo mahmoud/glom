@@ -22,6 +22,7 @@ from boltons.iterutils import split_iter, chunked_iter, windowed_iter, unique_it
 from boltons.funcutils import FunctionBuilder
 
 from .core import glom, T, STOP, SKIP, _MISSING, Path, TargetRegistry, Call, Spec, S, bbrepr, format_invocation
+from .core import GlomSkip, GlomStop
 from .matching import Check
 
 class Iter(object):
@@ -101,14 +102,14 @@ class Iter(object):
         base_path = scope[Path]
         for i, t in enumerate(iterator):
             scope[Path] = base_path + [i]
-            yld = (t if self.subspec is T else scope[glom](t, self.subspec, scope))
-            if yld is SKIP:
+            try:
+                yld = (t if self.subspec is T else scope[glom](t, self.subspec, scope))
+            except GlomSkip:
                 continue
-            elif yld is self.sentinel or yld is STOP:
-                # NB: sentinel defaults to STOP so I was torn whether
-                # to also check for STOP, and landed on the side of
-                # never letting STOP through.
-                return
+            except GlomStop:
+                break
+            if yld is self.sentinel:
+                break
             yield yld
         return
 

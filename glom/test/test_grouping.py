@@ -2,7 +2,7 @@ from __future__ import division
 
 from pytest import raises
 
-from glom import glom, T, SKIP, STOP, Auto, BadSpec
+from glom import glom, T, SKIP, STOP, Auto, BadSpec, M, Or, Match
 from glom.grouping import Group, First, Avg, Max, Min, Sample, Limit
 
 from glom.reduction import Merge, Flatten, Sum, Count
@@ -19,19 +19,19 @@ def test_corner_cases():
     target = range(5)
 
     # immediate stop dict
-    assert glom(target, Group({(lambda t: STOP): [T]})) == {}
+    assert glom(target, Group({STOP: [T]})) == {}
 
     # immediate stop list
-    assert glom(target, Group([lambda t: STOP])) == []
+    assert glom(target, Group([STOP])) == []
 
     # dict key SKIP
-    assert glom(target, Group({(lambda t: SKIP if t < 3 else t): T})) == {3: 3, 4: 4}
+    assert glom(target, Group({(M > 2) | SKIP: T})) == {3: 3, 4: 4}
 
     # dict val SKIP
-    assert glom(target, Group({T: lambda t: t if t % 2 else SKIP})) == {3: 3, 1: 1}
+    assert glom(target, Group({T: Or(Match(lambda t: t % 2), SKIP)})) == {3: 3, 1: 1}
 
     # list val SKIP
-    assert glom(target, Group([lambda t: t if t % 2 else SKIP])) == [1, 3]
+    assert glom(target, Group([Or(Match(lambda t: t % 2), SKIP)])) == [1, 3]
 
     # embedded auto spec (lol @ 0 being 0 bit length)
     assert glom(target, Group({Auto(('bit_length', T())): [T]})) == {0: [0], 1: [1], 2: [2, 3], 3: [4]}

@@ -5,7 +5,7 @@ from xml.etree import cElementTree as ElementTree
 import pytest
 
 from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Val, Call, T, S, Invoke, Spec, Ref
-from glom import Auto, Fill, Iter, A, Vars, Val, Literal, GlomError
+from glom import Auto, Fill, Iter, A, Vars, Val, Literal, GlomError, Match, And, Or, M
 
 import glom.core as glom_core
 from glom.core import UP, ROOT, bbformat, bbrepr
@@ -112,7 +112,7 @@ def test_skip():
               'n': 'o'}
 
     res = glom(target, {'a': 'a.b',
-                        'z': Coalesce('x', 'y', default=SKIP)})
+                        'z': Coalesce('x', 'y', SKIP)})
     assert res['a'] == 'c'  # sanity check
 
     assert 'x' not in target
@@ -121,25 +121,26 @@ def test_skip():
 
     # test that skip works on lists
     target = range(7)
-    res = glom(target, [lambda t: t if t % 2 else SKIP])
+    # TODO: rewrite this when T supports % -- (M(T % 2) == 1) | SKIP
+    res = glom(target, [Match(Or(lambda t: t % 2 == 1, SKIP))])
     assert res == [1, 3, 5]
 
     # test that skip works on chains (enable conditional applications of transforms)
     target = range(7)
     # double each value if it's even, but convert all values to floats
-    res = glom(target, [(lambda x: x * 2 if x % 2 == 0 else SKIP, float)])
+    # TODO: rewrite this when T supports % and *: M(T % 2 == 0) & (T * 2) | SKIP
+    res = glom(target, [(Or(And(Match(lambda t: t % 2 == 0), lambda x: x * 2), SKIP), float)])
     assert res == [0.0, 1.0, 4.0, 3.0, 8.0, 5.0, 12.0]
 
 
 def test_stop():
     # test that stop works on iterables
-    target = iter([0, 1, 2, STOP, 3, 4])
-    assert glom(target, [T]) == [0, 1, 2]
+    assert glom([0, 1, 2, 3, 4], [(M < 3) | STOP]) == [0, 1, 2]
 
     # test that stop works on chains (but doesn't stop iteration up the stack)
     target = ['a', ' b', ' c ', '   ', '  done']
     assert glom(target, [(lambda x: x.strip(),
-                          lambda x: x if x else STOP,
+                          M | STOP,
                           lambda x: x[0])]) == ['a', 'b', 'c', '', 'd']
     return
 
