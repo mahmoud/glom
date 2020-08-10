@@ -42,3 +42,25 @@ def test_json_check():
     glom(2**51, json_spec)
     with pytest.raises(GlomError):
         glom(2**52, json_spec)
+    # maybe we want to dump an object but still
+    # check that its output is valid
+    class Message(object):
+        def __init__(self, value):
+            self.value = value
+
+        def as_dict(self):
+            return {'type': 'message', 'value': self.value}
+
+    json_spec = Match(Ref(
+        'json', Switch({
+            dict: {str: Ref('json')},
+            list: [Ref('json')],
+            Or(int, float, str): T,
+            T.as_dict: Auto((T.as_dict(), Match(Ref('json'))))
+        })
+    ))
+
+    glom(Message(1), json_spec)
+    glom(Message(Message(1)), json_spec)
+    with pytest.raises(GlomError):
+        glom(Message(object), json_spec)
