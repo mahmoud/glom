@@ -34,3 +34,6 @@ data = \
 }
 
 print(data)
+
+res = data.get('data', [{}])[0].get('data')[0].get('values', [{}])[0].get('data')[0].get('schedule_id')
+print(res)
