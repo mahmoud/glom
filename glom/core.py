@@ -1778,13 +1778,16 @@ def _handle_tuple(target, spec, scope):
             scope[Path] += [getattr(subspec, '__name__', subspec)]
     return res
 
-  
+
 class Pipe(object):
-    """
-    run steps one after the other, passing the result of
-    the previous step in as the target of the next step
-    
-    same behavior as Auto(tuple(steps))
+    """Evaluate specs one after the other, passing the result of
+    the previous evaluation in as the target of the next spec:
+
+      >>> glom({'a': {'b': -5}}, Pipe('a', 'b', abs))
+      5
+
+    Same behavior as ``Auto(tuple(steps))``, but useful for explicit
+    usage in other modes.
     """
     def __init__(self, *steps):
         self.steps = steps
@@ -1793,7 +1796,7 @@ class Pipe(object):
         return _handle_tuple(target, self.steps, scope)
 
     def __repr__(self):
-        return "Pipe" + repr(self.steps)
+        return self.__class__.__name__ + repr(self.steps)
 
 
 class TargetRegistry(object):
