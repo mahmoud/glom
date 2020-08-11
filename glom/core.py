@@ -1796,7 +1796,7 @@ class Pipe(object):
         return _handle_tuple(target, self.steps, scope)
 
     def __repr__(self):
-        return self.__class__.__name__ + repr(self.steps)
+        return self.__class__.__name__ + bbrepr(self.steps)
 
 
 class TargetRegistry(object):

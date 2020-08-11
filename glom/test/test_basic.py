@@ -426,6 +426,7 @@ def test_ref():
 
 def test_pipe():
     assert glom(1, Pipe("__class__", "__name__", str.upper)) == 'INT'
+    assert repr(Pipe(1, Pipe([2], dict))) == 'Pipe(1, Pipe([2], dict))'
 
 
 _IS_PYPY = '__pypy__' in sys.builtin_module_names
