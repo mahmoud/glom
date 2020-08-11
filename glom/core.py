@@ -1778,6 +1778,23 @@ def _handle_tuple(target, spec, scope):
             scope[Path] += [getattr(subspec, '__name__', subspec)]
     return res
 
+  
+class Pipe(object):
+    """
+    run steps one after the other, passing the result of
+    the previous step in as the target of the next step
+    
+    same behavior as Auto(tuple(steps))
+    """
+    def __init__(self, *steps):
+        self.steps = steps
+
+    def glomit(self, target, scope):
+        return _handle_tuple(target, self.steps, scope)
+
+    def __repr__(self):
+        return "Pipe" + repr(self.steps)
+
 
 class TargetRegistry(object):
     '''
