@@ -6,7 +6,7 @@ import traceback
 
 import pytest
 
-from glom import glom, S, T, GlomError, Switch, Coalesce, Or
+from glom import glom, S, T, GlomError, Switch, Coalesce, Or, Path
 from glom.core import format_oneline_trace, format_target_spec_trace, bbrepr, ROOT, LAST_CHILD_SCOPE
 from glom.matching import M, MatchError, TypeMatchError, Match
 
@@ -33,6 +33,18 @@ def test_error():
         glom(target, ('data', '3'))
     with pytest.raises(GlomError):
         glom(target, ('data', [(T.real, T.bit_length, T.image)]))
+
+
+def test_pae_api():
+    target = {'value': {'data': [0, 1, 2]}}
+
+    with pytest.raises(GlomError) as exc_info:
+        glom(target, (T['value'], 'data.3'))
+
+    assert exc_info.value.path == Path('data', '3')
+    assert exc_info.value.path.__class__ is Path
+    assert exc_info.value.exc.__class__ is IndexError
+    assert exc_info.value.part_idx == 1
 
 
 def test_unfinalized_glomerror_repr():
