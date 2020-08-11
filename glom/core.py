@@ -196,8 +196,12 @@ def _unpack_stack(scope):
         if branches == [child]:
             branches = []  # if there's only one branch, count it as linear
         stack.append([scope, scope[Spec], scope[T], scope.get(CUR_ERROR), branches])
-        if child in branches:
+
+        # NB: this id() business is necessary to avoid a
+        # nondeterministic bug in abc's __eq__ see #189 for details
+        if id(child) in [id(b) for b in branches]:
             break  # if child already covered by branches, stop the linear descent
+
         scope = child.maps[0]
     else:  # if break executed above, cur scope was already added
         stack.append([scope, scope[Spec], scope[T], scope.get(CUR_ERROR), []])
