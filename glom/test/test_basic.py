@@ -5,7 +5,7 @@ from xml.etree import cElementTree as ElementTree
 import pytest
 
 from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Val, Call, T, S, Invoke, Spec, Ref
-from glom import Auto, Fill, Iter, A, Vars, Val, Literal, GlomError
+from glom import Auto, Fill, Iter, A, Vars, Val, Literal, GlomError, Pipe
 
 import glom.core as glom_core
 from glom.core import UP, ROOT, bbformat, bbrepr
@@ -422,6 +422,10 @@ def test_ref():
     </html>''')
     glom(etree, etree2dicts)
     glom(etree, etree2tuples)
+
+
+def test_pipe():
+    assert glom(1, ("__class__", "__name__")) == 'int'
 
 
 _IS_PYPY = '__pypy__' in sys.builtin_module_names
