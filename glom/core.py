@@ -1079,8 +1079,8 @@ def _is_spec(obj, strict=False):
         return True
     if strict:
         return type(obj) is Spec
-    # TODO: revisit line below
-    return callable(getattr(obj, 'glomit', None)) and not isinstance(obj, type)  # pragma: no cover
+
+    return _has_callable_glomit(obj)  # pragma: no cover
 
 
 class Invoke(object):
@@ -2089,6 +2089,14 @@ def chain_child(scope):
     return nxt_in_chain
 
 
+unbound_methods = set([type(str.__len__)]) #, type(Ref.glomit)])
+
+
+def _has_callable_glomit(obj):
+    glomit = getattr(obj, 'glomit', None)
+    return callable(glomit)  and not isinstance(obj, type)
+
+
 def _glom(target, spec, scope):
     parent = scope
     scope = scope.new_child({
@@ -2102,7 +2110,7 @@ def _glom(target, spec, scope):
     try:
         if isinstance(spec, TType):  # must go first, due to callability
             return _t_eval(target, spec, scope)
-        elif callable(getattr(spec, 'glomit', None)):
+        elif _has_callable_glomit(spec):
             return spec.glomit(target, scope)
 
         return scope[MODE](target, spec, scope)
