@@ -1779,6 +1779,26 @@ def _handle_tuple(target, spec, scope):
     return res
 
 
+class Pipe(object):
+    """Evaluate specs one after the other, passing the result of
+    the previous evaluation in as the target of the next spec:
+
+      >>> glom({'a': {'b': -5}}, Pipe('a', 'b', abs))
+      5
+
+    Same behavior as ``Auto(tuple(steps))``, but useful for explicit
+    usage in other modes.
+    """
+    def __init__(self, *steps):
+        self.steps = steps
+
+    def glomit(self, target, scope):
+        return _handle_tuple(target, self.steps, scope)
+
+    def __repr__(self):
+        return self.__class__.__name__ + bbrepr(self.steps)
+
+
 class TargetRegistry(object):
     '''
     responsible for registration of target types for iteration

@@ -21,6 +21,7 @@ from glom.core import (glom,
                        Let,  # backwards compat 2020-07
                        Coalesce,
                        Inspect,
+                       Pipe,
                        GlomError,
                        BadSpec,
                        PathAccessError,
