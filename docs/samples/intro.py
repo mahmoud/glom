@@ -37,3 +37,16 @@ print(data)
 
 res = data.get('data', [{}])[0].get('data')[0].get('values', [{}])[0].get('data')[0].get('schedule_id')
 print(res)
+
+
+## The transformation
+
+from glom import glom
+
+target = {'data': {'id': 2, 'date': '1999-01-01'}}
+
+response = {'id': glom(target, 'data.id'),
+            'date': glom(target, 'data.date')}
+
+response = glom(target, {'id': 'data.id',
+                          'date': 'data.date'})
