@@ -196,8 +196,12 @@ def _unpack_stack(scope):
         if branches == [child]:
             branches = []  # if there's only one branch, count it as linear
         stack.append([scope, scope[Spec], scope[T], scope.get(CUR_ERROR), branches])
-        if child in branches:
+
+        # NB: this id() business is necessary to avoid a
+        # nondeterministic bug in abc's __eq__ see #189 for details
+        if id(child) in [id(b) for b in branches]:
             break  # if child already covered by branches, stop the linear descent
+
         scope = child.maps[0]
     else:  # if break executed above, cur scope was already added
         stack.append([scope, scope[Spec], scope[T], scope.get(CUR_ERROR), []])
@@ -1075,8 +1079,8 @@ def _is_spec(obj, strict=False):
         return True
     if strict:
         return type(obj) is Spec
-    # TODO: revisit line below
-    return callable(getattr(obj, 'glomit', None)) and not isinstance(obj, type)  # pragma: no cover
+
+    return _has_callable_glomit(obj)  # pragma: no cover
 
 
 class Invoke(object):
@@ -1454,7 +1458,7 @@ def _s_first_magic(scope, key, _t):
     try:
         cur = scope[key]
     except KeyError as e:
-        err = PathAccessError(e, _t, 0)  # always only one level depth, hence 0
+        err = PathAccessError(e, Path(_t), 0)  # always only one level depth, hence 0
     if err:
         raise err
     return cur
@@ -1495,19 +1499,19 @@ def _t_eval(target, _t, scope):
             try:
                 cur = getattr(cur, arg)
             except AttributeError as e:
-                pae = PathAccessError(e, _t, i // 2)
+                pae = PathAccessError(e, Path(_t), i // 2)
         elif op == '[':
             try:
                 cur = cur[arg]
             except (KeyError, IndexError, TypeError) as e:
-                pae = PathAccessError(e, _t, i // 2)
+                pae = PathAccessError(e, Path(_t), i // 2)
         elif op == 'P':
             # Path type stuff (fuzzy match)
             get = scope[TargetRegistry].get_handler('get', cur, path=t_path[2:i+2:2])
             try:
                 cur = get(cur, arg)
             except Exception as e:
-                pae = PathAccessError(e, _t, i // 2)
+                pae = PathAccessError(e, Path(_t), i // 2)
         elif op == '(':
             args, kwargs = arg
             scope[Path] += t_path[2:i+2:2]
@@ -1773,6 +1777,26 @@ def _handle_tuple(target, spec, scope):
         if not isinstance(subspec, list):
             scope[Path] += [getattr(subspec, '__name__', subspec)]
     return res
+
+
+class Pipe(object):
+    """Evaluate specs one after the other, passing the result of
+    the previous evaluation in as the target of the next spec:
+
+      >>> glom({'a': {'b': -5}}, Pipe('a', 'b', abs))
+      5
+
+    Same behavior as ``Auto(tuple(steps))``, but useful for explicit
+    usage in other modes.
+    """
+    def __init__(self, *steps):
+        self.steps = steps
+
+    def glomit(self, target, scope):
+        return _handle_tuple(target, self.steps, scope)
+
+    def __repr__(self):
+        return self.__class__.__name__ + bbrepr(self.steps)
 
 
 class TargetRegistry(object):
@@ -2085,6 +2109,14 @@ def chain_child(scope):
     return nxt_in_chain
 
 
+unbound_methods = set([type(str.__len__)]) #, type(Ref.glomit)])
+
+
+def _has_callable_glomit(obj):
+    glomit = getattr(obj, 'glomit', None)
+    return callable(glomit)  and not isinstance(obj, type)
+
+
 def _glom(target, spec, scope):
     parent = scope
     scope = scope.new_child({
@@ -2098,7 +2130,7 @@ def _glom(target, spec, scope):
     try:
         if isinstance(spec, TType):  # must go first, due to callability
             return _t_eval(target, spec, scope)
-        elif callable(getattr(spec, 'glomit', None)):
+        elif _has_callable_glomit(spec):
             return spec.glomit(target, scope)
 
         return scope[MODE](target, spec, scope)

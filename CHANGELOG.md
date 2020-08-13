@@ -13,6 +13,26 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
+20.8.0
+------
+*(August 11, 2020)*
+
+A few cleanups from the big release:
+
+* PathAccessError paths are now Path objects again (fixes [#185][i185])
+* Fix an intermittent infinite recursion due to a suspected bug in
+  abc, and a bad interaction between ChainMap and weakref. (fixes [#189][i189])
+* Adjust face requirement version to be more strictly up-to-date ([#188][i188])
+* Soft launch the Pipe() spec, which is just a more explicit version
+  of the default tuple behavior. ([#191][i191])
+
+Huge thanks to all reporters and committers!
+
+[i185]: https://github.com/mahmoud/glom/issues/185
+[i188]: https://github.com/mahmoud/glom/issues/188
+[i189]: https://github.com/mahmoud/glom/issues/189
+[i191]: https://github.com/mahmoud/glom/issues/191
+
 20.7.0
 ------
 *(July 31, 2020)*
