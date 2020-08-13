@@ -60,6 +60,21 @@ def test_json_check():
         })
     ))
 
+    # what would the alternative, self-recursive version look like?
+    def json_spec_r(val):
+        if type(val) is dict:
+            for key in val:
+                assert isinstance(key, str)
+            return {
+                key: json_spec_r(sub_val) for key, sub_val in val.items()}
+        if type(val) is list:
+            return [json_spec_r(sub_val) for sub_val in val]
+        if type(val) in (int, float, str):
+            return val
+        if hasattr(val, "as_dict"):
+            return json_spec_r(val.as_dict())
+        raise TypeError('no match')
+
     glom(Message(1), json_spec)
     glom(Message(Message(1)), json_spec)
     with pytest.raises(GlomError):
