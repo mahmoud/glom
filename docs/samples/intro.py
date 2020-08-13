@@ -49,4 +49,4 @@ response = {'id': glom(target, 'data.id'),
             'date': glom(target, 'data.date')}
 
 response = glom(target, {'id': 'data.id',
-                          'date': 'data.date'})
+                         'date': 'data.date'})
