@@ -43,10 +43,23 @@ print(res)
 
 from glom import glom
 
-target = {'data': {'id': 2, 'date': '1999-01-01'}}
+target = {'ID': 2, 'data': {'isoDate': '1999-01-01'}}
 
-response = {'id': glom(target, 'data.id'),
-            'date': glom(target, 'data.date')}
+response = {'id': glom(target, 'ID'),
+            'date': glom(target, 'data.isoDate')}
 
-response = glom(target, {'id': 'data.id',
-                         'date': 'data.date'})
+response = glom(target, {'id': 'ID',
+                         'date': 'data.isoDate'})
+print(response)
+
+
+EMAIL_SPEC = {'id': 'email_id',
+              'email': 'email_addr',
+              'type': 'email_type'}
+
+def get_all_emails(filters):
+    queryset = Email.objects.filter(**filters)
+
+    all_emails_spec = {'results': [EMAIL_SPEC]}
+
+    return glom(queryset, all_emails_spec)
