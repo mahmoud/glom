@@ -1,7 +1,6 @@
 
 import operator
 import itertools
-from pprint import pprint
 
 from boltons.typeutils import make_sentinel
 
@@ -309,7 +308,6 @@ class Merge(Fold):
             op(ret, v)
 
         return ret
-
 
     def _agg(self, target, tree):
         if self not in tree:

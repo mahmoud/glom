@@ -24,6 +24,7 @@ from boltons.funcutils import FunctionBuilder
 from .core import glom, T, STOP, SKIP, _MISSING, Path, TargetRegistry, Call, Spec, S, bbrepr, format_invocation
 from .matching import Check
 
+
 class Iter(object):
     """``Iter()`` is glom's counterpart to Python's built-in :func:`iter()`
     function. Given an iterable target, ``Iter()`` yields the result
@@ -256,7 +257,6 @@ class Iter(object):
             'unique',
             (key,),
             lambda it, scope: unique_iter(it, key=lambda t: scope[glom](t, key, scope)))
-
 
     def slice(self, *args):
         """Returns a new :class:`Iter()` spec which trims iterables in the

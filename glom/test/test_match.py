@@ -8,7 +8,7 @@ from glom import glom, S, Val, T, A, Fill, Ref, Coalesce, STOP, Switch
 from glom.matching import (
     Match, M, MatchError, TypeMatchError, And, Or, Not,
     Optional, Required, Regex)
-from glom.core import Auto, SKIP, Ref
+from glom.core import Auto, SKIP
 
 try:
     unicode
@@ -16,11 +16,11 @@ except NameError:
     unicode = str
 
 
-
 def _chk(spec, good_target, bad_target):
     glom(good_target, spec)
     with pytest.raises(MatchError):
         glom(bad_target, spec)
+
 
 def test_basic():
     _chk(Match(1), 1, 2)
@@ -41,7 +41,7 @@ def test_basic():
     glom(1.0, M >= 1)
     glom(1.0, M < 2)
     glom(1.0, M <= 1)
-    glom(1.0, M != None)
+    glom(1.0, M != None)  # noqa: E711
     glom(1.0, (M > 0) & float)
     glom(1.0, (M > 100) | float)
 
@@ -65,7 +65,6 @@ def test_basic():
 
     with pytest.raises(TypeError):
         Or('a', bad_kwarg=True)
-
 
     _chk(Match(Or("a", "b")), "a", "c")
     glom({None: 1}, Match({object: object}))
@@ -165,12 +164,11 @@ def test_and_or_reduction():
 def test_precedence():
     """test corner cases of dict key precedence"""
     glom({(0, 1): 3},
-        Match({
-            (0, 1): Val(1),  # this should match
-            (0, int): Val(2),  # optional
-            (0, M == 1): Val(3),  # optional
-        })
-    )
+         Match({
+             (0, 1): Val(1),  # this should match
+             (0, int): Val(2),  # optional
+             (0, M == 1): Val(3),  # optional
+         }))
     with pytest.raises(ValueError):
         Optional(int)  # int is already optional so not valid to wrap
 
@@ -273,10 +271,11 @@ def test_sample():
         'name': str,
         Optional('date_added'): datetime.datetime,
         'desc': str,
-        'tags': [str,]})
+        'tags': [str]})
 
     def good():
         glom(data, spec)
+
     def bad():
         with pytest.raises(MatchError):
             glom(data, spec)
@@ -337,7 +336,7 @@ def test_sky():
         'allow None or sub_schema'
         return Match(Or(None, sub_schema))
 
-    assert glom(None, none_or('abc')) == None
+    assert glom(None, none_or('abc')) == None  # noqa: E711
     assert glom('abc', none_or('abc')) == 'abc'
     with pytest.raises(MatchError):
         glom(123, none_or('abc'))
@@ -353,7 +352,7 @@ def test_sky():
 
     def default_if_none(sub_schema, default_factory):
         return Or(
-            And(M == None, Auto(lambda t: default_factory())), sub_schema)
+            And(M == None, Auto(lambda t: default_factory())), sub_schema)  # noqa: E711
 
     assert glom(1, default_if_none(T, list)) == 1
     assert glom(None, default_if_none(T, list)) == []
@@ -387,14 +386,15 @@ def test_nested_struct():
     """adapted from use case"""
     import json
 
-    _json = lambda spec: Auto((json.loads, _str_json, Match(spec)))
+    def _json(spec):
+        return Auto((json.loads, _str_json, Match(spec)))
 
     _str_json = Ref('json',
-        Match(Or(
-            And(dict, {Ref('json'): Ref('json')}),
-            And(list, [Ref('json')]),
-            And(type(u''), Auto(str)),
-            object)))
+                    Match(Or(
+                        And(dict, {Ref('json'): Ref('json')}),
+                        And(list, [Ref('json')]),
+                        And(type(u''), Auto(str)),
+                        object)))
 
     rule_spec = Match({
         'rule_id': Or('', Regex(r'\d+')),
@@ -454,9 +454,11 @@ def test_check_ported_tests():
     assert glom(target, M(T)) == ['1']
 
     failing_checks = [({'a': {'b': 1}}, {'a': ('a', 'b', Match(str))},
-                       '''expected type str, not int'''),  # TODO: bbrepr at least, maybe include path like Check did
+                       # TODO: bbrepr at least, maybe include path like Check did
+                       '''expected type str, not int'''),
                       ({'a': {'b': 1}}, {'a': ('a', Match({'b': str}))},
-                       '''expected type str, not int'''),  # TODO: include subspec path ('b')
+                       # TODO: include subspec path ('b')
+                       '''expected type str, not int'''),
                       (1, Match(Or(unicode, bool))),
                       (1, Match(unicode)),
                       (1, Match(0)),
@@ -464,7 +466,7 @@ def test_check_ported_tests():
                       ('-3.14', Match(lambda x: int(x) > 0)),
                       # ('-3.14', M(lambda x: int(x) > 0)),
                       # TODO: M doesn't behave quite like Match because it's mode-free
-    ]
+                      ]
 
     for fc in failing_checks:
         if len(fc) == 2:
@@ -495,11 +497,11 @@ def test_switch():
     assert glom(None, Switch(cases, default=4)) == 4
     assert glom(None, Switch({'z': 26}, default=4)) == 4
     with pytest.raises(MatchError):
-    	glom(None, Switch(cases))
+        glom(None, Switch(cases))
     with pytest.raises(ValueError):
-    	Switch({})
+        Switch({})
     with pytest.raises(TypeError):
-    	Switch("wrong type")
+        Switch("wrong type")
     assert glom(None, Switch({S(a=lambda t: 1): S['a']})) == 1
     repr(Switch(cases))
 

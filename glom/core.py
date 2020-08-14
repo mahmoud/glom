@@ -26,15 +26,13 @@ import copy
 import weakref
 import operator
 from abc import ABCMeta
-from pprint import pprint
 import string
 from collections import OrderedDict
 import traceback
 
 from face.helpers import get_wrap_width
 from boltons.typeutils import make_sentinel
-from boltons.iterutils import is_iterable
-#from boltons.funcutils import format_invocation
+
 
 PY2 = (sys.version_info[0] == 2)
 if PY2:
@@ -55,7 +53,7 @@ TRACE_WIDTH = max(get_wrap_width(max_width=110), 50)   # min width
 _type_type = type
 
 _MISSING = make_sentinel('_MISSING')
-SKIP =  make_sentinel('SKIP')
+SKIP = make_sentinel('SKIP')
 SKIP.__doc__ = """
 The ``SKIP`` singleton can be returned from a function or included
 via a :class:`~glom.Val` to cancel assignment into the output
@@ -105,7 +103,7 @@ in a recursive glom() call, so that they can be cleaned up correctly
 in case of exceptions
 """
 
-MODE =  make_sentinel('MODE')
+MODE = make_sentinel('MODE')
 
 CHILD_ERRORS = make_sentinel('CHILD_ERRORS')
 CHILD_ERRORS.__doc__ = """
@@ -120,6 +118,7 @@ thrown exceptions.
 """
 
 _PKG_DIR_PATH = os.path.dirname(os.path.abspath(__file__))
+
 
 class GlomError(Exception):
     """The base exception for all the errors that might be raised from
@@ -231,6 +230,7 @@ def format_target_spec_trace(scope, root_error, width=TRACE_WIDTH, depth=0, prev
     segments = []
     indent = " " + "|" * depth
     tick = "| " if depth else "- "
+
     def mk_fmt(label, t=None):
         pre = indent + (t or tick) + label + ": "
         fmt_width = width - len(pre)
@@ -1717,6 +1717,7 @@ class Auto(object):
 
 class _AbstractIterable(_AbstractIterableBase):
     __metaclass__ = ABCMeta
+
     @classmethod
     def __subclasshook__(cls, C):
         if C in (str, bytes):
@@ -2109,12 +2110,12 @@ def chain_child(scope):
     return nxt_in_chain
 
 
-unbound_methods = set([type(str.__len__)]) #, type(Ref.glomit)])
+unbound_methods = set([type(str.__len__)])  # , type(Ref.glomit)])
 
 
 def _has_callable_glomit(obj):
     glomit = getattr(obj, 'glomit', None)
-    return callable(glomit)  and not isinstance(obj, type)
+    return callable(glomit) and not isinstance(obj, type)
 
 
 def _glom(target, spec, scope):
