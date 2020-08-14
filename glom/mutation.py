@@ -8,8 +8,9 @@ type.
 
 """
 import operator
+from pprint import pprint
 
-from .core import Path, S, Spec, glom, PathAccessError, UP
+from .core import Path, S, Spec, glom, PathAccessError, UP, T
 from .core import TType, register_op, TargetRegistry, bbrepr, PathAssignError
 
 try:
