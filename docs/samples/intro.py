@@ -55,11 +55,40 @@ response = glom(target, {'id': 'ID',
 print(response)
 
 
+def get_response(in_data):
+    ret = {}
+
+    try:
+        ret['id'] = in_data['ID']
+    except (KeyError, TypeError):
+        pass  # TODO
+
+    try:
+        data = in_data['data']
+    except KeyError:
+        pass  # TODO
+
+    try:
+        ret['date'] = data['isoDate']
+    except (KeyError, TypeError):
+        pass  # TODO
+
+    return ret
+
+assert get_response(target) == response
+
+
 EMAIL_SPEC = {'id': 'email_id',
               'email': 'email_addr',
               'type': 'email_type'}
 
-def get_all_emails(filters):
+
+def get_email(email_id):
+    email = Email.objects.get(email_id=email_id)
+    return glom(email, EMAIL_SPEC)
+
+
+def get_all_emails(**filters):
     queryset = Email.objects.filter(**filters)
 
     all_emails_spec = {'results': [EMAIL_SPEC]}
