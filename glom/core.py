@@ -25,6 +25,7 @@ import pdb
 import copy
 import weakref
 import operator
+from pprint import pprint
 from abc import ABCMeta
 import string
 from collections import OrderedDict
@@ -1588,7 +1589,6 @@ def _format_t(path, root=T):
 
 class Val(object):
     """Val objects are specs which evaluate to the wrapped *value*.
-    >>> from pprint import pprint
     >>> target = {'a': {'b': 'c'}}
     >>> spec = {'a': 'a.b', 'readability': Val('counts')}
     >>> pprint(glom(target, spec))
@@ -2004,7 +2004,6 @@ def glom(target, spec, **kwargs):
 
     Constructing, or restructuring more-complicated nested data:
 
-    >>> from pprint import pprint
     >>> target = {'a': {'b': 'c', 'd': 'e'}, 'f': 'g', 'h': [0, 1, 2]}
     >>> spec = {'a': 'a.b', 'd': 'a.d', 'h': ('h', [lambda x: x * 2])}
     >>> output = glom(target, spec)
