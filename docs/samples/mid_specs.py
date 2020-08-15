@@ -26,8 +26,8 @@ target = ['1', '2', '1', '3']
 
 spec = Iter().map(int).unique().all()
 
-result = glom(target, spec)
-assert result == [1, 2, 3]
+output = glom(target, spec)
+assert output == [1, 2, 3]
 
 # T
 
@@ -37,14 +37,14 @@ target = {'a': {'b': {'c': 'd'}}}
 
 spec = T['a']['b']['c']
 
-result = glom(target, spec)
-assert result == 'd'
+output = glom(target, spec)
+assert output == 'd'
 
-result = glom(target, T['a']['b']['c'].upper())
-assert result == 'D'
+output = glom(target, T['a']['b']['c'].upper())
+assert output == 'D'
 
-result = glom(target, T['z'].upper(), default=None)
-assert result is None
+output = glom(target, T['z'].upper(), default=None)
+assert output is None
 
 
 class Contact(object):
@@ -54,5 +54,5 @@ class Contact(object):
 
 frank = Contact('Frank', {'emails': ['FRANK@NothingButHotdogs.BIZ']})
 
-result = glom(frank, T.details['emails'][0].lower())
-assert result == 'frank@nothingbuthotdogs.biz'
+output = glom(frank, T.details['emails'][0].lower())
+assert output == 'frank@nothingbuthotdogs.biz'
