@@ -2,7 +2,7 @@ data = \
 {
   "status": "ok",
   "version": "v1",
-  "schedule_id": "2014-03-18",
+  "sched_date": "2016-05-12",
   "table_name": "Outer table",
   "data": [
     {
@@ -20,7 +20,7 @@ data = \
                       "values": [42],
                     }
                   ],
-                  "schedule_id": "2014-03-18",
+                  "sched_date": "2014-03-18",
                   "table_name": "Inner Table",
                   "unit": "Percent"
                 }
@@ -35,7 +35,9 @@ data = \
 
 print(data)
 
-res = data.get('data', [{}])[0].get('data')[0].get('values', [{}])[0].get('data')[0].get('schedule_id')
+data.get('data', [{}])[0]
+
+res = data.get('data', [{}])[0].get('data')[0].get('values', [{}])[0].get('data')[0].get('sched_date')
 print(res)
 
 
