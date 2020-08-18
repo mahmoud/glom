@@ -775,9 +775,8 @@ class Spec(object):
     def glom(self, target, **kw):
         scope = dict(self.scope)
         scope.update(kw.get('scope', {}))
-        kw['scope'] = ChainMap(scope)
-        glom_ = scope.get(glom, glom)
-        return glom_(target, self.spec, **kw)
+        kw['scope'] = scope
+        return glom(target, self.spec, **kw)
 
     def glomit(self, target, scope):
         scope.update(self.scope)
@@ -1983,7 +1982,7 @@ class TargetRegistry(object):
         self.register_op('get', lambda _: getattr)
 
 
-_DEFAULT_SCOPE = ChainMap({})
+_DEFAULT_SCOPE = ChainMap({CHILD_ERRORS: []})
 
 
 def glom(target, spec, **kwargs):

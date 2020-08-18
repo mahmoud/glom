@@ -21,7 +21,7 @@ except ImportError:
 from boltons.iterutils import split_iter, chunked_iter, windowed_iter, unique_iter, first
 from boltons.funcutils import FunctionBuilder
 
-from .core import glom, T, STOP, SKIP, _MISSING, Path, TargetRegistry, Call, Spec, S, bbrepr, format_invocation
+from .core import glom, T, STOP, SKIP, _MISSING, Path, TargetRegistry, Call, Spec, S, bbrepr, format_invocation, GlomError, Pipe
 from .matching import Check
 
 class Iter(object):
@@ -332,7 +332,7 @@ class Iter(object):
         Note that this spec will always consume the whole iterable, and as
         such, the spec returned is *not* an :class:`Iter()` instance.
         """
-        return (self, list)
+        return Pipe(self, list)
 
     def first(self, key=T, default=None):
         """A convenience method for lazily yielding a single truthy item from
@@ -349,7 +349,7 @@ class Iter(object):
         As this spec yields at most one item, and not an iterable, the
         spec returned from this method is not an :class:`Iter()` instance.
         """
-        return (self, First(key=key, default=default))
+        return Pipe(self, First(key=key, default=default))
 
 
 class First(object):
@@ -372,7 +372,10 @@ class First(object):
         self._spec = key
         self._default = default
 
-        spec_glom = Spec(Call(partial, args=(Spec(self._spec).glom,), kwargs={'scope': S}))
+        spec_glom = Spec(Call(partial,
+                              args=(Spec(self._spec).glom,),
+                              kwargs={'scope': S, 'skip_exc': GlomError
+                              }))
         self._first = Call(first, args=(T,), kwargs={'default': default, 'key': spec_glom})
 
     def glomit(self, target, scope):
@@ -383,3 +386,15 @@ class First(object):
         if self._default is None:
             return '%s(%s)' % (cn, bbrepr(self._spec))
         return '%s(%s, default=%s)' % (cn, bbrepr(self._spec), bbrepr(self._default))
+
+
+"""
+Issues:
+
+* Spec.glom() impl was way obsolete for all the other advancements
+* glom not "reentrant" (calling glom from inside glom, passing scope along) breaks bc DEFAULT_SCOPE didn't have CHILD_ERRORS and the way error handling is written requires all maps to have it (.maps[1])
+* Should glom() respect if people have passed in their own MODE in scope? right now it always sets it to AUTO
+* The whole "terminus spec" approach to Iter().first() and Iter().all() assumes that tuple=Pipe
+* In matching.py, _glom_match should be MATCH to mirror AUTO/FILL
+* Also in matching.py, _glom_match seems to handle type (non-instance) specs, we should try to move away from those.
+"""

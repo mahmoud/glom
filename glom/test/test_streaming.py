@@ -4,7 +4,7 @@ import pytest
 from itertools import count, dropwhile, chain
 
 from glom import Iter
-from glom import glom, SKIP, STOP, T, Call, Spec, Glommer, Check, SKIP
+from glom import glom, SKIP, STOP, T, Call, Spec, Glommer, Check, SKIP, Pipe
 
 
 RANGE_5 = list(range(5))
@@ -192,13 +192,20 @@ def test_first():
     out = glom(target, spec)
     assert out == 3j
     assert next(target) == 4
-    assert repr(spec) == '(Iter(), First(T.imag))'
+    assert repr(spec) == 'Pipe(Iter(), First(T.imag))'
 
     spec = Iter().first(T.imag, default=0)
     target = iter([1, 2, 4])
     out = glom(target, spec)
     assert out == 0
-    assert repr(spec) == '(Iter(), First(T.imag, default=0))'
+    assert repr(spec) == 'Pipe(Iter(), First(T.imag, default=0))'
+
+    target = [{}, {}, {'user': {'client': 123}}, {}]
+
+    output = glom(target, Iter().first('user.client'))
+
+    assert output['user']['client'] == 123
+
 
 
 def test_all():
@@ -207,4 +214,4 @@ def test_all():
     out = glom(int_iter, Iter().all())
     assert out == list(range(10))
     assert next(int_iter, None) is None
-    assert repr(Iter().all()) == repr((Iter(), list))
+    assert repr(Iter().all()) == repr(Pipe(Iter(), list))
