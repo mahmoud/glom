@@ -294,7 +294,7 @@ def test_spec_and_recursion():
     assert glom(['cat', {'cat': 1}], T[1][T[0]]) == 1
     assert glom(
         [['ab', 'cd', 'ef'], ''.join],
-        Call(T[1], args=(Spec((T[0], [T[1:]])),))) == 'bdf'
+        Call(T[1], args=(Auto((T[0], [T[1:]])),))) == 'bdf'
 
     # test that spec works on the left of a dict spec
     assert glom({'a': 'A'}, {Spec('a'): 'a', 'a': 'a'}) == {'A': 'A', 'a': 'A'}

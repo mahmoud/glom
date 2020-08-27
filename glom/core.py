@@ -1065,19 +1065,10 @@ class Call(object):
 
     def glomit(self, target, scope):
         'run against the current target'
-        def _eval(t):
-            if type(t) in (Spec, TType):
-                return scope[glom](target, t, scope)
-            return t
-        if type(self.args) is TType:
-            args = _eval(self.args)
-        else:
-            args = [_eval(a) for a in self.args]
-        if type(self.kwargs) is TType:
-            kwargs = _eval(self.kwargs)
-        else:
-            kwargs = {name: _eval(val) for name, val in self.kwargs.items()}
-        return _eval(self.func)(*args, **kwargs)
+        scope[MODE] = ARG
+        g = scope[glom]
+        r = lambda spec: g(target, spec, scope)
+        return r(self.func)(*r(self.args), **r(self.kwargs))
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -1504,8 +1495,7 @@ def _t_eval(target, _t, scope):
     pae = None
     while i < fetch_till:
         op, arg = t_path[i], t_path[i + 1]
-        if type(arg) in (Spec, TType, Val):
-            arg = scope[glom](target, arg, scope)
+        arg = arg_val(target, arg, scope)
         if op == '.':
             try:
                 cur = getattr(cur, arg)
@@ -2347,3 +2337,30 @@ def FILL(target, spec, scope):
     if callable(spec):
         return spec(target)
     return spec
+
+
+def ARG(target, spec, scope):
+    """
+    similar to FILL, but without function calling;
+    useful for default, scope assignment, call/invokce, etc
+    """
+    recurse = lambda val: scope[glom](target, val, scope)
+    if type(spec) is dict:
+        return {recurse(key): recurse(val) for key, val in spec.items()}
+    if type(spec) in (list, tuple, set, frozenset):
+        result = [recurse(val) for val in spec]
+        if type(spec) is list:
+            return result
+        return type(spec)(result)
+    return spec
+
+
+def arg_val(target, arg, scope):
+    """
+    evaluate an argument to find its value
+    """
+    mode = scope[MODE]
+    scope[MODE] = ARG
+    result = scope[glom](target, arg, scope)
+    scope[MODE] = mode
+    return result
