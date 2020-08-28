@@ -208,11 +208,11 @@ def test_pattern_matching():
     assert glom(5, fib) == 8
 
     factorial = (
-        lambda t: t + 1, Ref('fact', (
+        lambda t: t + 1, Ref('fact', Auto((
             lambda t: t - 1,
             (M == 0) & Fill(1) |
             (S(r=Ref('fact')),
-             S, lambda s: s['r'] * s[T]))))
+             S, lambda s: s['r'] * s[T])))))
 
     assert glom(4, factorial) == 4 * 3 * 2
 
@@ -503,7 +503,7 @@ def test_switch():
     	Switch({})
     with pytest.raises(TypeError):
     	Switch("wrong type")
-    assert glom(None, Switch({S(a=lambda t: 1): S['a']})) == 1
+    assert glom(None, Switch({S(a=1): S['a']})) == 1
     repr(Switch(cases))
 
 

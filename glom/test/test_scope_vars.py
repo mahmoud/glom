@@ -9,7 +9,7 @@ from glom.mutation import PathAssignError
 def test_s_scope_assign():
     data = {'a': 1, 'b': [{'c': 2}, {'c': 3}]}
     output = [{'a': 1, 'c': 2}, {'a': 1, 'c': 3}]
-    assert glom(data, (S(a='a'), ('b', [{'a': S['a'], 'c': 'c'}]))) == output
+    assert glom(data, (S(a=T['a']), ('b', [{'a': S['a'], 'c': 'c'}]))) == output
     assert glom(data, ('b', [{'a': S[ROOT][Val(T)]['a'], 'c': 'c'}])) == output
 
     with pytest.raises(TypeError):
@@ -18,20 +18,20 @@ def test_s_scope_assign():
         S()
 
     assert glom([[1]], (S(v=Vars()), [[A.v.a]], S.v.a)) == 1
-    assert glom(1, (S(v=lambda t: {}), A.v['a'], S.v['a'])) == 1
+    assert glom(1, (S(v={}), A.v['a'], S.v['a'])) == 1
     with pytest.raises(GlomError):
-        glom(1, (S(v=lambda t: 1), A.v.a))
+        glom(1, (S(v=1), A.v.a))
 
     class FailAssign(object):
         def __setattr__(self, name, val):
             raise Exception('nope')
 
     with pytest.raises(PathAssignError):
-        glom(1, (S(v=lambda t: FailAssign()), Path(A.v, 'a')))
+        glom(1, (S(v=FailAssign()), Path(A.v, 'a')))
 
     assert repr(S(a=T.a.b)) == 'S(a=T.a.b)'
 
-    spec = (S(a='x'), S.a)
+    spec = (S(a=T['x']), S.a)
     assert glom({'x': 'y'}, spec) == 'y'
 
     return

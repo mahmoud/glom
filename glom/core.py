@@ -1487,7 +1487,7 @@ def _t_eval(target, _t, scope):
             # S(var='spec') style assignment
             _, kwargs = t_path[2]
             scope.update({
-                k: scope[glom](target, v, scope) for k, v in kwargs.items()})
+                k: arg_val(target, v, scope) for k, v in kwargs.items()})
             return target
 
     else:
