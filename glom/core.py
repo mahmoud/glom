@@ -903,7 +903,7 @@ class Coalesce(object):
                 continue
         else:
             if self.default is not _MISSING:
-                ret = self.default
+                ret = arg_val(target, self.default, scope)
             elif self.default_factory is not _MISSING:
                 ret = self.default_factory()
             else:
@@ -2073,7 +2073,7 @@ def glom(target, spec, **kwargs):
         except skip_exc:
             if default is _MISSING:
                 raise
-            ret = default
+            ret = default  # should this also be arg_val'd?
     except Exception as e:
         if glom_debug:
             raise
@@ -2358,6 +2358,7 @@ def ARG(target, spec, scope):
 def arg_val(target, arg, scope):
     """
     evaluate an argument to find its value
+    (arg_val phonetically similar to "eval" -- evaluate as an arg)
     """
     mode = scope[MODE]
     scope[MODE] = ARG

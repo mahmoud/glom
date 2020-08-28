@@ -102,6 +102,9 @@ def test_defaults():
 def test_match_default():
     default = []
     res = glom(None, Match(list, default=default))
+    assert res == default
+    default = []
+    res = glom(None, Match(list, default=Val(default)))
     assert res is default
 
 
