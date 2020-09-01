@@ -1,7 +1,7 @@
 
 from pytest import raises
 
-from glom import glom, Path, S, T, A, PathAccessError, GlomError, BadSpec
+from glom import glom, Path, S, T, A, PathAccessError, GlomError, BadSpec, Or
 
 def test_list_path_access():
     assert glom(list(range(10)), Path(1)) == 1
@@ -97,6 +97,20 @@ def test_t_picklability():
 
     s_spec = S.attribute
     assert repr(s_spec) == repr(pickle.loads(pickle.dumps(s_spec)))
+
+
+def test_t_subspec():
+    # tests that arg-mode is a min-mode, allowing for
+    # other specs to be embedded inside T calls
+    data = [
+        {'id': 1},
+        {'pk': 1}]
+
+    get_ids = (
+        S(id_type=int),
+        [S.id_type(Or('id', 'pk'))])
+
+    assert glom(data, get_ids) == [1, 1]
 
 
 def test_a_forbidden():
