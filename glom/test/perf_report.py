@@ -5,7 +5,24 @@ import time
 
 import attr
 
-from glom import glom
+from glom import glom, T
+
+
+
+STR_SPEC = [{
+    'id': ('id', str),
+    'name': 'short_name',
+    'external_id': 'external_id',
+    'created_date': 'created_date',
+}]
+
+
+T_SPEC = [{
+    'id': (T.id, str),
+    'name': T.short_name,
+    'external_id': T.external_id,
+    'created_date': T.created_date,
+}]
 
 
 def setup_list_of_dict(num=100):
@@ -13,20 +30,13 @@ def setup_list_of_dict(num=100):
     a common use case is list-of-dicts object processing
     to prepare internal objects for JSON serialization
     """
-    spec = [{
-        'id': ('id', str),
-        'name': 'short_name',
-        'external_id': 'external_id',
-        'created_date': 'created_date',
-    }]
-
     Obj = attr.make_class(
         'Obj', ['id', 'short_name', 'external_id', 'created_date'])
 
     data = [
         Obj(i, 'name' + str(i), 'external' + str(i), 'now') for i in range(num)]
 
-    return spec, data
+    return data
 
 
 def run(spec, data):
@@ -38,5 +48,5 @@ def run(spec, data):
 
 if __name__ == "__main__":
     import cProfile
-    spec, data = setup_list_of_dict(10000)
-    cProfile.run('run(spec, data)')
+    data = setup_list_of_dict(10000)
+    cProfile.run('run(STR_SPEC, data)')
