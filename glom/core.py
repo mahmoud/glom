@@ -107,6 +107,8 @@ in case of exceptions
 
 MODE =  make_sentinel('MODE')
 
+MIN_MODE =  make_sentinel('MIN_MODE')
+
 CHILD_ERRORS = make_sentinel('CHILD_ERRORS')
 CHILD_ERRORS.__doc__ = """
 ``CHILD_ERRORS`` is used by glom internals to keep track of
@@ -2057,6 +2059,7 @@ def glom(target, spec, **kwargs):
         Path: kwargs.pop('path', []),
         Inspect: kwargs.pop('inspector', None),
         MODE: AUTO,
+        MIN_MODE: None,
         CHILD_ERRORS: [],
         'globals': ScopeVars({}, {}),
     })
@@ -2139,11 +2142,13 @@ def _glom(target, spec, scope):
 
     try:
         if type(spec) is TType:  # must go first, due to callability
+            scope[MIN_MODE] = None  # None is tombstone
             return _t_eval(target, spec, scope)
         elif _has_callable_glomit(spec):
+            scope[MIN_MODE] = None
             return spec.glomit(target, scope)
 
-        return scope.maps[0][MODE](target, spec, scope)
+        return (scope.maps[0][MIN_MODE] or scope.maps[0][MODE])(target, spec, scope)
     except Exception as e:
         scope.maps[1][CHILD_ERRORS].append(scope)
         scope.maps[0][CUR_ERROR] = e
@@ -2360,8 +2365,8 @@ def arg_val(target, arg, scope):
     evaluate an argument to find its value
     (arg_val phonetically similar to "eval" -- evaluate as an arg)
     """
-    mode = scope[MODE]
-    scope[MODE] = ARG
+    mode = scope[MIN_MODE]
+    scope[MIN_MODE] = ARG
     result = scope[glom](target, arg, scope)
-    scope[MODE] = mode
+    scope[MIN_MODE] = mode
     return result
