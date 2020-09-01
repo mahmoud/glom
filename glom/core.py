@@ -625,6 +625,8 @@ class Path(object):
                 path_t = _t_child(path_t, 'P', part)
         self.path_t = path_t
 
+    _CACHE = {}
+
     @classmethod
     def from_text(cls, text):
         """Make a Path from .-delimited text:
@@ -633,7 +635,9 @@ class Path(object):
         Path('a', 'b', 'c')
 
         """
-        return cls(*text.split('.'))
+        if text not in cls._CACHE:
+            cls._CACHE[text] = cls(*text.split('.'))
+        return cls._CACHE[text]
 
     def glomit(self, target, scope):
         # The entrypoint for the Path extension
@@ -2119,13 +2123,15 @@ def _has_callable_glomit(obj):
 
 def _glom(target, spec, scope):
     parent = scope
+    pmap = parent.maps[0]
     scope = scope.new_child({
         T: target,
         Spec: spec,
         UP: parent,
         CHILD_ERRORS: [],
+        MODE: pmap[MODE],
     })
-    parent[LAST_CHILD_SCOPE] = scope
+    pmap[LAST_CHILD_SCOPE] = scope
 
     try:
         if isinstance(spec, TType):  # must go first, due to callability
@@ -2133,7 +2139,7 @@ def _glom(target, spec, scope):
         elif _has_callable_glomit(spec):
             return spec.glomit(target, scope)
 
-        return scope[MODE](target, spec, scope)
+        return scope.maps[0][MODE](target, spec, scope)
     except Exception as e:
         scope.maps[1][CHILD_ERRORS].append(scope)
         scope.maps[0][CUR_ERROR] = e
