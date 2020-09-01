@@ -2134,7 +2134,7 @@ def _glom(target, spec, scope):
     pmap[LAST_CHILD_SCOPE] = scope
 
     try:
-        if isinstance(spec, TType):  # must go first, due to callability
+        if type(spec) is TType:  # must go first, due to callability
             return _t_eval(target, spec, scope)
         elif _has_callable_glomit(spec):
             return spec.glomit(target, scope)
@@ -2153,6 +2153,8 @@ def _glom(target, spec, scope):
 
 
 def AUTO(target, spec, scope):
+    if type(spec) is str:  # shortcut to make deep-get use case faster
+        return _t_eval(target, Path.from_text(spec).path_t, scope)
     if isinstance(spec, dict):
         return _handle_dict(target, spec, scope)
     elif isinstance(spec, list):
