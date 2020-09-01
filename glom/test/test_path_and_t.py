@@ -112,6 +112,16 @@ def test_t_subspec():
 
     assert glom(data, get_ids) == [1, 1]
 
+    data = {'a': 1, 'b': 2, 'c': 3}
+
+    # test that "shallow" data structures translate as-is
+    get_vals = (
+        S(seq_type=tuple),
+        S.seq_type([T['a'], T['b'], Or('c', 'd')])
+    )
+
+    assert glom(data, get_vals) == (1, 2, 3)
+
 
 def test_a_forbidden():
     with raises(BadSpec):
