@@ -76,8 +76,12 @@ def ratio(spec, func, data):
 
 if __name__ == "__main__":
     import cProfile
-    data = setup_list_of_dict(10000)
+    data = setup_list_of_dict(100000)
     run(STR_SPEC, data)
     run(STR_SPEC, data)
     print(ratio(STR_SPEC, func, setup_list_of_dict(1000)))
     print(ratio(STR_SPEC, func, setup_list_of_dict(1000)))
+
+
+# suggest using scalene to profile with:
+# $ scalene glom/test/perf_report.py --profile-all --reduced-profile --cpu-only --outfile SCALENE-CPU.txt

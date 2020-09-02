@@ -1738,7 +1738,7 @@ def _get_sequence_item(target, index):
 def _handle_dict(target, spec, scope):
     ret = type(spec)()  # TODO: works for dict + ordereddict, but sufficient for all?
     for field, subspec in spec.items():
-        val = scope[glom](target, subspec, scope)
+        val = gl_eval(target, subspec, scope)
         if val is SKIP:
             continue
         if type(field) in (Spec, TType):
@@ -1758,8 +1758,8 @@ def _handle_list(target, spec, scope):
     ret = []
     base_path = scope[Path]
     for i, t in enumerate(iterator):
-        scope[Path] = base_path + [i]
-        val = scope[glom](t, subspec, scope)
+        # scope[Path] = base_path + [i]
+        val = gl_eval(t, subspec, scope)
         if val is SKIP:
             continue
         if val is STOP:
@@ -1772,14 +1772,14 @@ def _handle_tuple(target, spec, scope):
     res = target
     for subspec in spec:
         scope = chain_child(scope)
-        nxt = scope[glom](res, subspec, scope)
+        nxt = gl_eval(res, subspec, scope)
         if nxt is SKIP:
             continue
         if nxt is STOP:
             break
         res = nxt
-        if not isinstance(subspec, list):
-            scope[Path] += [getattr(subspec, '__name__', subspec)]
+        #if not isinstance(subspec, list):
+        #    scope[Path] += [getattr(subspec, '__name__', subspec)]
     return res
 
 
@@ -1811,6 +1811,7 @@ class TargetRegistry(object):
     def __init__(self, register_default_types=True):
         self._op_type_map = {}
         self._op_type_tree = {}  # see _register_fuzzy_type for details
+        self._type_cache = {}
 
         self._op_auto_map = OrderedDict()  # op name to function that returns handler function
 
@@ -1829,22 +1830,26 @@ class TargetRegistry(object):
         """
         ret = False
         obj_type = type(obj)
-        type_map = self.get_type_map(op)
-        if type_map:
-            try:
-                ret = type_map[obj_type]
-            except KeyError:
-                type_tree = self._op_type_tree.get(op, {})
-                closest = self._get_closest_type(obj, type_tree=type_tree)
-                if closest is None:
-                    ret = False
-                else:
-                    ret = type_map[closest]
+        cache_key = (obj_type, op)
+        if cache_key not in self._type_cache:
+            type_map = self.get_type_map(op)
+            if type_map:
+                try:
+                    ret = type_map[obj_type]
+                except KeyError:
+                    type_tree = self._op_type_tree.get(op, {})
+                    closest = self._get_closest_type(obj, type_tree=type_tree)
+                    if closest is None:
+                        ret = False
+                    else:
+                        ret = type_map[closest]
 
-        if ret is False and raise_exc:
-            raise UnregisteredTarget(op, obj_type, type_map=type_map, path=path)
+            if ret is False and raise_exc:
+                raise UnregisteredTarget(op, obj_type, type_map=type_map, path=path)
 
-        return ret
+            self._type_cache[cache_key] = ret
+
+        return self._type_cache[cache_key]
 
     def get_type_map(self, op):
         try:
@@ -2150,6 +2155,9 @@ def _glom(target, spec, scope):
                 cur_scope.maps[0][CUR_ERROR] = e
                 cur_scope = cur_scope[UP]
         raise
+
+
+gl_eval = _glom
 
 
 def AUTO(target, spec, scope):
