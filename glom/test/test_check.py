@@ -43,9 +43,9 @@ def test_check_basic():
     assert glom(target, [Check()])  # bare check does a truthy check
 
     failing_checks = [({'a': {'b': 1}}, {'a': ('a', 'b', Check(type=str))},
-                       '''target at path ['a', 'b'] failed check, got error: "expected type to be 'str', found type 'int'"'''),
+                       '''target failed check, got error: "expected type to be 'str', found type 'int'"'''),
                       ({'a': {'b': 1}}, {'a': ('a', Check('b', type=str))},
-                       '''target at path ['a'] failed check, subtarget at 'b' got error: "expected type to be 'str', found type 'int'"'''),
+                       '''target failed check, subtarget at 'b' got error: "expected type to be 'str', found type 'int'"'''),
                       (1, Check(type=(unicode, bool))),
                       (1, Check(instance_of=unicode)),
                       (1, Check(instance_of=(unicode, bool))),

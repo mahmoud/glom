@@ -73,9 +73,9 @@ def test_types_bare():
     with pytest.raises(UnregisteredTarget) as exc_info:
         glommer.glom({'test': [{'hi': 'hi'}]}, ('test', ['hi']))
     # feel free to update the "(at ['test'])" part to improve path display
-    assert str(exc_info.value).find(
+    assert (
         "target type 'list' not registered for 'iterate', "
-        "expected one of registered types: (dict) (at ['test'])") != -1
+        "expected one of registered types: (dict)" in str(exc_info.value))
     return
 
 

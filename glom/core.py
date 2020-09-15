@@ -626,6 +626,7 @@ class Path(object):
         self.path_t = path_t
 
     _CACHE = {}
+    _MAX_CACHE = 10000
 
     @classmethod
     def from_text(cls, text):
@@ -636,6 +637,8 @@ class Path(object):
 
         """
         if text not in cls._CACHE:
+            if len(cls._CACHE) > cls._MAX_CACHE:
+                return cls(*text.split('.'))
             cls._CACHE[text] = cls(*text.split('.'))
         return cls._CACHE[text]
 
@@ -991,9 +994,13 @@ class Inspect(object):
             scope[glom] = scope[Inspect]
         if self.echo:
             print('---')
+            # TODO: switch from scope[Path] to the Target-Spec format trace above
+            # ... but maybe be smart about only printing deltas instead of the whole
+            # thing
             print('path:  ', scope[Path] + [spec])
             print('target:', target)
         if self.breakpoint:
+            # TODO: real debugger here?
             self.breakpoint()
         try:
             ret = scope[Inspect](target, spec, scope)
@@ -1936,6 +1943,8 @@ class TargetRegistry(object):
         if not exact:
             for op_name in new_op_map:
                 self._register_fuzzy_type(op_name, target_type)
+
+        self._type_cache = {}  # reset type cache
 
         return
 

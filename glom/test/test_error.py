@@ -57,7 +57,7 @@ def test_line_trace():
     stacklifier = ([{'data': S}],)
     scope = glom([1], stacklifier)[0]['data'][ROOT][LAST_CHILD_SCOPE]
     fmtd_stack = format_oneline_trace(scope)
-    assert fmtd_stack == '/tuple!list/list<0>/dict!int/S'
+    assert fmtd_stack == '/tuple!list/list/dict!int/S'
 
 
 def test_short_trace():
