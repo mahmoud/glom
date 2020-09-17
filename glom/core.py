@@ -1745,7 +1745,7 @@ def _get_sequence_item(target, index):
 def _handle_dict(target, spec, scope):
     ret = type(spec)()  # TODO: works for dict + ordereddict, but sufficient for all?
     for field, subspec in spec.items():
-        val = gl_eval(target, subspec, scope)
+        val = scope[glom](target, subspec, scope)
         if val is SKIP:
             continue
         if type(field) in (Spec, TType):
@@ -1765,8 +1765,8 @@ def _handle_list(target, spec, scope):
     ret = []
     base_path = scope[Path]
     for i, t in enumerate(iterator):
-        # scope[Path] = base_path + [i]
-        val = gl_eval(t, subspec, scope)
+        scope[Path] = base_path + [i]
+        val = scope[glom](t, subspec, scope)
         if val is SKIP:
             continue
         if val is STOP:
@@ -1779,14 +1779,14 @@ def _handle_tuple(target, spec, scope):
     res = target
     for subspec in spec:
         scope = chain_child(scope)
-        nxt = gl_eval(res, subspec, scope)
+        nxt = scope[glom](res, subspec, scope)
         if nxt is SKIP:
             continue
         if nxt is STOP:
             break
         res = nxt
-        #if not isinstance(subspec, list):
-        #    scope[Path] += [getattr(subspec, '__name__', subspec)]
+        if not isinstance(subspec, list):
+            scope[Path] += [getattr(subspec, '__name__', subspec)]
     return res
 
 
@@ -2164,9 +2164,6 @@ def _glom(target, spec, scope):
                 cur_scope.maps[0][CUR_ERROR] = e
                 cur_scope = cur_scope[UP]
         raise
-
-
-gl_eval = _glom
 
 
 def AUTO(target, spec, scope):

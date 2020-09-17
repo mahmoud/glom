@@ -1003,7 +1003,7 @@ class Check(object):
                          type(target).__name__))
 
         if errs:
-            raise CheckError(errs, self)
+            raise CheckError(errs, self, scope[Path])
         return ret
 
     def __repr__(self):
@@ -1022,7 +1022,7 @@ class CheckError(GlomError):
        >>> glom(target, {'b': ('a.b', Check(type=int))})
        Traceback (most recent call last):
        ...
-       CheckError: target failed check, got error: "expected type to be 'int', found type 'str'"
+       CheckError: target at path ['a.b'] failed check, got error: "expected type to be 'int', found type 'str'"
 
     If the ``Check`` contains more than one condition, there may be
     more than one error message. The string rendition of the
@@ -1033,12 +1033,13 @@ class CheckError(GlomError):
     instance.
 
     """
-    def __init__(self, msgs, check):
+    def __init__(self, msgs, check, path):
         self.msgs = msgs
         self.check_obj = check
+        self.path = path
 
     def get_message(self):
-        msg = 'target failed check,'
+        msg = 'target at path %s failed check,' % self.path
         if self.check_obj.spec is not T:
             msg += ' subtarget at %r' % (self.check_obj.spec,)
         if len(self.msgs) == 1:
@@ -1049,8 +1050,8 @@ class CheckError(GlomError):
 
     def __copy__(self):
         # py27 struggles to copy PAE without this method
-        return type(self)(self.msgs, self.check_obj)
+        return type(self)(self.msgs, self.check_obj, self.path)
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r, %r)' % (cn, self.msgs, self.check_obj)
+        return '%s(%r, %r, %r)' % (cn, self.msgs, self.check_obj, self.path)
