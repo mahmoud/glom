@@ -236,3 +236,10 @@ def test_t_dunders():
     assert 'use T.__("name__")' in str(exc_info.value)
 
     assert glom(1, T.__('class__')) is int
+
+
+def test_path_cache():
+    assert Path.from_text('a.b.c') is Path.from_text('a.b.c')
+    pre = Path._MAX_CACHE
+    Path._MAX_CACHE = 0
+    assert Path.from_text('d.e.f') is not Path.from_text('d.e.f')
