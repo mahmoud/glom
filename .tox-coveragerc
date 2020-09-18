@@ -6,6 +6,7 @@ source =
 omit =
    */flycheck_*.py
    */chainmap_backport.py
+   */perf_report.py
 
 [paths]
 source =

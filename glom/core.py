@@ -625,6 +625,9 @@ class Path(object):
                 path_t = _t_child(path_t, 'P', part)
         self.path_t = path_t
 
+    _CACHE = {}
+    _MAX_CACHE = 10000
+
     @classmethod
     def from_text(cls, text):
         """Make a Path from .-delimited text:
@@ -633,7 +636,11 @@ class Path(object):
         Path('a', 'b', 'c')
 
         """
-        return cls(*text.split('.'))
+        if text not in cls._CACHE:
+            if len(cls._CACHE) > cls._MAX_CACHE:
+                return cls(*text.split('.'))
+            cls._CACHE[text] = cls(*text.split('.'))
+        return cls._CACHE[text]
 
     def glomit(self, target, scope):
         # The entrypoint for the Path extension
@@ -987,9 +994,13 @@ class Inspect(object):
             scope[glom] = scope[Inspect]
         if self.echo:
             print('---')
+            # TODO: switch from scope[Path] to the Target-Spec format trace above
+            # ... but maybe be smart about only printing deltas instead of the whole
+            # thing
             print('path:  ', scope[Path] + [spec])
             print('target:', target)
         if self.breakpoint:
+            # TODO: real debugger here?
             self.breakpoint()
         try:
             ret = scope[Inspect](target, spec, scope)
@@ -1807,6 +1818,7 @@ class TargetRegistry(object):
     def __init__(self, register_default_types=True):
         self._op_type_map = {}
         self._op_type_tree = {}  # see _register_fuzzy_type for details
+        self._type_cache = {}
 
         self._op_auto_map = OrderedDict()  # op name to function that returns handler function
 
@@ -1825,22 +1837,26 @@ class TargetRegistry(object):
         """
         ret = False
         obj_type = type(obj)
-        type_map = self.get_type_map(op)
-        if type_map:
-            try:
-                ret = type_map[obj_type]
-            except KeyError:
-                type_tree = self._op_type_tree.get(op, {})
-                closest = self._get_closest_type(obj, type_tree=type_tree)
-                if closest is None:
-                    ret = False
-                else:
-                    ret = type_map[closest]
+        cache_key = (obj_type, op)
+        if cache_key not in self._type_cache:
+            type_map = self.get_type_map(op)
+            if type_map:
+                try:
+                    ret = type_map[obj_type]
+                except KeyError:
+                    type_tree = self._op_type_tree.get(op, {})
+                    closest = self._get_closest_type(obj, type_tree=type_tree)
+                    if closest is None:
+                        ret = False
+                    else:
+                        ret = type_map[closest]
 
-        if ret is False and raise_exc:
-            raise UnregisteredTarget(op, obj_type, type_map=type_map, path=path)
+            if ret is False and raise_exc:
+                raise UnregisteredTarget(op, obj_type, type_map=type_map, path=path)
 
-        return ret
+            self._type_cache[cache_key] = ret
+
+        return self._type_cache[cache_key]
 
     def get_type_map(self, op):
         try:
@@ -1927,6 +1943,8 @@ class TargetRegistry(object):
         if not exact:
             for op_name in new_op_map:
                 self._register_fuzzy_type(op_name, target_type)
+
+        self._type_cache = {}  # reset type cache
 
         return
 
@@ -2119,21 +2137,23 @@ def _has_callable_glomit(obj):
 
 def _glom(target, spec, scope):
     parent = scope
+    pmap = parent.maps[0]
     scope = scope.new_child({
         T: target,
         Spec: spec,
         UP: parent,
         CHILD_ERRORS: [],
+        MODE: pmap[MODE],
     })
-    parent[LAST_CHILD_SCOPE] = scope
+    pmap[LAST_CHILD_SCOPE] = scope
 
     try:
-        if isinstance(spec, TType):  # must go first, due to callability
+        if type(spec) is TType:  # must go first, due to callability
             return _t_eval(target, spec, scope)
         elif _has_callable_glomit(spec):
             return spec.glomit(target, scope)
 
-        return scope[MODE](target, spec, scope)
+        return scope.maps[0][MODE](target, spec, scope)
     except Exception as e:
         scope.maps[1][CHILD_ERRORS].append(scope)
         scope.maps[0][CUR_ERROR] = e
@@ -2147,6 +2167,8 @@ def _glom(target, spec, scope):
 
 
 def AUTO(target, spec, scope):
+    if type(spec) is str:  # shortcut to make deep-get use case faster
+        return _t_eval(target, Path.from_text(spec).path_t, scope)
     if isinstance(spec, dict):
         return _handle_dict(target, spec, scope)
     elif isinstance(spec, list):

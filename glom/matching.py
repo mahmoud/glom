@@ -1003,9 +1003,6 @@ class Check(object):
                          type(target).__name__))
 
         if errs:
-            # TODO: due to the usage of basic path (not a Path
-            # object), the format can be a bit inconsistent here
-            # (e.g., 'a.b' and ['a', 'b'])
             raise CheckError(errs, self, scope[Path])
         return ret
 
