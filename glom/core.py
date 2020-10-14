@@ -2148,6 +2148,7 @@ def _glom(target, spec, scope):
         UP: parent,
         CHILD_ERRORS: [],
         MODE: pmap[MODE],
+        MIN_MODE: pmap[MIN_MODE],
     })
     pmap[LAST_CHILD_SCOPE] = scope
 
