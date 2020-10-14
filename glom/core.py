@@ -184,11 +184,17 @@ class GlomError(Exception):
         return exc_get_message()
 
 
-def _unpack_stack(scope):
+def _unpack_stack(scope, only_errors=True):
     """
     convert scope to [[scope, spec, target, error, [children]]]
 
     this is a convenience method for printing stacks
+
+    only_errors=True means ignore branches which may still be hanging around]
+    which were not involved in the stack trace of the error
+
+    only_errors=False could be useful for debugger / introspection (similar
+    to traceback.print_stack())
     """
     stack = []
     scope = scope.maps[0]
@@ -212,6 +218,11 @@ def _unpack_stack(scope):
         cur, nxt = stack[i], stack[i + 1]
         if cur[3] == nxt[3]:
             cur[3] = None
+    if only_errors:  # trim the stack to the last error
+        # leave at least 1 to not break formatting func below
+        # TODO: make format_target_spec_trace() tolerate an "empty" stack cleanly
+        while len(stack) > 1 and stack[-1][3] is None:
+            stack.pop()
     return stack
 
 
@@ -276,7 +287,7 @@ def format_oneline_trace(scope):
     # if the target is the same, don't repeat it
     segments = []
     prev_target = _MISSING
-    for scope, spec, target, error, branches in _unpack_stack(scope):
+    for scope, spec, target, error, branches in _unpack_stack(scope, only_errors=False):
         segments.append('/')
         if type(spec) in (TType, Path):
             segments.append(bbrepr(spec))
