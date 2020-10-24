@@ -1473,7 +1473,6 @@ class TType(object):
         return _t_child(self, '.', '__' + name)
 
     def __repr__(self):
-        # TODO: handle arithmetic expressions
         t_path = _T_PATHS[self]
         return _format_t(t_path[1:], t_path[0])
 
@@ -1660,6 +1659,18 @@ def _format_t(path, root=T):
             prepr.append(format_invocation(args=args, kwargs=kwargs, repr=bbrepr))
         elif op == 'P':
             return _format_path(path)
+        elif op in ('_', '~'):  # unary arithmetic operators
+            if any([op in path[:i] for op in '+-/%:&|^~_']):
+                prepr = ['('] + prepr + [')']
+            prepr = ['-' if op == '_' else op] + prepr
+        else:  # binary arithmetic operators
+            formatted_arg = bbrepr(arg)
+            if type(arg) is TType:
+                arg_path = _T_PATHS[arg]
+                if any([op in arg_path for op in '+-/%:&|^~_']):
+                    formatted_arg = '(' + formatted_arg + ')'
+            prepr.append(' ' + ('**' if op == ':' else op) + ' ')
+            prepr.append(formatted_arg)
         i += 2
     return "".join(prepr)
 

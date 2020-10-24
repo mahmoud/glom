@@ -242,6 +242,9 @@ def test_t_arithmetic():
     assert glom(t, T ^ T) == 0
     assert glom(2, ~T) == -3
     assert glom(t, -T) == -2
+    assert repr(T + (T / 2 * (T - 5) % 4)) == "T + (T / 2 * (T - 5) % 4)"
+    assert repr(T & 7 | (T ^ 6)) == "T & 7 | (T ^ 6)"
+    assert repr(-(~T)) == "-(~T)"
 
 
 def test_t_dunders():
