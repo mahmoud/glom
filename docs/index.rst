@@ -10,11 +10,11 @@ glom
 * :ref:`Path-based access <access-granted>` for nested structures
 * :ref:`Declarative data transformation <glom-func>` using lightweight, Pythonic specifications
 * Readable, meaningful :ref:`error messages <exceptions>`
-* Built-in :ref:`data exploration and debugging <debugging>` features
-* And *more*!
+* Built-in :ref:`debugging <debugging>` features
+* Plus, :doc:`deep assignment <mutation>`, :doc:`streaming <streaming>`, :doc:`data validation <matching>`, and *more*!
 
 While it may sound like a lot, glom's straightforward approach becomes
-second-nature very quickly. :doc:`Get started with the five-minute
+second-nature very quickly. :doc:`Get started with a few minutes on the
 tutorial! <tutorial>`
 
 Installation
@@ -51,12 +51,29 @@ There's much, much more to glom, check out the :doc:`tutorial` and :doc:`API ref
 
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
+   :caption: Learning glom
 
    tutorial
-   api
-   cli
    faq
    by_analogy
    snippets
-   extensions
+   cli
+
+.. toctree::
+   :maxdepth: 2
+   :caption: API Reference
+
+   api
+   mutation
+   streaming
+   grouping
+   matching
+   debugging
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Extending glom
+
+   custom_spec_types
+   modes

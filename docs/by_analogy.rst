@@ -67,8 +67,8 @@ get you table outputs.
 Similiarity to validation (jsonschema, schema, cerberus)
 --------------------------------------------------------
 
-``glom`` is a generalized form of intake libraries, and `will have
-explicit validation`_ support soon. We definitely took `schema`_
+``glom`` is a generalized form of intake libraries `including validation`_.
+We definitely took `schema`_
 becoming successful as a sign that others shared our appetite for
 succinct, declarative Python datastructure manipulation.
 
@@ -77,8 +77,8 @@ parsing data, and don't solve much on the other end. Translating
 valid, structured objects like database models to JSON serializable
 objects is glom's forté.
 
-.. _schema: https://github.com/keleshev/schema
-.. _will have explicit validation: https://github.com/mahmoud/glom/issues/7
+.. _schema: matching.rst
+.. _including validation: https://github.com/mahmoud/glom/issues/7
 
 Similarity to jq
 ----------------

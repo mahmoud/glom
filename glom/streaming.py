@@ -1,10 +1,13 @@
+"""glom's helpers for streaming use cases.
+
+Specifier types which yield their results incrementally so that they
+can be applied to targets which are themselves streaming (e.g. chunks
+of rows from a database, lines from a file) without excessive memory
+usage.
+
+glom's streaming functionality revolves around a single :class:`Iter`
+Specifier type, which has methods to transform the target stream.
 """
-Helpers for streaming use cases -- that is, specifier types which yield their
-results incrementally so that they can be applied to targets which
-are themselves streaming (e.g. chunks of rows from a database, lines
-from a file) without excessive memory usage.
-"""
-from __future__ import unicode_literals
 
 from itertools import islice, dropwhile, takewhile, chain
 from functools import partial
@@ -18,14 +21,14 @@ except ImportError:
 from boltons.iterutils import split_iter, chunked_iter, windowed_iter, unique_iter, first
 from boltons.funcutils import FunctionBuilder
 
-from .core import glom, T, STOP, SKIP, Check, _MISSING, Path, TargetRegistry, Call, Spec, S, bbrepr, format_invocation
-
+from .core import glom, T, STOP, SKIP, _MISSING, Path, TargetRegistry, Call, Spec, S, bbrepr, format_invocation
+from .matching import Check
 
 class Iter(object):
-    """``Iter()`` is glom's counterpart to the built-in :func:`iter()`
+    """``Iter()`` is glom's counterpart to Python's built-in :func:`iter()`
     function. Given an iterable target, ``Iter()`` yields the result
     of applying the passed spec to each element of the target, similar
-    to the built-in `[]` spec, but streaming.
+    to the built-in ``[]`` spec, but streaming.
 
     The following turns a list of strings into integers using Iter(),
     before deduplicating and converting it to a tuple:

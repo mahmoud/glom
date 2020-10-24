@@ -3,6 +3,10 @@ branch = True
 source =
     glom
     ../glom
+omit =
+   */flycheck_*.py
+   */chainmap_backport.py
+   */perf_report.py
 
 [paths]
 source =
@@ -10,5 +14,3 @@ source =
    */lib/python*/site-packages/glom
    */Lib/site-packages/glom
    */pypy/site-packages/glom
-omit =
-   */flycheck_*

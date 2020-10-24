@@ -47,8 +47,7 @@ Just a few (for now):
 * Specs don't have to live in the glom call. You can put them
   anywhere. Commonly-used specs work as class attributes and globals.
 * Using glom's declarative approach does wonders for code coverage,
-  much like `attrs`_ and `schema`_, both of which go great
-  with ``glom``.
+  much like `attrs`_ which goes great with ``glom``.
 * Advanced tips
     * glom is designed to support all of Python's built-ins as targets,
       and is readily extensible to other types and special handling, through
@@ -60,7 +59,6 @@ Just a few (for now):
 If you've got more tips or patterns, `send them our way`_!
 
 .. _attrs: https://github.com/python-attrs/attrs
-.. _schema: https://github.com/keleshev/schema
 .. _send them our way: https://github.com/mahmoud/glom/issues
 
 Why not just write more Python?

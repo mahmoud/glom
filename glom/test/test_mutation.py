@@ -2,7 +2,7 @@ import pytest
 
 from glom import glom, Path, T, S, Spec, Glommer, PathAssignError, PathAccessError
 from glom import assign, Assign, delete, Delete, PathDeleteError
-from glom.core import UnregisteredTarget, Let
+from glom.core import UnregisteredTarget
 
 
 def test_assign():
@@ -229,9 +229,9 @@ def test_delete():
     assert repr(Delete(T.a)) == 'Delete(T.a)'
 
     # test delete from scope
-    assert glom(1, (Let(x=T), S['x'])) == 1
+    assert glom(1, (S(x=T), S['x'])) == 1
     with pytest.raises(PathAccessError):
-        glom(1, (Let(x=T), Delete(S['x']), S['x']))
+        glom(1, (S(x=T), Delete(S['x']), S['x']))
 
     # test raising on missing parent
     with pytest.raises(PathAccessError):

@@ -13,6 +13,67 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
+20.8.0
+------
+*(August 11, 2020)*
+
+A few cleanups from the big release:
+
+* PathAccessError paths are now Path objects again (fixes [#185][i185])
+* Fix an intermittent infinite recursion due to a suspected bug in
+  abc, and a bad interaction between ChainMap and weakref. (fixes [#189][i189])
+* Adjust face requirement version to be more strictly up-to-date ([#188][i188])
+* Soft launch the Pipe() spec, which is just a more explicit version
+  of the default tuple behavior. ([#191][i191])
+
+Huge thanks to all reporters and committers!
+
+[i185]: https://github.com/mahmoud/glom/issues/185
+[i188]: https://github.com/mahmoud/glom/issues/188
+[i189]: https://github.com/mahmoud/glom/issues/189
+[i191]: https://github.com/mahmoud/glom/issues/191
+
+20.7.0
+------
+*(July 31, 2020)*
+
+glom releases don't come bigger than this.
+
+* [Match mode][matching] - Data validation and pattern matching. You're
+  going to have to read the docs to believe it.
+* Complete documenation refactor
+  * [API][core_api] now split into domains ([Mutation][mutation], [Streaming][streaming], [Grouping][grouping], [Matching][matching])
+  * New [debugging and exception guide][debugging]
+  * New advanced glom intro: [glom Modes][modes]
+* Traceback simplification and *Target-spec trace*
+  * glom no longer displays glom-internal stack frames, which were not
+    useful for developers debugging specs and data.
+  * Instead, the exception message displays summarized intermediate
+    targets and specs, to help drill down to the part of the data or
+    spec which raised the error.
+  * To restore previous behavior, or if you need to see internal stack
+    frames, pass `glom_debug=True` to the top-level `glom()` call, or
+    set the `GLOM_DEBUG` env var to `1`.
+  * For more details see the [debugging guide][debugging].
+* [Scope][scope] updates
+  * [`S()` and `A`][scope_assign] (replaces the previously soft-launched `Let()`)
+  * [Vars()][vars]: Non-local scopes
+* `T.__()` method for accessing dunder attributes (see applicable note under [T][T])
+* `glom.__version__` - importable version attribute
+
+
+[matching]: https://glom.readthedocs.io/en/latest/matching.html
+[grouping]: https://glom.readthedocs.io/en/latest/grouping.html
+[streaming]: https://glom.readthedocs.io/en/latest/streaming.html
+[mutation]: https://glom.readthedocs.io/en/latest/mutation.html
+[scope]: https://glom.readthedocs.io/en/latest/api.html#the-glom-scope
+[scope_assign]: https://glom.readthedocs.io/en/latest/api.html#updating-the-scope-s-a
+[vars]: https://glom.readthedocs.io/en/latest/api.html#sensible-saving-vars-s-globals
+[core_api]: https://glom.readthedocs.io/en/latest/api.html
+[debugging]: https://glom.readthedocs.io/en/latest/debugging.html
+[T]: https://glom.readthedocs.io/en/latest/api.html#glom.T
+[modes]: https://glom.readthedocs.io/en/latest/modes.html
+
 20.5.0
 ------
 *(May 2, 2020)*
@@ -23,9 +84,9 @@ summarized and well-linked.
 * Some repr improvements
 * CLI and testing upgrades
 
-[delete]: https://glom.readthedocs.io/en/latest/api.html#glom.delete
+[delete]: https://glom.readthedocs.io/en/latest/mutation.html#deletion
 [ref_spec]: https://glom.readthedocs.io/en/latest/api.html#glom.Ref
-[group_spec]: https://glom.readthedocs.io/en/latest/api.html#glom.Group
+[group_spec]: https://glom.readthedocs.io/en/latest/grouping.html#glom.Group
 [boltons_bucketize]: https://boltons.readthedocs.io/en/latest/iterutils.html#boltons.iterutils.bucketize
 
 19.10.0
@@ -39,7 +100,7 @@ summarized and well-linked.
 * Steps in the tuple now nest scopes ([#97][i97])
 * All public specifier types now have reasonable reprs (notably, Coalesce, Check, and Assign)
 
-[iter]: https://glom.readthedocs.io/en/latest/api.html#glom.Iter
+[iter]: https://glom.readthedocs.io/en/latest/streaming.html#glom.Iter
 [invoke]: https://glom.readthedocs.io/en/latest/api.html#glom.Invoke
 [i97]: https://github.com/mahmoud/glom/issues/97
 [i100]: https://github.com/mahmoud/glom/issues/100
@@ -52,7 +113,7 @@ summarized and well-linked.
 *(February 17, 2019)*
 
 Add [`Merge()` spec and `merge()` convenience
-function](https://glom.readthedocs.io/en/latest/api.html#glom.merge),
+function](https://glom.readthedocs.io/en/latest/grouping.html#glom.merge).
 for turning iterables of mappings into a single mapping.
 
 Additionally, `T` and `Spec()` instances which appear in the "key"
@@ -77,7 +138,7 @@ glom(target, spec)
 
 Added features related to folding/reducing sequences. Read more about
 `Fold`, `Sum`, `Flatten`, and `flatten`
-[here](https://glom.readthedocs.io/en/latest/api.html#combining-iterables-with-flatten-and-friends).
+[here](https://glom.readthedocs.io/en/latest/grouping.html#combining-iterables-with-flatten-and-merge).
 
 Also switched CalVer version scheme to `YY.MM.MICRO`.
 
@@ -86,17 +147,17 @@ Also switched CalVer version scheme to `YY.MM.MICRO`.
 *(December 25, 2018)*
 
 A couple features related to
-[`assign()`](https://glom.readthedocs.io/en/latest/api.html#glom.assign)
+[`assign()`](https://glom.readthedocs.io/en/latest/mutation.html#glom.assign)
 and other minor additions and fixes.
 
 * Add new `missing` parameter to `assign()`, to autogenerate new
   datastructures at paths that don't exist. Read more at the bottom of
-  the [`Assign` spec docstring](https://glom.readthedocs.io/en/latest/api.html#glom.Assign).
+  the [`Assign` spec docstring](https://glom.readthedocs.io/en/latest/mutation.html#glom.Assign).
 * Allow `Assign` to operate on `S`-based specs to assign to the spec.
 * Add the [`STOP` singleton](https://glom.readthedocs.io/en/latest/api.html#glom.STOP).
   `STOP` is to [`SKIP`](https://glom.readthedocs.io/en/latest/api.html#glom.SKIP)
   what `break` is to `continue`. Useful as a default with conditional specs like
-  [`Check()`](https://glom.readthedocs.io/en/latest/api.html#validation-with-check).
+  [`Check()`](https://glom.readthedocs.io/en/latest/matching.html#validation-with-check).
 
 18.3.1
 ------
