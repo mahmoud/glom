@@ -246,6 +246,14 @@ def test_t_arithmetic():
     assert repr(T & 7 | (T ^ 6)) == "T & 7 | (T ^ 6)"
     assert repr(-(~T)) == "-(~T)"
 
+    with raises(PathAccessError, match='division by zero') as exc_info:
+        glom(0, T / 0)
+
+    with raises(PathAccessError, match='unsupported operand type') as exc_info:
+        glom(None, T / 2)
+
+    return
+
 
 def test_t_dunders():
     with raises(AttributeError) as exc_info:
