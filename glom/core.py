@@ -1660,14 +1660,14 @@ def _format_t(path, root=T):
         elif op == 'P':
             return _format_path(path)
         elif op in ('_', '~'):  # unary arithmetic operators
-            if any([op in path[:i] for op in '+-/%:&|^~_']):
+            if any([o in path[:i] for o in '+-/%:&|^~_']):
                 prepr = ['('] + prepr + [')']
             prepr = ['-' if op == '_' else op] + prepr
         else:  # binary arithmetic operators
             formatted_arg = bbrepr(arg)
             if type(arg) is TType:
                 arg_path = _T_PATHS[arg]
-                if any([op in arg_path for op in '+-/%:&|^~_']):
+                if any([o in arg_path for o in '+-/%:&|^~_']):
                     formatted_arg = '(' + formatted_arg + ')'
             prepr.append(' ' + ('**' if op == ':' else op) + ' ')
             prepr.append(formatted_arg)

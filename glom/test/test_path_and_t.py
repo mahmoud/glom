@@ -242,14 +242,20 @@ def test_t_arithmetic():
     assert glom(t, T ^ T) == 0
     assert glom(2, ~T) == -3
     assert glom(t, -T) == -2
+
+
+def test_t_arithmetic_reprs():
+    assert repr(T + T) == "T + T"
     assert repr(T + (T / 2 * (T - 5) % 4)) == "T + (T / 2 * (T - 5) % 4)"
     assert repr(T & 7 | (T ^ 6)) == "T & 7 | (T ^ 6)"
     assert repr(-(~T)) == "-(~T)"
 
-    with raises(PathAccessError, match='division by zero') as exc_info:
+
+def test_t_arithmetic_errors():
+    with raises(PathAccessError, match='zero'):
         glom(0, T / 0)
 
-    with raises(PathAccessError, match='unsupported operand type') as exc_info:
+    with raises(PathAccessError, match='unsupported operand type'):
         glom(None, T / 2)
 
     return
