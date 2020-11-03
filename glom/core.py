@@ -1431,6 +1431,44 @@ class TType(object):
             # TODO: typecheck kwarg vals?
         return _t_child(self, '(', (args, kwargs))
 
+    def __add__(self, arg):
+        return _t_child(self, '+', arg)
+
+    def __sub__(self, arg):
+        return _t_child(self, '-', arg)
+
+    def __mul__(self, arg):
+        return _t_child(self, '*', arg)
+
+    def __floordiv__(self, arg):
+        return _t_child(self, '#', arg)
+
+    def __truediv__(self, arg):
+        return _t_child(self, '/', arg)
+
+    __div__ = __truediv__
+
+    def __mod__(self, arg):
+        return _t_child(self, '%', arg)
+
+    def __pow__(self, arg):
+        return _t_child(self, ':', arg)
+
+    def __and__(self, arg):
+        return _t_child(self, '&', arg)
+
+    def __or__(self, arg):
+        return _t_child(self, '|', arg)
+
+    def __xor__(self, arg):
+        return _t_child(self, '^', arg)
+
+    def __invert__(self):
+        return _t_child(self, '~', None)
+
+    def __neg__(self):
+        return _t_child(self, '_', None)
+
     def __(self, name):
         return _t_child(self, '.', '__' + name)
 
@@ -1533,6 +1571,34 @@ def _t_eval(target, _t, scope):
             # if args to the call "reset" their path
             # e.g. "T.a" should mean the same thing
             # in both of these specs: T.a and T.b(T.a)
+        else:  # arithmetic operators
+            try:
+                if op == '+':
+                    cur = cur + arg
+                elif op == '-':
+                    cur = cur - arg
+                elif op == '*':
+                    cur = cur * arg
+                #elif op == '#':
+                #    cur = cur // arg  # TODO: python 2 friendly approach?
+                elif op == '/':
+                    cur = cur / arg
+                elif op == '%':
+                    cur = cur % arg
+                elif op == ':':
+                    cur = cur ** arg
+                elif op == '&':
+                    cur = cur & arg
+                elif op == '|':
+                    cur = cur | arg
+                elif op == '^':
+                    cur = cur ^ arg
+                elif op == '~':
+                    cur = ~cur
+                elif op == '_':
+                    cur = -cur
+            except (TypeError, ZeroDivisionError) as e:
+                pae = PathAccessError(e, Path(_t), i // 2)
         if pae:
             raise pae
         i += 2
@@ -1593,6 +1659,18 @@ def _format_t(path, root=T):
             prepr.append(format_invocation(args=args, kwargs=kwargs, repr=bbrepr))
         elif op == 'P':
             return _format_path(path)
+        elif op in ('_', '~'):  # unary arithmetic operators
+            if any([o in path[:i] for o in '+-/%:&|^~_']):
+                prepr = ['('] + prepr + [')']
+            prepr = ['-' if op == '_' else op] + prepr
+        else:  # binary arithmetic operators
+            formatted_arg = bbrepr(arg)
+            if type(arg) is TType:
+                arg_path = _T_PATHS[arg]
+                if any([o in arg_path for o in '+-/%:&|^~_']):
+                    formatted_arg = '(' + formatted_arg + ')'
+            prepr.append(' ' + ('**' if op == ':' else op) + ' ')
+            prepr.append(formatted_arg)
         i += 2
     return "".join(prepr)
 

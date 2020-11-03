@@ -229,6 +229,38 @@ def test_t_dict_key():
     assert glom(target, {T['a']: 'a'}) == {'A': 'A'}
 
 
+def test_t_arithmetic():
+    t = 2
+    assert glom(t, T + T) == 4
+    assert glom(t, T * T) == 4
+    assert glom(t, T ** T) == 4
+    assert glom(t, T / 1) == 2
+    assert glom(t, T % 1) == 0
+    assert glom(t, T - 1) == 1
+    assert glom(t, T & T) == 2
+    assert glom(t, T | 1) == 3
+    assert glom(t, T ^ T) == 0
+    assert glom(2, ~T) == -3
+    assert glom(t, -T) == -2
+
+
+def test_t_arithmetic_reprs():
+    assert repr(T + T) == "T + T"
+    assert repr(T + (T / 2 * (T - 5) % 4)) == "T + (T / 2 * (T - 5) % 4)"
+    assert repr(T & 7 | (T ^ 6)) == "T & 7 | (T ^ 6)"
+    assert repr(-(~T)) == "-(~T)"
+
+
+def test_t_arithmetic_errors():
+    with raises(PathAccessError, match='zero'):
+        glom(0, T / 0)
+
+    with raises(PathAccessError, match='unsupported operand type'):
+        glom(None, T / 2)
+
+    return
+
+
 def test_t_dunders():
     with raises(AttributeError) as exc_info:
         T.__name__
