@@ -13,6 +13,13 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
+20.11.0
+-------
+*(November 3, 2020)*
+
+* The `T` object now supports arithmetic operators!
+* A few internal performance improvements around chainmap, scope, and string path eval.
+
 20.8.0
 ------
 *(August 11, 2020)*
