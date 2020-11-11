@@ -35,19 +35,14 @@ import ast
 import sys
 import json
 
-from face import (Command,
-                  Flag,
-                  face_middleware,
-                  PosArgSpec,
-                  PosArgDisplay,
-                  CommandLineError,
-                  UsageError)
+from face import Command, face_middleware, PosArgSpec, UsageError
 from face.utils import isatty
 
 import glom
 from glom import Path, GlomError, Inspect
 
 PY3 = (sys.version_info[0] == 3)
+
 
 def glom_cli(target, spec, indent, debug, inspect):
     """Command-line interface to the glom library, providing nested data
@@ -104,7 +99,8 @@ def console_main():
         sys.exit(main(sys.argv) or 0)
     except Exception:
         if _enable_debug:
-            import pdb;pdb.post_mortem()
+            import pdb
+            pdb.post_mortem()
         raise
 
 
@@ -135,13 +131,11 @@ def mw_handle_target(target_text, target_format):
     else:
         raise UsageError('expected target-format to be one of python, json, or yaml')
 
-
     try:
         target = load_func(target_text)
     except Exception as e:
         raise UsageError('could not load target data, got: %s: %s'
                          % (e.__class__.__name__, e))
-
 
     return target
 

@@ -10,7 +10,7 @@ type.
 import operator
 from pprint import pprint
 
-from .core import Path, T, S, Spec, glom, UnregisteredTarget, GlomError, PathAccessError, UP
+from .core import Path, S, Spec, glom, PathAccessError, UP, T
 from .core import TType, register_op, TargetRegistry, bbrepr, PathAssignError
 
 try:
@@ -44,7 +44,6 @@ class PathDeleteError(PathAssignError):
     def get_message(self):
         return ('could not delete %r on object at %r, got error: %r'
                 % (self.dest_name, self.path, self.exc))
-
 
 
 class Assign(object):
@@ -288,7 +287,7 @@ class Delete(object):
             dest_path = self.path
         try:
             dest = scope[glom](dest_target, dest_path, scope)
-        except PathAccessError as pae:
+        except PathAccessError:
             if not self.ignore_missing:
                 raise
         else:

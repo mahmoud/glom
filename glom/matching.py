@@ -9,7 +9,6 @@ step, you can do these checks inline with your glom spec, using
 
 import re
 import sys
-from pprint import pprint
 
 from boltons.iterutils import is_iterable
 from boltons.typeutils import make_sentinel
@@ -195,12 +194,18 @@ _RE_FUNC_ERROR = ValueError("'func' must be one of %s" % (", ".join(
     sorted(e and e.__name__ or "None" for e in _RE_VALID_FUNCS))))
 
 _RE_TYPES = ()
-try:   re.match(u"", u"")
-except Exception: pass  # pragma: no cover
-else:  _RE_TYPES += (type(u""),)
-try:   re.match(b"", b"")
-except Exception: pass  # pragma: no cover
-else:  _RE_TYPES += (type(b""),)
+try:
+    re.match(u"", u"")
+except Exception:
+    pass  # pragma: no cover
+else:
+    _RE_TYPES += (type(u""),)
+try:
+    re.match(b"", b"")
+except Exception:
+    pass  # pragma: no cover
+else:
+    _RE_TYPES += (type(b""),)
 
 
 class Regex(object):
@@ -251,7 +256,7 @@ class Regex(object):
         return self.__class__.__name__ + args
 
 
-#TODO: combine this with other functionality elsewhere?
+# TODO: combine this with other functionality elsewhere?
 def _bool_child_repr(child):
     if child is M:
         return repr(child)
@@ -567,7 +572,6 @@ class _MType(object):
 M = _MType()
 
 
-
 class Optional(object):
     """Used as a :class:`dict` key in a :class:`~glom.Match()` spec,
     marks that a value match key which would otherwise be required is
@@ -843,17 +847,16 @@ class Switch(object):
                              % (self.__class__.__name__, self.cases))
         return
 
-
     def glomit(self, target, scope):
         for keyspec, valspec in self.cases:
             try:
                 scope[glom](target, keyspec, scope)
-            except GlomError as ge:
+            except GlomError:
                 continue
             return scope[glom](target, valspec, chain_child(scope))
         if self.default is not _MISSING:
             return self.default
-        raise MatchError("no matches for target in %s"  % self.__class__.__name__)
+        raise MatchError("no matches for target in %s" % self.__class__.__name__)
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, bbrepr(self.cases))

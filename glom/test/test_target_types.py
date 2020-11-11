@@ -11,17 +11,22 @@ from glom.core import TargetRegistry
 class A(object):
     pass
 
+
 class B(object):
     pass
+
 
 class C(A):
     pass
 
+
 class D(B):
     pass
 
+
 class E(C, D, A):
     pass
+
 
 class F(E):
     pass
@@ -39,10 +44,12 @@ def test_types_leave_one_out():
 
         obj = cur_t()
         treg = glommer.scope[TargetRegistry]
-        assert treg._get_closest_type(obj, treg._op_type_tree['get']) == obj.__class__.mro()[1]
+        assert treg._get_closest_type(obj, treg._op_type_tree['get']) == (
+            obj.__class__.mro()[1])
 
         if cur_t is E:
-            assert glommer.scope[TargetRegistry]._get_closest_type(obj, treg._op_type_tree['get']) is C  # sanity check
+            assert glommer.scope[TargetRegistry]._get_closest_type(
+                obj, treg._op_type_tree['get']) is C  # sanity check
 
     return
 
@@ -56,7 +63,8 @@ def test_types_bare():
     # test that bare glommers can't glom anything
     with pytest.raises(UnregisteredTarget) as exc_info:
         glommer.glom(object(), {'object_repr': '__class__.__name__'})
-    assert repr(exc_info.value) == "UnregisteredTarget('get', <type 'object'>, OrderedDict(), ('__class__',))"
+    assert repr(exc_info.value) == (
+        "UnregisteredTarget('get', <type 'object'>, OrderedDict(), ('__class__',))")
     assert str(exc_info.value).find(
         "glom() called without registering any types for operation 'get'."
         " see glom.register() or Glommer's constructor for details.") != -1
@@ -225,7 +233,6 @@ def test_faulty_op_registration():
     treg.register_op('lol', exact=False)
     assert treg._op_type_tree.get('lol')
 
-
     def _autodiscover_faulty_return(type_obj):
         return 'hideeho'
 
@@ -237,7 +244,8 @@ def test_faulty_op_registration():
         if type_obj is set:
             return 'this should have been False or a callable, but was intentionally a string'
         if type_obj is frozenset:
-            raise ValueError('this should have been False or a callable, but was intentionally a ValueError')
+            raise ValueError(
+                'this should have been False or a callable, but was intentionally a ValueError')
         return False
 
     treg.register_op('sneak', _autodiscover_sneaky)

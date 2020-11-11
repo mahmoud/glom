@@ -16,6 +16,7 @@ def test_assign():
     assert glom({}, Assign('a', 1)) == {'a': 1}
     assert glom(Foo(), Assign('a', 1)).a == 1
     assert glom({'a': Foo()}, Assign('a.a', 1))['a'].a == 1
+
     def r():
         r = {}
         r['r'] = r
@@ -110,12 +111,10 @@ def test_assign_missing_dict():
     target = {}
     val = object()
 
-    from itertools import count
-    counter = count()
     def debugdict():
         ret = dict()
-        #ret['id'] = id(ret)
-        #ret['inc'] = counter.next()
+        # ret['id'] = id(ret)
+        # ret['inc'] = counter.next()
         return ret
 
     assign(target, 'a.b.c.d', val, missing=debugdict)
@@ -125,6 +124,7 @@ def test_assign_missing_dict():
 
 def test_assign_missing_object():
     val = object()
+
     class Container(object):
         pass
 
@@ -169,6 +169,7 @@ def test_assign_missing_unassignable():
 
     class Tarjay(object):
         init_count = 0
+
         def __init__(self):
             self.__class__.init_count += 1
 
@@ -266,7 +267,10 @@ def test_bad_delete_target():
             raise Exception("and you trusted me?")
 
     spec = Delete('a')
-    ok_target = lambda: None
+
+    def ok_target():
+        return None
+
     ok_target.a = 1
     glom(ok_target, spec)
     assert not hasattr(ok_target, 'a')

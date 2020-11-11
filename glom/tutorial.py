@@ -430,15 +430,17 @@ replacing what would have been large sections with code that was
 declarative, but flexible, an ideal balance for maintainability.
 
 """
-import json
 import datetime
 from itertools import count
 from collections import OrderedDict
 from pprint import pprint
+import json
+
 import attr
 from attr import Factory
 
-from glom import glom, Coalesce
+from glom import glom
+
 
 _email_autoincrement = lambda c=count(1): next(c)
 _contact_autoincrement = lambda c=count(1): next(c)
@@ -462,7 +464,6 @@ class ContactManager(object):
 
     def get(self, contact_id):
         return CONTACTS.get(contact_id)
-
 
 
 @attr.s

@@ -1,10 +1,10 @@
 
 import pytest
 
-from itertools import count, dropwhile, chain
+from itertools import count
 
 from glom import Iter
-from glom import glom, SKIP, STOP, T, Call, Spec, Glommer, Check, SKIP
+from glom import glom, SKIP, STOP, T, Glommer, Check
 
 
 RANGE_5 = list(range(5))

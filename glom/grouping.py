@@ -274,7 +274,6 @@ class Sample(object):
         return '%s(%r)' % (self.__class__.__name__, self.size)
 
 
-
 class Limit(object):
     """
     Limits the number of values passed to sub-accumulator

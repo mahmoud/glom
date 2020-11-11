@@ -44,7 +44,12 @@ release = u'20.11.0'
 todo_add_to_theme_to_keep_menus_expanded = """
 
     <script type="text/javascript" src="_static/jquery.js"></script>
-    <script>$(document).ready(function() {$('.wy-side-scroll').on('click', function() {$('.toctree-l1').addClass('current')}); $('.toctree-l1').first().click(); });</script>
+    <script>
+        $(document).ready(function() {
+           $('.wy-side-scroll').on('click', function() {
+             $('.toctree-l1').addClass('current')});
+        $('.toctree-l1').first().click(); });
+    </script>
 
 <!-- window.SphinxRtdTheme.ThemeNav.toggleCurrent = function(elem) {}; -->
 """
@@ -111,7 +116,7 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 if on_rtd:
     html_theme = 'default'
-else: # only import and set the theme if we're building docs locally
+else:  # only import and set the theme if we're building docs locally
     import sphinx_rtd_theme
     html_theme = 'sphinx_rtd_theme'
     html_theme_path = ['_themes', sphinx_rtd_theme.get_html_theme_path()]

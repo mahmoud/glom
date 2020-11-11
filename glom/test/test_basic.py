@@ -4,14 +4,13 @@ from xml.etree import cElementTree as ElementTree
 
 import pytest
 
-from glom import glom, SKIP, STOP, Path, Inspect, Coalesce, CoalesceError, Val, Call, T, S, Invoke, Spec, Ref
-from glom import Auto, Fill, Iter, A, Vars, Val, Literal, GlomError, Pipe
+from glom import glom, SKIP, STOP, Inspect, Coalesce, Val, Call, T, S, Invoke, Spec, Ref
+from glom import Fill, Iter, Literal, Pipe
 
 import glom.core as glom_core
-from glom.core import UP, ROOT, bbformat, bbrepr
-from glom.mutation import PathAssignError
+from glom.core import UP, bbformat, bbrepr
 
-from glom import OMIT, Let, Literal  # backwards compat
+from glom import OMIT  # backwards compat
 
 
 def test_initial_integration():
@@ -99,7 +98,6 @@ def test_coalesce():
 
     with pytest.raises(TypeError):
         Coalesce(bad_kwarg=True)
-
 
 
 def test_skip():
@@ -197,6 +195,7 @@ def test_call_and_target():
     assert repr(call_f)
     val = glom(1, call_f)
     assert (val.a, val.b, val.c) == (1, 1, 1)
+
     class F(object):
         def __init__(s, a): s.a = a
     val = glom({'one': F('two')}, Call(F, args=(T['one'].a,)))
@@ -219,6 +218,7 @@ def test_call_and_target():
 
 def test_invoke():
     args = []
+
     def test(*a, **kw):
         args.append(a)
         args.append(kw)
@@ -231,9 +231,9 @@ def test_invoke():
         'kwargs': {'a': 'a'},
         'c': 'C',
     }
-    spec = Invoke(test).star(args='args'
-        ).constants(3, b='b').specs(c='c'
-        ).star(args='args2', kwargs='kwargs')
+    spec = (Invoke(test).star(args='args')
+            .constants(3, b='b').specs(c='c')
+            .star(args='args2', kwargs='kwargs'))
     repr(spec)  # no exceptions
     assert repr(Invoke(len).specs(T)) == 'Invoke(len).specs(T)'
     assert (repr(Invoke.specfunc(next).constants(len).constants(1))
@@ -245,9 +245,9 @@ def test_invoke():
     args = []
     assert glom(test, Invoke.specfunc(T)) == 'test'
     assert args == [(), {}]
-    repr_spec = Invoke.specfunc(T).star(args='args'
-        ).constants(3, b='b').specs(c='c'
-        ).star(args='args2', kwargs='kwargs')
+    repr_spec = (Invoke.specfunc(T).star(args='args')
+                 .constants(3, b='b').specs(c='c')
+                 .star(args='args2', kwargs='kwargs'))
     assert repr(eval(repr(repr_spec), locals(), globals())) == repr(repr_spec)
 
     with pytest.raises(TypeError, match='expected func to be a callable or Spec instance'):
@@ -279,7 +279,6 @@ def test_invoke():
     spec = spec.star(kwargs=T[1])
     assert repr(spec) == 'Invoke(T[0]).star(kwargs=T[1])'
     assert glom(target, spec) == 'hi'
-
 
 
 def test_spec_and_recursion():
@@ -350,7 +349,6 @@ def test_python_native():
     target = {'system': {'planets': [{'name': 'earth', 'moons': 1},
                                      {'name': 'jupiter', 'moons': 69}]}}
 
-
     output = glom(target, {'moon_count': ('system.planets', ['moons'], sum)})
     assert output == {'moon_count': 70}
 
@@ -409,7 +407,7 @@ def test_ref():
     assert repr(Ref('item', (T[1], Ref('item')))) == "Ref('item', (T[1], Ref('item')))"
 
     etree2dicts = Ref('ElementTree',
-        {"tag": "tag", "text": "text", "attrib": "attrib", "children": (iter, [Ref('ElementTree')])})
+                      {"tag": "tag", "text": "text", "attrib": "attrib", "children": (iter, [Ref('ElementTree')])})
     etree2tuples = Fill(Ref('ElementTree', (T.tag, Iter(Ref('ElementTree')).all())))
     etree = ElementTree.fromstring('''
     <html>
@@ -430,6 +428,8 @@ def test_pipe():
 
 
 _IS_PYPY = '__pypy__' in sys.builtin_module_names
+
+
 @pytest.mark.skipif(_IS_PYPY, reason='pypy othertype.__repr__ is never object.__repr__')
 def test_api_repr():
     import glom
