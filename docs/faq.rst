@@ -39,6 +39,24 @@ All of these can be seen in the conventional call to :func:`~glom.glom`::
 Nothing too wild, but these standard terms really do help clarify the
 complex situations ``glom`` was built to handle.
 
+What is glom's public API?
+--------------------------
+
+Obviously, the primary glom API is the ``glom()`` function
+itself. Beyond this, there's other functionality at various degrees of
+readiness, ranging from production to alpha within the ``glom``
+package. We try to keep the public API as production-ready as
+possible. That also means, if functionality is not public, it may
+change or disappear without advance notice or even a CHANGELOG entry.
+
+First, if it's not in the top-level ``glom`` package, it's not part of
+glom's public API. Another good indicator is that if a type or object
+is not in these glom docs, then it's not public.
+
+If functionality in the top-level package is not documented, please
+file an issue or pull request so we can get that sorted out. Thanks in
+advance!
+
 Other glom tips?
 ----------------
 
