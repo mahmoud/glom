@@ -23,7 +23,6 @@ import os
 import sys
 import pdb
 import copy
-import weakref
 import operator
 from abc import ABCMeta
 from pprint import pprint
@@ -613,7 +612,7 @@ class Path(object):
             if isinstance(part, Path):
                 part = part.path_t
             if isinstance(part, TType):
-                sub_parts = _T_PATHS[part]
+                sub_parts = object.__getattribute__(part, '__op_args__')
                 if sub_parts[0] is not T:
                     raise ValueError('path segment must be path from T, not %r'
                                      % sub_parts[0])
@@ -647,13 +646,15 @@ class Path(object):
         return _t_eval(target, self.path_t, scope)
 
     def __len__(self):
-        return (len(_T_PATHS[self.path_t]) - 1) // 2
+        return (len(object.__getattribute__(self.path_t, '__op_args__')) - 1) // 2
 
     def __eq__(self, other):
+        op_args = object.__getattribute__(self.path_t, '__op_args__')
         if type(other) is Path:
-            return _T_PATHS[self.path_t] == _T_PATHS[other.path_t]
-        elif type(other) is TType:
-            return _T_PATHS[self.path_t] == _T_PATHS[other]
+            other = other.path_t
+        if type(other) is TType:
+            other_op_args = object.__getattribute__(other, '__op_args__')
+            return op_args == other_op_args
         return False
 
     def __ne__(self, other):
@@ -666,7 +667,7 @@ class Path(object):
         >>> Path(T.a.b, 'c', T['d']).values()
         ('a', 'b', 'c', 'd')
         """
-        cur_t_path = _T_PATHS[self.path_t]
+        cur_t_path = object.__getattribute__(self.path_t, '__op_args__')
         return cur_t_path[2::2]
 
     def items(self):
@@ -677,7 +678,7 @@ class Path(object):
         (('.', 'a'), ('.', 'b'), ('P', 'c'), ('[', 'd'))
 
         """
-        cur_t_path = _T_PATHS[self.path_t]
+        cur_t_path = object.__getattribute__(self.path_t, '__op_args__')
         return tuple(zip(cur_t_path[1::2], cur_t_path[2::2]))
 
     def startswith(self, other):
@@ -687,20 +688,19 @@ class Path(object):
             other = other.path_t
         if not isinstance(other, TType):
             raise TypeError('can only check if Path starts with string, Path or T')
-        o_path = _T_PATHS[other]
-        return _T_PATHS[self.path_t][:len(o_path)] == o_path
+        o_path = object.__getattribute__(other, '__op_args__')
+        path = object.__getattribute__(other, '__op_args__')
+        return path[:len(o_path)] == o_path
 
     def from_t(self):
         '''return the same path but starting from T'''
-        t_path = _T_PATHS[self.path_t]
-        if t_path[0] is S:
-            new_t = TType()
-            _T_PATHS[new_t] = (T,) + t_path[1:]
-            return Path(new_t)
-        return self
+        t_path = object.__getattribute__(self.path_t, '__op_args__')
+        if t_path[0] is T:
+            return self
+        return Path(TType((T,) + t_path[1:]))
 
     def __getitem__(self, i):
-        cur_t_path = _T_PATHS[self.path_t]
+        cur_t_path = object.__getattribute__(self.path_t, '__op_args__')
         try:
             step = i.step
             start = i.start if i.start is not None else 0
@@ -716,16 +716,14 @@ class Path(object):
                 raise IndexError('Path index out of range')
             stop = ((i + 1) * 2) + 1 if i >= 0 else ((i + 1) * 2) + len(cur_t_path)
 
-        new_t = TType()
         new_path = cur_t_path[start:stop]
         if step is not None and step != 1:
             new_path = tuple(zip(new_path[::2], new_path[1::2]))[::step]
             new_path = sum(new_path, ())
-        _T_PATHS[new_t] = (cur_t_path[0],) + new_path
-        return Path(new_t)
+        return Path(TType((cur_t_path[0],) + new_path))
 
     def __repr__(self):
-        return _format_path(_T_PATHS[self.path_t][1:])
+        return _format_path(object.__getattribute__(self.path_t, '__op_args__')[1:])
 
 
 def _format_path(t_path):
@@ -1410,9 +1408,17 @@ class TType(object):
        equivalent to accessing the ``__class__`` attribute.
 
     """
-    __slots__ = ('__weakref__',)
+    __slots__ = ("__op_args__",)
 
-    def __getattr__(self, name):
+    def __init__(self, op_args=None):
+        if op_args is None:
+            op_args = (self,)  # for T, etc roots
+        self.__op_args__ = op_args
+        assert op_args != ()
+
+    def __getattribute__(self, name):
+        if name in ("__", "__repr__"):
+            return object.__getattribute__(self, '__')
         if name.startswith('__'):
             raise AttributeError('T instances reserve dunder attributes.'
                                  ' To access the "{name}" attribute, use'
@@ -1473,29 +1479,18 @@ class TType(object):
         return _t_child(self, '.', '__' + name)
 
     def __repr__(self):
-        t_path = _T_PATHS[self]
-        return _format_t(t_path[1:], t_path[0])
-
-    def __getstate__(self):
-        t_path = _T_PATHS[self]
-        return tuple(({T: 'T', S: 'S', A: 'A'}[t_path[0]],) + t_path[1:])
-
-    def __setstate__(self, state):
-        _T_PATHS[self] = ({'T': T, 'S': S, 'A': A}[state[0]],) + state[1:]
-
-
-_T_PATHS = weakref.WeakKeyDictionary()
+        op_args = object.__getattribute__(self, '__op_args__')
+        return _format_t(op_args[1:], op_args[0])
 
 
 def _t_child(parent, operation, arg):
-    t = TType()
-    base = _T_PATHS[parent]
-    if base[0] is A and operation not in ('.', '[', 'P'):
+    op_args = object.__getattribute__(parent, '__op_args__')
+    if op_args[0] is A and operation not in ('.', '[', 'P'):
         # whitelist rather than blacklist assignment friendly operations
         # TODO: error type?
         raise BadSpec("operation not allowed on A assignment path")
-    _T_PATHS[t] = base + (operation, arg)
-    return t
+
+    return TType(op_args + (operation, arg))
 
 
 def _s_first_magic(scope, key, _t):
@@ -1514,7 +1509,7 @@ def _s_first_magic(scope, key, _t):
 
 
 def _t_eval(target, _t, scope):
-    t_path = _T_PATHS[_t]
+    t_path = object.__getattribute__(_t, '__op_args__')
     i = 1
     fetch_till = len(t_path)
     root = t_path[0]
@@ -1623,10 +1618,6 @@ def _t_eval(target, _t, scope):
 T = TType()  # target aka Mr. T aka "this"
 S = TType()  # like T, but means grab stuff from Scope, not Target
 A = TType()  # like S, but shorthand to assign target to scope
-
-_T_PATHS[T] = (T,)
-_T_PATHS[S] = (S,)
-_T_PATHS[A] = (A,)
 
 UP = make_sentinel('UP')
 ROOT = make_sentinel('ROOT')
