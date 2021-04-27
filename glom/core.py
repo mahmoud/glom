@@ -1833,7 +1833,7 @@ def _handle_dict(target, spec, scope):
 
 
 def _handle_list(target, spec, scope):
-    subspec = spec[0]
+    subspec = Pipe(*spec)
     iterate = scope[TargetRegistry].get_handler('iterate', target, path=scope[Path])
     try:
         iterator = iterate(target)

@@ -429,6 +429,14 @@ def test_pipe():
     assert repr(Pipe(1, Pipe([2], dict))) == 'Pipe(1, Pipe([2], dict))'
 
 
+def test_list_implicit_chaining():
+    target = [{'outer': {'inner': str(i ** 2)}} for i in range(5)]
+    spec_implicit = ['outer', 'inner', int]
+    spec_explicit = [('outer', 'inner', int)]
+
+    assert glom(target, spec_implicit) == glom(target, spec_explicit) == [0, 1, 4, 9, 16]
+
+
 _IS_PYPY = '__pypy__' in sys.builtin_module_names
 @pytest.mark.skipif(_IS_PYPY, reason='pypy othertype.__repr__ is never object.__repr__')
 def test_api_repr():
