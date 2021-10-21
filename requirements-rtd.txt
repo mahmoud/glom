@@ -1,7 +1,7 @@
 -r requirements.txt
 alabaster==0.7.10
 argh==0.26.2
-Babel==2.5.3
+Babel==2.9.1
 backports-abc==0.5
 certifi==2018.11.29
 chardet==3.0.4
