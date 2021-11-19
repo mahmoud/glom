@@ -1,7 +1,7 @@
 
 from pytest import raises
 
-from glom import glom, Path, S, T, A, PathAccessError, GlomError, BadSpec
+from glom import glom, Path, S, T, A, PathAccessError, GlomError, BadSpec, Assign, Delete
 
 def test_list_path_access():
     assert glom(list(range(10)), Path(1)) == 1
@@ -202,7 +202,14 @@ def test_path_star():
     val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'c': 3}]}]}
     assert glom(val, '**.c') == [1, 2, 3]
     assert glom(val, 'a.**.c') == [1, 2, 3]
-    assert glom(val, 'a.*.b.*.c') == [1, 2, 3]
+    assert glom(val, 'a.*.b.*.c') == [[1, 2, 3]]
+
+
+def test_star_broadcast():
+    val = {'a': [1, 2, 3]}
+    assert glom(val, Path.from_text('a.*').path_t + 1) == [2, 3, 4]
+    val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'c': 3}]}]}
+    assert glom(val, Path.from_text('**.c').path_t + 1) == [2, 3, 4]
 
 
 def test_path_eq():

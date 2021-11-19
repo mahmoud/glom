@@ -11,7 +11,7 @@ import operator
 from pprint import pprint
 
 from .core import Path, T, S, Spec, glom, UnregisteredTarget, GlomError, PathAccessError, UP
-from .core import TType, register_op, TargetRegistry, bbrepr, PathAssignError
+from .core import TType, register_op, TargetRegistry, bbrepr, PathAssignError, _assign_op
 
 try:
     basestring
@@ -45,6 +45,16 @@ class PathDeleteError(PathAssignError):
         return ('could not delete %r on object at %r, got error: %r'
                 % (self.dest_name, self.path, self.exc))
 
+
+def _apply_for_each(func, path, val):
+    layers = path.path_t.__stars__()
+    if layers:
+        for i in range(layers - 1):
+            val = sum(val, [])  # flatten out the extra layers
+        for inner in val:
+            func(inner)
+    else:
+        func(val)
 
 
 class Assign(object):
@@ -165,16 +175,9 @@ class Assign(object):
             dest = scope[glom](dest_target, path, scope)
 
         # TODO: forward-detect immutable dest?
-        if op == '[':
-            dest[arg] = val
-        elif op == '.':
-            setattr(dest, arg, val)
-        elif op == 'P':
-            _assign = scope[TargetRegistry].get_handler('assign', dest)
-            try:
-                _assign(dest, arg, val)
-            except Exception as e:
-                raise PathAssignError(e, path, arg)
+        _apply = lambda dest: _assign_op(
+            dest=dest, op=op, arg=arg, val=val, path=path, scope=scope)
+        _apply_for_each(_apply, path, dest)
 
         return target
 
@@ -278,6 +281,27 @@ class Delete(object):
 
         self.ignore_missing = ignore_missing
 
+    def _del_one(self, dest, op, arg, scope):
+        if op == '[':
+            try:
+                del dest[arg]
+            except IndexError as e:
+                if not self.ignore_missing:
+                    raise PathDeleteError(e, self.path, arg)
+        elif op == '.':
+            try:
+                delattr(dest, arg)
+            except AttributeError as e:
+                if not self.ignore_missing:
+                    raise PathDeleteError(e, self.path, arg)
+        elif op == 'P':
+            _delete = scope[TargetRegistry].get_handler('delete', dest)
+            try:
+                _delete(dest, arg)
+            except Exception as e:
+                if not self.ignore_missing:
+                    raise PathDeleteError(e, self.path, arg)
+
     def glomit(self, target, scope):
         op, arg, path = self.op, self.arg, self.path
         if self.path.startswith(S):
@@ -292,25 +316,7 @@ class Delete(object):
             if not self.ignore_missing:
                 raise
         else:
-            if op == '[':
-                try:
-                    del dest[arg]
-                except IndexError as e:
-                    if not self.ignore_missing:
-                        raise PathDeleteError(e, path, arg)
-            elif op == '.':
-                try:
-                    delattr(dest, arg)
-                except AttributeError as e:
-                    if not self.ignore_missing:
-                        raise PathDeleteError(e, path, arg)
-            elif op == 'P':
-                _delete = scope[TargetRegistry].get_handler('delete', dest)
-                try:
-                    _delete(dest, arg)
-                except Exception as e:
-                    if not self.ignore_missing:
-                        raise PathDeleteError(e, path, arg)
+            _apply_for_each(lambda dest: self._del_one(dest, op, arg, scope), path, dest)
 
         return target
 

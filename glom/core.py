@@ -1453,6 +1453,11 @@ class TType(object):
     def __starstar__(self):
         return _t_child(self, _T_STARSTAR, None)
 
+    def __stars__(self):
+        """how many times the result will be wrapped in extra lists"""
+        t_path = _T_PATHS[self]
+        return t_path.count(_T_STAR) + t_path.count(_T_STARSTAR)
+
     def __add__(self, arg):
         return _t_child(self, '+', arg)
 
@@ -1584,7 +1589,28 @@ def _t_eval(target, _t, scope):
             except Exception as e:
                 pae = PathAccessError(e, Path(_t), i // 2)
         elif op in (_T_STAR, _T_STARSTAR):
-            return _t_eval_many(target, cur, t_path, scope, i)
+            nxt = []
+            get_handler = scope[TargetRegistry].get_handler
+            if op is _T_STAR:  # increases arity of cur each time through
+                # TODO: so many try/except -- could scope[TargetRegistry] stuff be cached on type?
+                _extend_children(nxt, cur, get_handler)
+            elif op is _T_STARSTAR:
+                sofar = {id(cur)}
+                _extend_children(nxt, cur, get_handler)
+                for item in nxt:
+                    if id(item) not in sofar:
+                        sofar.add(id(item))
+                        _extend_children(nxt, item, get_handler)
+            # handle the rest of the t_path in recursive calls
+            cur = []
+            todo = TType()
+            _T_PATHS[todo] = (root,) + t_path[i+2:]
+            for child in nxt:
+                try:
+                    cur.append(_t_eval(child, todo, scope))
+                except PathAccessError:
+                    pass
+            break  # we handled the rest in recursive call, break loop
         elif op == '(':
             args, kwargs = arg
             scope[Path] += t_path[2:i+2:2]
@@ -1628,79 +1654,27 @@ def _t_eval(target, _t, scope):
         i += 2
     if root is A:
         op, arg = t_path[-2:]
-        if op == '[' or cur is scope:  # all assignment on scope is setitem
-            cur[arg] = target
-        elif op == '.':
-            setattr(cur, arg, target)
-        elif op == 'P':
-            _assign = scope[TargetRegistry].get_handler('assign', cur)
-            try:
-                _assign(cur, arg, target)
-            except Exception as e:
-                raise PathAssignError(e, _t, i // 2 + 1)
-        else:  # pragma: no cover
-            raise ValueError('unsupported operation for assignment')
+        if cur is scope:
+            op = '['  # all assignment on scope is setitem
+        _assign_op(dest=cur, op=op, arg=arg, val=target, path=_t, scope=scope)
         return target  # A should not change the target
     return cur
 
 
-def _t_eval_many(target, cur, t_path, scope, i):
-    """only meant to be called by _t_eval"""
-    cur = [cur]
-    get_handler = scope[TargetRegistry].get_handler
-    while i < len(t_path) and cur:
-        op, arg = t_path[i], t_path[i + 1]
-        if type(arg) in (Spec, TType, Literal):
-            arg = scope[glom](target, arg, scope)
-        nxt = []
-        if op == '.':
-            for item in cur:
-                try:
-                    nxt.append(getattr(item, arg))
-                except AttributeError:
-                    pass
-        elif op == '[':
-            for item in cur:
-                try:
-                    nxt.append(item[arg])
-                except (KeyError, IndexError, TypeError):
-                    pass
-        elif op == 'P':  # Path type stuff (fuzzy match)
-            for item in cur:
-                try:
-                    get = scope[TargetRegistry].get_handler('get', item, path=t_path[2:i+2:2])
-                except UnregisteredTarget:
-                    pass
-                else:
-                    try:
-                        nxt.append(get(item, arg))
-                    except Exception:
-                        pass
-        elif op == '(':
-            args, kwargs = arg
-            scope[Path] += t_path[2:i+2:2]
-            for item in cur:
-                try:
-                    nxt.append(
-                        scope[glom](target, Call(cur, args, kwargs), scope))
-                except Exception:
-                    pass
-        elif op == _T_STAR:  # increases arity of cur each time through
-            # TODO: so many try/except -- could scope[TargetRegistry] stuff be cached on type?
-            for item in cur:
-                _extend_children(nxt, item, get_handler)
-        elif op == _T_STARSTAR:
-            sofar = set()
-            for item in cur:
-                _extend_children(nxt, item, get_handler)
-                sofar.add(id(item))
-            for item in nxt:
-                if id(item) not in sofar:
-                    sofar.add(id(item))
-                    _extend_children(nxt, item, get_handler)
-        cur = nxt
-        i += 2
-    return cur
+def _assign_op(dest, op, arg, val, path, scope):
+    """helper method for doing the assignment on a T operation"""
+    if op == '[':
+        dest[arg] = val
+    elif op == '.':
+        setattr(dest, arg, val)
+    elif op == 'P':
+        _assign = scope[TargetRegistry].get_handler('assign', dest)
+        try:
+            _assign(dest, arg, val)
+        except Exception as e:
+            raise PathAssignError(e, path, arg)
+    else:  # pragma: no cover
+        raise ValueError('unsupported T operation for assignment')
 
 
 def _extend_children(children, item, get_handler):
