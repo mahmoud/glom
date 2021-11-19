@@ -305,3 +305,11 @@ def test_invalid_delete_op_target():
 def test_delete_ignore_missing():
     assert delete({}, 'a', ignore_missing=True) == {}
     assert delete({}, 'a.b', ignore_missing=True) == {}
+
+
+def test_star_broadcast():
+    val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'c': 3}]}]}
+    assert glom(val, (Assign('a.*.b.*.d', 'a'), 'a.*.b.*.d')) == [['a', 'a', 'a']]
+    glom(val, Delete('a.*.b.*.d'))
+    assert 'c' in val['a'][0]['b'][0]
+    assert 'd' not in val['a'][0]['b'][0]
