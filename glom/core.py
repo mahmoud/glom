@@ -732,14 +732,6 @@ class Path(object):
         return _format_path(_T_PATHS[self.path_t][1:])
 
 
-class MultiPath(Path):
-    """
-    A MultiPath is a path that matches a list of targets instead of a single target.
-
-    MultiPaths may have * and ** as path segments.
-    """
-
-
 def _format_path(t_path):
     path_parts, cur_t_path = [], []
     i = 0
