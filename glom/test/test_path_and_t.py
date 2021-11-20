@@ -194,9 +194,9 @@ def test_path_star():
     assert glom(val, 'a.*') == [1, 2, 3]
     val['a'] = [{'b': v} for v in val['a']]
     assert glom(val, 'a.*.b') == [1, 2, 3]
-    assert glom(val, Path(T['a'], '*', T['b'])) == [1, 2, 3]
+    assert glom(val, Path('a', T.__star__(), 'b')) == [1, 2, 3]
     # multi-paths eat errors
-    assert glom(val, Path('a', '*', T.b)) == []
+    assert glom(val, Path('a', T.__star__(), T.b)) == []
     val = [[[1]]]
     assert glom(val, '**') == [ [[1]], [1], 1]
     val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'d': {'c': 3}}]}]}

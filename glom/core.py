@@ -621,10 +621,6 @@ class Path(object):
                 while i < len(sub_parts):
                     path_t = _t_child(path_t, sub_parts[i], sub_parts[i + 1])
                     i += 2
-            elif part == '*':
-                path_t = _t_child(path_t, 'x', None)
-            elif part == '**':
-                path_t = _t_child(path_t, 'X', None)
             else:
                 path_t = _t_child(path_t, 'P', part)
         self.path_t = path_t
@@ -640,10 +636,18 @@ class Path(object):
         Path('a', 'b', 'c')
 
         """
+        def create():
+            segs = text.split('.')
+            segs = [
+                _T_STAR if seg == '*' else
+                _T_STARSTAR if seg == '**' else seg
+                for seg in segs]
+            return cls(*segs)
+
         if text not in cls._CACHE:
             if len(cls._CACHE) > cls._MAX_CACHE:
-                return cls(*text.split('.'))
-            cls._CACHE[text] = cls(*text.split('.'))
+                return create()
+            cls._CACHE[text] = create()
         return cls._CACHE[text]
 
     def glomit(self, target, scope):
@@ -1583,10 +1587,10 @@ def _t_eval(target, _t, scope):
         elif op in 'xX':
             nxt = []
             get_handler = scope[TargetRegistry].get_handler
-            if op is 'x':  # increases arity of cur each time through
+            if op == 'x':  # increases arity of cur each time through
                 # TODO: so many try/except -- could scope[TargetRegistry] stuff be cached on type?
                 _extend_children(nxt, cur, get_handler)
-            elif op is 'X':
+            elif op == 'X':
                 sofar = {id(cur)}
                 _extend_children(nxt, cur, get_handler)
                 for item in nxt:
@@ -1701,6 +1705,9 @@ A = TType()  # like S, but shorthand to assign target to scope
 _T_PATHS[T] = (T,)
 _T_PATHS[S] = (S,)
 _T_PATHS[A] = (A,)
+
+_T_STAR = T.__star__()  # helper constant for Path.from_text
+_T_STARSTAR = T.__starstar__()  # helper constant for Path.from_text
 
 UP = make_sentinel('UP')
 ROOT = make_sentinel('ROOT')
