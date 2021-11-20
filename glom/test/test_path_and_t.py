@@ -199,10 +199,10 @@ def test_path_star():
     assert glom(val, Path('a', '*', T.b)) == []
     val = [[[1]]]
     assert glom(val, '**') == [ [[1]], [1], 1]
-    val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'c': 3}]}]}
+    val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'d': {'c': 3}}]}]}
     assert glom(val, '**.c') == [1, 2, 3]
     assert glom(val, 'a.**.c') == [1, 2, 3]
-    assert glom(val, 'a.*.b.*.c') == [[1, 2, 3]]
+    assert glom(val, 'a.*.b.*.c') == [[1, 2]]
 
 
 def test_star_broadcast():
