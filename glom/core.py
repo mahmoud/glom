@@ -622,9 +622,9 @@ class Path(object):
                     path_t = _t_child(path_t, sub_parts[i], sub_parts[i + 1])
                     i += 2
             elif part == '*':
-                path_t = _t_child(path_t, _T_STAR, None)
+                path_t = _t_child(path_t, 'x', None)
             elif part == '**':
-                path_t = _t_child(path_t, _T_STARSTAR, None)
+                path_t = _t_child(path_t, 'X', None)
             else:
                 path_t = _t_child(path_t, 'P', part)
         self.path_t = path_t
@@ -746,15 +746,15 @@ def _format_path(t_path):
     while i < len(t_path):
         op, arg = t_path[i], t_path[i + 1]
         i += 2
-        if op in ('P', _T_STAR, _T_STARSTAR):
+        if op in 'PxX':
             if cur_t_path:
                 path_parts.append(cur_t_path)
                 cur_t_path = []
             if op == 'P':
                 path_parts.append(arg)
-            elif op is _T_STAR:
+            elif op == 'x':
                 path_parts.append('*')
-            elif op is _T_STARSTAR:
+            elif op == 'X':
                 path_parts.append('**')
         else:
             cur_t_path.append(op)
@@ -1448,15 +1448,15 @@ class TType(object):
         return _t_child(self, '(', (args, kwargs))
 
     def __star__(self):
-        return _t_child(self, _T_STAR, None)
+        return _t_child(self, 'x', None)
 
     def __starstar__(self):
-        return _t_child(self, _T_STARSTAR, None)
+        return _t_child(self, 'X', None)
 
     def __stars__(self):
         """how many times the result will be wrapped in extra lists"""
-        t_path = _T_PATHS[self]
-        return t_path.count(_T_STAR) + t_path.count(_T_STARSTAR)
+        t_ops = _T_PATHS[self][1::2]
+        return t_ops.count('x') + t_ops.count('X')
 
     def __add__(self, arg):
         return _t_child(self, '+', arg)
@@ -1588,13 +1588,13 @@ def _t_eval(target, _t, scope):
                 cur = get(cur, arg)
             except Exception as e:
                 pae = PathAccessError(e, Path(_t), i // 2)
-        elif op in (_T_STAR, _T_STARSTAR):
+        elif op in 'xX':
             nxt = []
             get_handler = scope[TargetRegistry].get_handler
-            if op is _T_STAR:  # increases arity of cur each time through
+            if op is 'x':  # increases arity of cur each time through
                 # TODO: so many try/except -- could scope[TargetRegistry] stuff be cached on type?
                 _extend_children(nxt, cur, get_handler)
-            elif op is _T_STARSTAR:
+            elif op is 'X':
                 sofar = {id(cur)}
                 _extend_children(nxt, cur, get_handler)
                 for item in nxt:
@@ -1706,9 +1706,6 @@ T = TType()  # target aka Mr. T aka "this"
 S = TType()  # like T, but means grab stuff from Scope, not Target
 A = TType()  # like S, but shorthand to assign target to scope
 
-_T_STAR =  make_sentinel('T_STAR')
-_T_STARSTAR = make_sentinel('T_STARSTAR')
-
 _T_PATHS[T] = (T,)
 _T_PATHS[S] = (S,)
 _T_PATHS[A] = (A,)
@@ -1744,9 +1741,9 @@ def _format_t(path, root=T):
             prepr.append(format_invocation(args=args, kwargs=kwargs, repr=bbrepr))
         elif op == 'P':
             return _format_path(path)
-        elif op == _T_STAR:
+        elif op == 'x':
             prepr.append(".__star__()")
-        elif op == _T_STARSTAR:
+        elif op == 'X':
             prerp.append(".__starstar__()")
         elif op in ('_', '~'):  # unary arithmetic operators
             if any([o in path[:i] for o in '+-/%:&|^~_']):
