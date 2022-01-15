@@ -2359,7 +2359,7 @@ def FILL(target, spec, scope):
 def ARG(target, spec, scope):
     """
     similar to FILL, but without function calling;
-    useful for default, scope assignment, call/invokce, etc
+    useful for default, scope assignment, call/invoke, etc
     """
     recurse = lambda val: scope[glom](target, val, scope)
     if type(spec) is dict:
