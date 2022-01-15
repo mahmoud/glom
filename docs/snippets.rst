@@ -169,7 +169,7 @@ An iteration specifier can filter items out by using
 
 .. code-block:: python
 
-    glom(['cat', 1, 'dog', 2], [Check(types=str, default=SKIP)])
+    glom(['cat', 1, 'dog', 2], [Check(type=str, default=SKIP)])
     # ['cat', 'dog']
 
 You can also truncate the list at the first failing check by using
