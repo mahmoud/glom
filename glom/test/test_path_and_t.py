@@ -2,6 +2,7 @@
 from pytest import raises
 
 from glom import glom, Path, S, T, A, PathAccessError, GlomError, BadSpec, Assign, Delete
+from glom import core
 
 def test_list_path_access():
     assert glom(list(range(10)), Path(1)) == 1
@@ -190,6 +191,7 @@ def test_path_items():
 
 
 def test_path_star():
+    core.PATH_STAR = True
     val = {'a': [1, 2, 3]}
     assert glom(val, 'a.*') == [1, 2, 3]
     val['a'] = [{'b': v} for v in val['a']]
@@ -203,13 +205,22 @@ def test_path_star():
     assert glom(val, '**.c') == [1, 2, 3]
     assert glom(val, 'a.**.c') == [1, 2, 3]
     assert glom(val, 'a.*.b.*.c') == [[1, 2]]
+    core.PATH_STAR = False
 
 
 def test_star_broadcast():
+    core.PATH_STAR = True
     val = {'a': [1, 2, 3]}
     assert glom(val, Path.from_text('a.*').path_t + 1) == [2, 3, 4]
     val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'c': 3}]}]}
     assert glom(val, Path.from_text('**.c').path_t + 1) == [2, 3, 4]
+    core.PATH_STAR = False
+
+
+def test_start_default():
+    '''check that the default behavior is as expected; this will change when * is default on'''
+    assert glom({'*': 1}, '*') == 1
+    assert Path._STAR_WARNED
 
 
 def test_path_eq():

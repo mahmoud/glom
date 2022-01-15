@@ -23,6 +23,7 @@ import os
 import sys
 import pdb
 import copy
+import warnings
 import weakref
 import operator
 from abc import ABCMeta
@@ -51,6 +52,10 @@ GLOM_DEBUG = os.getenv('GLOM_DEBUG', '').strip().lower()
 GLOM_DEBUG = False if (GLOM_DEBUG in ('', '0', 'false')) else True
 
 TRACE_WIDTH = max(get_wrap_width(max_width=110), 50)   # min width
+
+PATH_STAR = False
+# should * and ** be interpreted as parallel traversal in Path.from_text()?
+# (will change to True in a later version)
 
 _type_type = type
 
@@ -627,6 +632,7 @@ class Path(object):
 
     _CACHE = {}
     _MAX_CACHE = 10000
+    _STAR_WARNED = False
 
     @classmethod
     def from_text(cls, text):
@@ -638,10 +644,17 @@ class Path(object):
         """
         def create():
             segs = text.split('.')
-            segs = [
-                _T_STAR if seg == '*' else
-                _T_STARSTAR if seg == '**' else seg
-                for seg in segs]
+            if PATH_STAR:
+                segs = [
+                    _T_STAR if seg == '*' else
+                    _T_STARSTAR if seg == '**' else seg
+                    for seg in segs]
+            elif not cls._STAR_WARNED:
+                if '*' in segs or '**' in segs:
+                    warnings.warn(
+                        "'*' and '**' will changed behavior in a future glom version."
+                        " Recommend switch to T['*'] or T['**'].")
+                    cls._STAR_WARNED = True
             return cls(*segs)
 
         if text not in cls._CACHE:
