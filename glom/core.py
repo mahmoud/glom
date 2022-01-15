@@ -1756,7 +1756,7 @@ def _format_t(path, root=T):
         elif op == 'x':
             prepr.append(".__star__()")
         elif op == 'X':
-            prerp.append(".__starstar__()")
+            prepr.append(".__starstar__()")
         elif op in ('_', '~'):  # unary arithmetic operators
             if any([o in path[:i] for o in '+-/%:&|^~_']):
                 prepr = ['('] + prepr + [')']

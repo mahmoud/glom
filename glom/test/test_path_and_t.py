@@ -52,6 +52,10 @@ def test_path_t_roundtrip():
     assert repr(T[len]) == 'T[len]'
     assert repr(T.func(len, sum)) == 'T.func(len, sum)'
 
+    # check * and **
+    assert repr(T.__star__()) == 'T.__star__()'
+    assert repr(T.__starstar__()) == 'T.__starstar__()'
+
 
 def test_path_access_error_message():
 
@@ -196,6 +200,7 @@ def test_path_star():
     assert glom(val, 'a.*') == [1, 2, 3]
     val['a'] = [{'b': v} for v in val['a']]
     assert glom(val, 'a.*.b') == [1, 2, 3]
+    assert glom(val, T['a'].__star__()['b']) == [1, 2, 3]
     assert glom(val, Path('a', T.__star__(), 'b')) == [1, 2, 3]
     # multi-paths eat errors
     assert glom(val, Path('a', T.__star__(), T.b)) == []
@@ -204,7 +209,12 @@ def test_path_star():
     val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'d': {'c': 3}}]}]}
     assert glom(val, '**.c') == [1, 2, 3]
     assert glom(val, 'a.**.c') == [1, 2, 3]
+    assert glom(val, T['a'].__starstar__()['c']) == [1, 2, 3]
     assert glom(val, 'a.*.b.*.c') == [[1, 2]]
+    # errors
+    class ErrDict(dict):
+        def __getitem__(key): 1/0
+    assert glom(ErrDict(val), '**') == []
     core.PATH_STAR = False
 
 
