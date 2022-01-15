@@ -217,7 +217,7 @@ def test_star_broadcast():
     core.PATH_STAR = False
 
 
-def test_start_default():
+def test_star_warning():
     '''check that the default behavior is as expected; this will change when * is default on'''
     assert glom({'*': 1}, '*') == 1
     assert Path._STAR_WARNED
