@@ -36,13 +36,11 @@ def test_assign():
     assert repr(assign_spec) == repr(eval(repr(assign_spec)))
 
 
-'''
 def test_assign_recursive():
     val = {}
     val[1] = [val]
-    glom({}, Assign(T['a'], val))['a']
-    # assert glom({}, Assign(T['a'], val))['a'] == val
-'''
+    recur_out = glom({}, Assign(T['a'], val))['a']
+    assert recur_out[1][0] is recur_out
 
 
 def test_assign_spec_val():

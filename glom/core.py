@@ -42,11 +42,12 @@ if PY2:
     _AbstractIterableBase = object
     from .chainmap_backport import ChainMap
     from repr import Repr
+    from .reprlib_backport import recursive_repr
 else:
     basestring = str
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
     from collections import ChainMap
-    from reprlib import Repr
+    from reprlib import Repr, recursive_repr
 
 GLOM_DEBUG = os.getenv('GLOM_DEBUG', '').strip().lower()
 GLOM_DEBUG = False if (GLOM_DEBUG in ('', '0', 'false')) else True
@@ -539,7 +540,7 @@ class _BBRepr(Repr):
         return _BUILTIN_ID_NAME_MAP.get(id(x), ret)
 
 
-bbrepr = _BBRepr().repr
+bbrepr = recursive_repr()(_BBRepr().repr)
 
 
 class _BBReprFormatter(string.Formatter):
@@ -2551,11 +2552,11 @@ class _ArgValuator(object):
         if type(spec) in (list, dict):  # can contain themselves
             if id(spec) in self.cache:
                 return self.cache[id(spec)]
+            result = self.cache[id(spec)] = type(spec)()
             if type(spec) is dict:
-                result = {recur(key): recur(val) for key, val in spec.items()}
+                result.update({recur(key): recur(val) for key, val in spec.items()})
             else:
-                result = [recur(val) for val in spec]
-            self.cache[id(spec)] = result
+                result.extend([recur(val) for val in spec])
         if type(spec) in (tuple, set, frozenset):  # cannot contain themselves
             result = type(spec)([recur(val) for val in spec])
         return result
