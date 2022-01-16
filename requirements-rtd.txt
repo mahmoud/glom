@@ -17,7 +17,7 @@ packaging==17.1
 pathtools==0.1.2
 pockets==0.6.2
 port-for==0.3.1
-py==1.5.2
+py==1.10.0
 Pygments==2.2.0
 pyparsing==2.2.0
 pytz==2018.4
