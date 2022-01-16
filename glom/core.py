@@ -909,6 +909,10 @@ class Coalesce(object):
         self.subspecs = subspecs
         self._orig_kwargs = dict(kwargs)
         self.default = kwargs.pop('default', _MISSING)
+        if self.default is not _MISSING:
+            self.compiled_default = arg_compile(self.default)
+        else:
+            self.compiled_default = _MISSING
         self.default_factory = kwargs.pop('default_factory', _MISSING)
         if self.default and self.default_factory:
             raise ValueError('expected one of "default" or "default_factory", not both')
@@ -937,8 +941,8 @@ class Coalesce(object):
                 skipped.append(e)
                 continue
         else:
-            if self.default is not _MISSING:
-                ret = arg_val(target, self.default, scope)
+            if self.compiled_default is not _MISSING:
+                ret = arg_eval(target, self.compiled_default, scope)
             elif self.default_factory is not _MISSING:
                 ret = self.default_factory()
             else:
@@ -1530,7 +1534,7 @@ def _t_child(parent, operation, arg):
         # whitelist rather than blacklist assignment friendly operations
         # TODO: error type?
         raise BadSpec("operation not allowed on A assignment path")
-    _T_PATHS[t] = base + (operation, arg)
+    _T_PATHS[t] = base + (operation, arg_compile(arg))
     return t
 
 
@@ -2553,13 +2557,88 @@ def ARG(target, spec, scope):
         if type(spec) is list:
             return result
         return type(spec)(result)
+    if type(spec) is _Copy:
+        return copy.deepcopy(spec.py_val)
     return spec
 
 
-def arg_val(target, arg, scope):
+class _Copy(object):
+    """
+    helper for ARG which means a given branch does not
+    have any specs, and is better addressed with copy.deepcopy
+    """
+    def __init__(self, py_val):
+        self.py_val = py_val
+
+
+def arg_compile(arg):
+    """
+    compile an argument parameter; this will recursively split
+    the argument into two categories:
+    * python values that don't have specs
+    * containers with specs
+    """
+    if isinstance(val, _CONST_TYPES):
+        return val
+    result = _arg_compile(arg, set())
+    if result is _NO_SPECS:
+        return _Copy(arg)
+    return arg
+
+
+_CONST_TYPES = (int, float, basestring, bytes, type(None))
+_NO_SPECS = make_sentinel('NO_SPECS')
+
+
+def _arg_compile(arg, sofar):
+    if id(arg) in sofar:
+
+    recurse = lambda v: _arg_compile(v, sofar | {id(arg)})
+    if _has_callable_glomit(arg):
+        return arg
+    if type(arg) is dict:
+        has_specs = False
+        new_arg = {}
+        for key, val in arg.items():
+            if recurse(key) is not _NO_SPECS:
+                has_specs = True
+                # assume that key recursion is not problematic
+            if isinstance(val, _CONST_TYPES):
+                new_arg[key] = val
+                continue  # if val is a simple constant, no need for Copy
+            new_val = recurse(val)
+            if new_val is _NO_SPECS:
+                new_arg[key] = _Copy(val)
+            else:
+                has_specs = True
+                new_arg[key] = new_val
+        if has_specs:
+            return new_arg
+        else:
+            return _NO_SPECS
+    if type(arg) in (list, tuple, set, frozenset):
+        has_specs = False
+        new_arg = []
+        for val in arg:
+            if isinstance(val, _CONST_TYPES):
+                new_arg[key] = val
+                continue  # if val is a simple constant, no need for Copy
+            new_val = recurse(val)
+            if new_val is _NO_SPECS:
+                new_arg.append(_Copy(val))
+            else:
+                has_specs = True
+                new_arg.append(new_val)
+        if has_specs:
+            return type(val)(new_arg)
+        else:
+            return _NO_SPECS
+    return _NO_SPECS
+
+
+def arg_eval(target, arg, scope):
     """
     evaluate an argument to find its value
-    (arg_val phonetically similar to "eval" -- evaluate as an arg)
     """
     mode = scope[MIN_MODE]
     scope[MIN_MODE] = ARG
