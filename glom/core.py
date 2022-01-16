@@ -1228,11 +1228,10 @@ class Invoke(object):
         """Returns a new :class:`Invoke` spec, with *args* and/or *kwargs*
         specs set to be "starred" or "star-starred" (respectively)
 
-        >>> import os.path
-        >>> spec = Invoke(os.path.join).star(args='path')
-        >>> target = {'path': ['path', 'to', 'dir']}
-        >>> glom(target, spec)
-        'path/to/dir'
+        >>> spec = Invoke(zip).star(args='lists')
+        >>> target = {'lists': [[1, 2], [3, 4], [5, 6]]}
+        >>> list(glom(target, spec))
+        [(1, 3, 5), (2, 4, 6)]
 
         Args:
            args (spec): A spec to be evaluated and "starred" into the
