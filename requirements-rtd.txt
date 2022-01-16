@@ -1,7 +1,7 @@
 -r requirements.txt
 alabaster==0.7.10
 argh==0.26.2
-Babel==2.5.3
+Babel==2.9.1
 backports-abc==0.5
 certifi==2018.11.29
 chardet==3.0.4
@@ -17,7 +17,7 @@ packaging==17.1
 pathtools==0.1.2
 pockets==0.6.2
 port-for==0.3.1
-py==1.5.2
+py==1.10.0
 Pygments==2.2.0
 pyparsing==2.2.0
 pytz==2018.4

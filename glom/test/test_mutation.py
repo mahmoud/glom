@@ -2,6 +2,7 @@ import pytest
 
 from glom import glom, Path, T, S, Spec, Glommer, PathAssignError, PathAccessError
 from glom import assign, Assign, delete, Delete, PathDeleteError, Or
+from glom import core
 from glom.core import UnregisteredTarget
 
 
@@ -307,3 +308,13 @@ def test_invalid_delete_op_target():
 def test_delete_ignore_missing():
     assert delete({}, 'a', ignore_missing=True) == {}
     assert delete({}, 'a.b', ignore_missing=True) == {}
+
+
+def test_star_broadcast():
+    core.PATH_STAR = True
+    val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'c': 3}]}]}
+    assert glom(val, (Assign('a.*.b.*.d', 'a'), 'a.*.b.*.d')) == [['a', 'a', 'a']]
+    glom(val, Delete('a.*.b.*.d'))
+    assert 'c' in val['a'][0]['b'][0]
+    assert 'd' not in val['a'][0]['b'][0]
+    core.PATH_STAR = False
