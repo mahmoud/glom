@@ -33,17 +33,17 @@ def test_types_leave_one_out():
 
         treg = TargetRegistry(register_default_types=False)
 
-        treg.register(object, get=lambda obj, name: object)
+        treg.register(object, get=lambda: object)
         for t in ALL_TYPES:
             if t is cur_t:
                 continue
-            treg.register(t, get=(lambda t: lambda obj, name: t)(t))
+            treg.register(t, get=(lambda t: lambda: t)(t))
 
         obj = cur_t()
-        assert treg.get_handler('get', obj)(None, None) == obj.__class__.mro()[1]
+        assert treg.get_handler('get', obj)() == obj.__class__.mro()[1]
 
         if cur_t is E:
-            assert treg.get_handler('get', obj) is C  # sanity check
+            assert treg.get_handler('get', obj)() is C  # sanity check
 
     return
 
