@@ -47,3 +47,9 @@ jobs:
           key: pip|${{ runner.os }}|${{ matrix.python }}|${{ hashFiles('setup.py') }}|${{ hashFiles('requirements/*.txt') }}
       - run: pip install tox
       - run: tox -e ${{ matrix.tox }}
+      - name: "Convert coverage"
+        run: "python -m coverage xml"
+      - name: "Upload coverage to Codecov"
+        uses: "codecov/codecov-action@v2"
+        with:
+          fail_ci_if_error: true
