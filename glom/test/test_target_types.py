@@ -30,7 +30,7 @@ class F(E):
 def test_types_leave_one_out():
     ALL_TYPES = [A, B, C, D, E, F]
     for cur_t in ALL_TYPES:
-        
+
         treg = TargetRegistry(register_default_types=False)
 
         treg.register(object, get=lambda obj, name: object)
@@ -38,7 +38,6 @@ def test_types_leave_one_out():
             if t is cur_t:
                 continue
             treg.register(t, get=(lambda t: lambda obj, name: t)(t))
-            #treg.register(t, get=getattr)
 
         obj = cur_t()
         assert treg.get_handler('get', obj)(None, None) == obj.__class__.mro()[1]
