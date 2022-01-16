@@ -36,6 +36,15 @@ def test_assign():
     assert repr(assign_spec) == repr(eval(repr(assign_spec)))
 
 
+'''
+def test_assign_recursive():
+    val = {}
+    val[1] = [val]
+    glom({}, Assign(T['a'], val))['a']
+    # assert glom({}, Assign(T['a'], val))['a'] == val
+'''
+
+
 def test_assign_spec_val():
     output = glom({'b': 'c'}, Assign('a', Spec('b')))
     assert output['a'] == output['b'] == 'c'

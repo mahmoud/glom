@@ -1100,9 +1100,7 @@ class Call(object):
 
     def glomit(self, target, scope):
         'run against the current target'
-        scope[MODE] = ARG
-        g = scope[glom]
-        r = lambda spec: g(target, spec, scope)
+        r = lambda spec: arg_val(target, spec, scope)
         return r(self.func)(*r(self.args), **r(self.kwargs))
 
     def __repr__(self):
@@ -2539,21 +2537,28 @@ def FILL(target, spec, scope):
         return spec(target)
     return spec
 
+class _ArgValuator(object):
+    def __init__(self):
+        self.cache = {}
 
-def ARG(target, spec, scope):
-    """
-    similar to FILL, but without function calling;
-    useful for default, scope assignment, call/invoke, etc
-    """
-    recurse = lambda val: scope[glom](target, val, scope)
-    if type(spec) is dict:
-        return {recurse(key): recurse(val) for key, val in spec.items()}
-    if type(spec) in (list, tuple, set, frozenset):
-        result = [recurse(val) for val in spec]
-        if type(spec) is list:
-            return result
-        return type(spec)(result)
-    return spec
+    def mode(self, target, spec, scope):
+        """
+        similar to FILL, but without function calling;
+        useful for default, scope assignment, call/invoke, etc
+        """
+        recur = lambda val: scope[glom](target, val, scope)
+        result = spec
+        if type(spec) in (list, dict):  # can contain themselves
+            if id(spec) in self.cache:
+                return self.cache[id(spec)]
+            if type(spec) is dict:
+                result = {recur(key): recur(val) for key, val in spec.items()}
+            else:
+                result = [recur(val) for val in spec]
+            self.cache[id(spec)] = result
+        if type(spec) in (tuple, set, frozenset):  # cannot contain themselves
+            result = type(spec)([recur(val) for val in spec])
+        return result
 
 
 def arg_val(target, arg, scope):
@@ -2562,7 +2567,7 @@ def arg_val(target, arg, scope):
     (arg_val phonetically similar to "eval" -- evaluate as an arg)
     """
     mode = scope[MIN_MODE]
-    scope[MIN_MODE] = ARG
+    scope[MIN_MODE] = _ArgValuator().mode
     result = scope[glom](target, arg, scope)
     scope[MIN_MODE] = mode
     return result
