@@ -214,7 +214,16 @@ def test_path_star():
     # errors
     class ErrDict(dict):
         def __getitem__(key): 1/0
+    assert ErrDict(val).keys()  # it will try to iterate
     assert glom(ErrDict(val), '**') == []
+    # object access
+    class A:
+        def __init__(self):
+            self.a = 1
+            self.b = {'c': 2}
+    val = A()
+    assert glom(val, '*') == [1, {'c': 2}]
+    assert glom(val, '**') == [1, {'c': 2}, 2]
     core.PATH_STAR = False
 
 

@@ -630,7 +630,7 @@ class Path(object):
                 path_t = _t_child(path_t, 'P', part)
         self.path_t = path_t
 
-    _CACHE = {}
+    _CACHE = {True: {}, False: {}}
     _MAX_CACHE = 10000
     _STAR_WARNED = False
 
@@ -657,11 +657,12 @@ class Path(object):
                     cls._STAR_WARNED = True
             return cls(*segs)
 
-        if text not in cls._CACHE:
-            if len(cls._CACHE) > cls._MAX_CACHE:
+        cache = cls._CACHE[PATH_STAR]  # remove this when PATH_STAR is default
+        if text not in cache:
+            if len(cache) > cls._MAX_CACHE:
                 return create()
-            cls._CACHE[text] = create()
-        return cls._CACHE[text]
+            cache[text] = create()
+        return cache[text]
 
     def glomit(self, target, scope):
         # The entrypoint for the Path extension
@@ -1911,11 +1912,14 @@ class _AbstractIterable(_AbstractIterableBase):
         return callable(getattr(C, "__iter__", None))
 
 
-class _AbstractKeys(object):
-    __metaclass__ = ABCMeta
-    @classmethod
-    def __subclasshook__(cls, C):
+
+class _ObjStyleKeysMeta(type):
+    def __instancecheck__(cls, C):
         return hasattr(C, "__dict__") and hasattr(C.__dict__, "keys")
+
+
+class _ObjStyleKeys(_ObjStyleKeysMeta('_AbstractKeys', (object,), {})):
+    __metaclass__ = _ObjStyleKeysMeta
 
 
 def _get_sequence_item(target, index):
@@ -2063,7 +2067,7 @@ class TargetRegistry(object):
         self.register(list, get=_get_sequence_item)
         self.register(tuple, get=_get_sequence_item)
         self.register(_AbstractIterable, iterate=iter)
-        self.register(_AbstractKeys, keys=lambda v: v.__dict__.keys())
+        self.register(_ObjStyleKeys, keys=lambda v: v.__dict__.keys())
 
     def _register_fuzzy_type(self, op, new_type, _type_tree=None):
         """Build a "type tree", an OrderedDict mapping registered types to
