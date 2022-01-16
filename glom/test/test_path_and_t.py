@@ -53,8 +53,8 @@ def test_path_t_roundtrip():
     assert repr(T.func(len, sum)) == 'T.func(len, sum)'
 
     # check * and **
-    assert repr(T.__star__()) == 'T.__star__()'
-    assert repr(T.__starstar__()) == 'T.__starstar__()'
+    assert repr(T.__star__().__starstar__()) == 'T.__star__().__starstar__()'
+    assert repr(Path('a', T.__star__().__starstar__())) == "Path('a', T.__star__().__starstar__())"
 
 
 def test_path_access_error_message():

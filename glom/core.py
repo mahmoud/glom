@@ -756,16 +756,11 @@ def _format_path(t_path):
     while i < len(t_path):
         op, arg = t_path[i], t_path[i + 1]
         i += 2
-        if op in 'PxX':
+        if op == 'P':
             if cur_t_path:
                 path_parts.append(cur_t_path)
                 cur_t_path = []
-            if op == 'P':
-                path_parts.append(arg)
-            elif op == 'x':
-                path_parts.append('*')
-            elif op == 'X':
-                path_parts.append('**')
+            path_parts.append(arg)
         else:
             cur_t_path.append(op)
             cur_t_path.append(arg)
