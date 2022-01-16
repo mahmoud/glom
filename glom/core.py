@@ -24,7 +24,6 @@ import sys
 import pdb
 import copy
 import warnings
-import weakref
 import operator
 from abc import ABCMeta
 from pprint import pprint
@@ -1431,17 +1430,29 @@ class TType(object):
        equivalent to accessing the ``__class__`` attribute.
 
     """
-    __slots__ = ('__weakref__',)
+    # __ops is a string of single character operators
+    # __args is a tuple of operators
+    __slots__ = ('__ops__', '__args__')
+
+    def __init__(self, parent, op, *args):
+        if parent is None:
+            assert len(op) == 1, "root TType op must be name"
+            assert args == (), "root TType cannot have args"
+            self.__ops__ = ''
+            self.__args__ = ()
+        else:
+            self.__ops__ = parent.__ops__ + op
+            self.__args__ = parent.__args__ + args
 
     def __getattr__(self, name):
         if name.startswith('__'):
             raise AttributeError('T instances reserve dunder attributes.'
                                  ' To access the "{name}" attribute, use'
                                  ' T.__("{d_name}")'.format(name=name, d_name=name[2:]))
-        return _t_child(self, '.', name)
+        return TType(self, '.', name)
 
     def __getitem__(self, item):
-        return _t_child(self, '[', item)
+        return TType(self, '[', item)
 
     def __call__(self, *args, **kwargs):
         if self is S:
@@ -1450,84 +1461,62 @@ class TType(object):
             if not kwargs:
                 raise TypeError('S() expected at least one kwarg, got none')
             # TODO: typecheck kwarg vals?
-        return _t_child(self, '(', (args, kwargs))
+        return TType(self, '(', args, kwargs)
 
     def __star__(self):
-        return _t_child(self, 'x', None)
+        return TType(self, 'x')
 
     def __starstar__(self):
-        return _t_child(self, 'X', None)
+        return TType(self, 'X')
 
     def __stars__(self):
         """how many times the result will be wrapped in extra lists"""
-        t_ops = _T_PATHS[self][1::2]
-        return t_ops.count('x') + t_ops.count('X')
+        return self.__ops.count('x') + self.__ops.count('X')
 
     def __add__(self, arg):
-        return _t_child(self, '+', arg)
+        return TType(self, '+', arg)
 
     def __sub__(self, arg):
-        return _t_child(self, '-', arg)
+        return TType(self, '-', arg)
 
     def __mul__(self, arg):
-        return _t_child(self, '*', arg)
+        return TType(self, '*', arg)
 
     def __floordiv__(self, arg):
-        return _t_child(self, '#', arg)
+        return TType(self, '#', arg)
 
     def __truediv__(self, arg):
-        return _t_child(self, '/', arg)
+        return TType(self, '/', arg)
 
     __div__ = __truediv__
 
     def __mod__(self, arg):
-        return _t_child(self, '%', arg)
+        return TType(self, '%', arg)
 
     def __pow__(self, arg):
-        return _t_child(self, ':', arg)
+        return TType(self, ':', arg)
 
     def __and__(self, arg):
-        return _t_child(self, '&', arg)
+        return TType(self, '&', arg)
 
     def __or__(self, arg):
-        return _t_child(self, '|', arg)
+        return TType(self, '|', arg)
 
     def __xor__(self, arg):
-        return _t_child(self, '^', arg)
+        return TType(self, '^', arg)
 
     def __invert__(self):
-        return _t_child(self, '~', None)
+        return TType(self, '~', None)
 
     def __neg__(self):
-        return _t_child(self, '_', None)
+        return TType(self, '_', None)
 
     def __(self, name):
-        return _t_child(self, '.', '__' + name)
+        return TType(self, '.', '__' + name)
 
     def __repr__(self):
         t_path = _T_PATHS[self]
         return _format_t(t_path[1:], t_path[0])
-
-    def __getstate__(self):
-        t_path = _T_PATHS[self]
-        return tuple(({T: 'T', S: 'S', A: 'A'}[t_path[0]],) + t_path[1:])
-
-    def __setstate__(self, state):
-        _T_PATHS[self] = ({'T': T, 'S': S, 'A': A}[state[0]],) + state[1:]
-
-
-_T_PATHS = weakref.WeakKeyDictionary()
-
-
-def _t_child(parent, operation, arg):
-    t = TType()
-    base = _T_PATHS[parent]
-    if base[0] is A and operation not in ('.', '[', 'P'):
-        # whitelist rather than blacklist assignment friendly operations
-        # TODO: error type?
-        raise BadSpec("operation not allowed on A assignment path")
-    _T_PATHS[t] = base + (operation, arg)
-    return t
 
 
 def _s_first_magic(scope, key, _t):
@@ -1546,15 +1535,20 @@ def _s_first_magic(scope, key, _t):
 
 
 def _t_eval(target, _t, scope):
+    _t.__ops__
+    _t.__args__
+
     t_path = _T_PATHS[_t]
     i = 1
     fetch_till = len(t_path)
-    root = t_path[0]
-    if root is T:
+    root = _t.__ops__[0]
+    ops = _t.__ops__
+    args = reversed(_t.__args__)  # so we can pop cheaply with next()
+    if root == 'T':
         cur = target
-    elif root is S or root is A:
+    elif root in 'SA':
         # A is basically the same as S, but last step is assign
-        if root is A:
+        if root == 'A':
             fetch_till -= 2
             if fetch_till < 1:
                 raise BadSpec('cannot assign without destination')
@@ -1562,7 +1556,7 @@ def _t_eval(target, _t, scope):
         if fetch_till > 1 and t_path[1] in ('.', 'P'):
             cur = _s_first_magic(cur, t_path[2], _t)
             i += 2
-        elif root is S and fetch_till > 1 and t_path[1] == '(':
+        elif root == 'S' and fetch_till > 1 and t_path[1] == '(':
             # S(var='spec') style assignment
             _, kwargs = t_path[2]
             scope.update({
