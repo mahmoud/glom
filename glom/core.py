@@ -23,6 +23,7 @@ import os
 import sys
 import pdb
 import copy
+import warnings
 import weakref
 import operator
 from abc import ABCMeta
@@ -51,6 +52,10 @@ GLOM_DEBUG = os.getenv('GLOM_DEBUG', '').strip().lower()
 GLOM_DEBUG = False if (GLOM_DEBUG in ('', '0', 'false')) else True
 
 TRACE_WIDTH = max(get_wrap_width(max_width=110), 50)   # min width
+
+PATH_STAR = False
+# should * and ** be interpreted as parallel traversal in Path.from_text()?
+# (will change to True in a later version)
 
 _type_type = type
 
@@ -625,8 +630,9 @@ class Path(object):
                 path_t = _t_child(path_t, 'P', part)
         self.path_t = path_t
 
-    _CACHE = {}
+    _CACHE = {True: {}, False: {}}
     _MAX_CACHE = 10000
+    _STAR_WARNED = False
 
     @classmethod
     def from_text(cls, text):
@@ -636,11 +642,27 @@ class Path(object):
         Path('a', 'b', 'c')
 
         """
-        if text not in cls._CACHE:
-            if len(cls._CACHE) > cls._MAX_CACHE:
-                return cls(*text.split('.'))
-            cls._CACHE[text] = cls(*text.split('.'))
-        return cls._CACHE[text]
+        def create():
+            segs = text.split('.')
+            if PATH_STAR:
+                segs = [
+                    _T_STAR if seg == '*' else
+                    _T_STARSTAR if seg == '**' else seg
+                    for seg in segs]
+            elif not cls._STAR_WARNED:
+                if '*' in segs or '**' in segs:
+                    warnings.warn(
+                        "'*' and '**' will changed behavior in a future glom version."
+                        " Recommend switch to T['*'] or T['**'].")
+                    cls._STAR_WARNED = True
+            return cls(*segs)
+
+        cache = cls._CACHE[PATH_STAR]  # remove this when PATH_STAR is default
+        if text not in cache:
+            if len(cache) > cls._MAX_CACHE:
+                return create()
+            cache[text] = create()
+        return cache[text]
 
     def glomit(self, target, scope):
         # The entrypoint for the Path extension
@@ -1430,6 +1452,17 @@ class TType(object):
             # TODO: typecheck kwarg vals?
         return _t_child(self, '(', (args, kwargs))
 
+    def __star__(self):
+        return _t_child(self, 'x', None)
+
+    def __starstar__(self):
+        return _t_child(self, 'X', None)
+
+    def __stars__(self):
+        """how many times the result will be wrapped in extra lists"""
+        t_ops = _T_PATHS[self][1::2]
+        return t_ops.count('x') + t_ops.count('X')
+
     def __add__(self, arg):
         return _t_child(self, '+', arg)
 
@@ -1560,6 +1593,29 @@ def _t_eval(target, _t, scope):
                 cur = get(cur, arg)
             except Exception as e:
                 pae = PathAccessError(e, Path(_t), i // 2)
+        elif op in 'xX':
+            nxt = []
+            get_handler = scope[TargetRegistry].get_handler
+            if op == 'x':  # increases arity of cur each time through
+                # TODO: so many try/except -- could scope[TargetRegistry] stuff be cached on type?
+                _extend_children(nxt, cur, get_handler)
+            elif op == 'X':
+                sofar = {id(cur)}
+                _extend_children(nxt, cur, get_handler)
+                for item in nxt:
+                    if id(item) not in sofar:
+                        sofar.add(id(item))
+                        _extend_children(nxt, item, get_handler)
+            # handle the rest of the t_path in recursive calls
+            cur = []
+            todo = TType()
+            _T_PATHS[todo] = (root,) + t_path[i+2:]
+            for child in nxt:
+                try:
+                    cur.append(_t_eval(child, todo, scope))
+                except PathAccessError:
+                    pass
+            break  # we handled the rest in recursive call, break loop
         elif op == '(':
             args, kwargs = arg
             scope[Path] += t_path[2:i+2:2]
@@ -1603,20 +1659,52 @@ def _t_eval(target, _t, scope):
         i += 2
     if root is A:
         op, arg = t_path[-2:]
-        if op == '[' or cur is scope:  # all assignment on scope is setitem
-            cur[arg] = target
-        elif op == '.':
-            setattr(cur, arg, target)
-        elif op == 'P':
-            _assign = scope[TargetRegistry].get_handler('assign', cur)
-            try:
-                _assign(cur, arg, target)
-            except Exception as e:
-                raise PathAssignError(e, _t, i // 2 + 1)
-        else:  # pragma: no cover
-            raise ValueError('unsupported operation for assignment')
+        if cur is scope:
+            op = '['  # all assignment on scope is setitem
+        _assign_op(dest=cur, op=op, arg=arg, val=target, path=_t, scope=scope)
         return target  # A should not change the target
     return cur
+
+
+def _assign_op(dest, op, arg, val, path, scope):
+    """helper method for doing the assignment on a T operation"""
+    if op == '[':
+        dest[arg] = val
+    elif op == '.':
+        setattr(dest, arg, val)
+    elif op == 'P':
+        _assign = scope[TargetRegistry].get_handler('assign', dest)
+        try:
+            _assign(dest, arg, val)
+        except Exception as e:
+            raise PathAssignError(e, path, arg)
+    else:  # pragma: no cover
+        raise ValueError('unsupported T operation for assignment')
+
+
+def _extend_children(children, item, get_handler):
+    try:  # dict or obj-like
+        keys = get_handler('keys', item)
+        get = get_handler('get', item)
+    except UnregisteredTarget:
+        try:
+            iterate = get_handler('iterate', item)
+        except UnregisteredTarget:
+            pass
+        else:
+            try:  # list-like
+                children.extend(iterate(item))
+            except Exception:
+                pass
+    else:
+        try:
+            for key in keys(item):
+                try:
+                    children.append(get(item, key))
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
 
 T = TType()  # target aka Mr. T aka "this"
@@ -1626,6 +1714,9 @@ A = TType()  # like S, but shorthand to assign target to scope
 _T_PATHS[T] = (T,)
 _T_PATHS[S] = (S,)
 _T_PATHS[A] = (A,)
+
+_T_STAR = T.__star__()  # helper constant for Path.from_text
+_T_STARSTAR = T.__starstar__()  # helper constant for Path.from_text
 
 UP = make_sentinel('UP')
 ROOT = make_sentinel('ROOT')
@@ -1658,6 +1749,10 @@ def _format_t(path, root=T):
             prepr.append(format_invocation(args=args, kwargs=kwargs, repr=bbrepr))
         elif op == 'P':
             return _format_path(path)
+        elif op == 'x':
+            prepr.append(".__star__()")
+        elif op == 'X':
+            prepr.append(".__starstar__()")
         elif op in ('_', '~'):  # unary arithmetic operators
             if any([o in path[:i] for o in '+-/%:&|^~_']):
                 prepr = ['('] + prepr + [')']
@@ -1812,6 +1907,16 @@ class _AbstractIterable(_AbstractIterableBase):
         return callable(getattr(C, "__iter__", None))
 
 
+
+class _ObjStyleKeysMeta(type):
+    def __instancecheck__(cls, C):
+        return hasattr(C, "__dict__") and hasattr(C.__dict__, "keys")
+
+
+class _ObjStyleKeys(_ObjStyleKeysMeta('_AbstractKeys', (object,), {})):
+    __metaclass__ = _ObjStyleKeysMeta
+
+
 def _get_sequence_item(target, index):
     return target[int(index)]
 
@@ -1953,9 +2058,11 @@ class TargetRegistry(object):
     def _register_default_types(self):
         self.register(object)
         self.register(dict, get=operator.getitem)
+        self.register(dict, keys=dict.keys)
         self.register(list, get=_get_sequence_item)
         self.register(tuple, get=_get_sequence_item)
         self.register(_AbstractIterable, iterate=iter)
+        self.register(_ObjStyleKeys, keys=lambda v: v.__dict__.keys())
 
     def _register_fuzzy_type(self, op, new_type, _type_tree=None):
         """Build a "type tree", an OrderedDict mapping registered types to

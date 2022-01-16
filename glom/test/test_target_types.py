@@ -31,18 +31,19 @@ def test_types_leave_one_out():
     ALL_TYPES = [A, B, C, D, E, F]
     for cur_t in ALL_TYPES:
 
-        glommer = Glommer(register_default_types=True)
+        treg = TargetRegistry(register_default_types=False)
+
+        treg.register(object, get=lambda: object)
         for t in ALL_TYPES:
             if t is cur_t:
                 continue
-            glommer.register(t, get=getattr)
+            treg.register(t, get=(lambda t: lambda: t)(t))
 
         obj = cur_t()
-        treg = glommer.scope[TargetRegistry]
-        assert treg._get_closest_type(obj, treg._op_type_tree['get']) == obj.__class__.mro()[1]
+        assert treg.get_handler('get', obj)() == obj.__class__.mro()[1]
 
         if cur_t is E:
-            assert glommer.scope[TargetRegistry]._get_closest_type(obj, treg._op_type_tree['get']) is C  # sanity check
+            assert treg.get_handler('get', obj)() is C  # sanity check
 
     return
 

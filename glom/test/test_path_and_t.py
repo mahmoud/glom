@@ -1,7 +1,8 @@
 
 from pytest import raises
 
-from glom import glom, Path, S, T, A, PathAccessError, GlomError, BadSpec
+from glom import glom, Path, S, T, A, PathAccessError, GlomError, BadSpec, Assign, Delete
+from glom import core
 
 def test_list_path_access():
     assert glom(list(range(10)), Path(1)) == 1
@@ -50,6 +51,10 @@ def test_path_t_roundtrip():
     # check builtin repr
     assert repr(T[len]) == 'T[len]'
     assert repr(T.func(len, sum)) == 'T.func(len, sum)'
+
+    # check * and **
+    assert repr(T.__star__().__starstar__()) == 'T.__star__().__starstar__()'
+    assert repr(Path('a', T.__star__().__starstar__())) == "Path('a', T.__star__().__starstar__())"
 
 
 def test_path_access_error_message():
@@ -187,6 +192,54 @@ def test_path_items():
                             ('(', ((), {'test': 'yes'})))
 
     assert Path().items() == ()
+
+
+def test_path_star():
+    core.PATH_STAR = True
+    val = {'a': [1, 2, 3]}
+    assert glom(val, 'a.*') == [1, 2, 3]
+    val['a'] = [{'b': v} for v in val['a']]
+    assert glom(val, 'a.*.b') == [1, 2, 3]
+    assert glom(val, T['a'].__star__()['b']) == [1, 2, 3]
+    assert glom(val, Path('a', T.__star__(), 'b')) == [1, 2, 3]
+    # multi-paths eat errors
+    assert glom(val, Path('a', T.__star__(), T.b)) == []
+    val = [[[1]]]
+    assert glom(val, '**') == [ [[1]], [1], 1]
+    val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'d': {'c': 3}}]}]}
+    assert glom(val, '**.c') == [1, 2, 3]
+    assert glom(val, 'a.**.c') == [1, 2, 3]
+    assert glom(val, T['a'].__starstar__()['c']) == [1, 2, 3]
+    assert glom(val, 'a.*.b.*.c') == [[1, 2]]
+    # errors
+    class ErrDict(dict):
+        def __getitem__(key): 1/0
+    assert ErrDict(val).keys()  # it will try to iterate
+    assert glom(ErrDict(val), '**') == []
+    # object access
+    class A:
+        def __init__(self):
+            self.a = 1
+            self.b = {'c': 2}
+    val = A()
+    assert glom(val, '*') == [1, {'c': 2}]
+    assert glom(val, '**') == [1, {'c': 2}, 2]
+    core.PATH_STAR = False
+
+
+def test_star_broadcast():
+    core.PATH_STAR = True
+    val = {'a': [1, 2, 3]}
+    assert glom(val, Path.from_text('a.*').path_t + 1) == [2, 3, 4]
+    val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'c': 3}]}]}
+    assert glom(val, Path.from_text('**.c').path_t + 1) == [2, 3, 4]
+    core.PATH_STAR = False
+
+
+def test_star_warning():
+    '''check that the default behavior is as expected; this will change when * is default on'''
+    assert glom({'*': 1}, '*') == 1
+    assert Path._STAR_WARNED
 
 
 def test_path_eq():
