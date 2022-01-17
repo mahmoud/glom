@@ -196,7 +196,7 @@ def _unpack_stack(scope, only_errors=True):
 
     this is a convenience method for printing stacks
 
-    only_errors=True means ignore branches which may still be hanging around]
+    only_errors=True means ignore branches which may still be hanging around
     which were not involved in the stack trace of the error
 
     only_errors=False could be useful for debugger / introspection (similar
