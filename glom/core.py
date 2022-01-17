@@ -617,16 +617,12 @@ class Path(object):
             if isinstance(part, Path):
                 part = part.path_t
             if isinstance(part, TType):
-                sub_parts = _T_PATHS[part]
-                if sub_parts[0] is not T:
+                if part.__ops__[0] != 'T':
                     raise ValueError('path segment must be path from T, not %r'
                                      % sub_parts[0])
-                i = 1
-                while i < len(sub_parts):
-                    path_t = _t_child(path_t, sub_parts[i], sub_parts[i + 1])
-                    i += 2
+                path_t = TType(path_t, part.__ops__, *part.__args__)
             else:
-                path_t = _t_child(path_t, 'P', part)
+                path_t = TType(path_t, 'P', part)
         self.path_t = path_t
 
     _CACHE = {True: {}, False: {}}
@@ -1535,30 +1531,29 @@ def _s_first_magic(scope, key, _t):
 
 
 def _t_eval(target, _t, scope):
-    _t.__ops__
-    _t.__args__
-
-    t_path = _T_PATHS[_t]
-    i = 1
-    fetch_till = len(t_path)
     root = _t.__ops__[0]
     ops = _t.__ops__
-    args = reversed(_t.__args__)  # so we can pop cheaply with next()
+    args = _t.__args__
+    cur_arg = 0
+    cur_op = 1
+    fetch_till = len(ops)
     if root == 'T':
         cur = target
     elif root in 'SA':
         # A is basically the same as S, but last step is assign
         if root == 'A':
-            fetch_till -= 2
-            if fetch_till < 1:
+            fetch_till -= 1
+            if fetch_till < 2:
                 raise BadSpec('cannot assign without destination')
         cur = scope
-        if fetch_till > 1 and t_path[1] in ('.', 'P'):
-            cur = _s_first_magic(cur, t_path[2], _t)
-            i += 2
-        elif root == 'S' and fetch_till > 1 and t_path[1] == '(':
+        if fetch_till > 1 and ops[1] in '.P':
+            cur = _s_first_magic(cur, args[0], _t)
+            cur_op += 1
+            cur_arg += 1
+        elif root == 'S' and fetch_till > 1 and ops[1] == '(':
             # S(var='spec') style assignment
-            _, kwargs = t_path[2]
+            assert args[0] == () # call args should be empty on S
+            kwargs = args[1]
             scope.update({
                 k: scope[glom](target, v, scope) for k, v in kwargs.items()})
             return target
@@ -1566,10 +1561,13 @@ def _t_eval(target, _t, scope):
     else:
         raise ValueError('TType instance with invalid root')  # pragma: no cover
     pae = None
-    while i < fetch_till:
-        op, arg = t_path[i], t_path[i + 1]
-        if type(arg) in (Spec, TType, Val):
-            arg = scope[glom](target, arg, scope)
+    while cur_op < fetch_till:
+        op = ops[cur_op]
+        if op in '.[P+-*#/%:&|^':
+            arg = args[cur_arg]
+            cur_arg += 1
+            if type(arg) in (Spec, TType, Val):
+                arg = scope[glom](target, arg, scope)
         if op == '.':
             try:
                 cur = getattr(cur, arg)
@@ -1582,7 +1580,7 @@ def _t_eval(target, _t, scope):
                 pae = PathAccessError(e, Path(_t), i // 2)
         elif op == 'P':
             # Path type stuff (fuzzy match)
-            get = scope[TargetRegistry].get_handler('get', cur, path=t_path[2:i+2:2])
+            get = scope[TargetRegistry].get_handler('get', cur, path=args[:cur_arg+1])
             try:
                 cur = get(cur, arg)
             except Exception as e:
@@ -1602,8 +1600,7 @@ def _t_eval(target, _t, scope):
                         _extend_children(nxt, item, get_handler)
             # handle the rest of the t_path in recursive calls
             cur = []
-            todo = TType()
-            _T_PATHS[todo] = (root,) + t_path[i+2:]
+            todo = TType(root + ops[cur_op:], args[cur_arg:])
             for child in nxt:
                 try:
                     cur.append(_t_eval(child, todo, scope))
@@ -1612,7 +1609,7 @@ def _t_eval(target, _t, scope):
             break  # we handled the rest in recursive call, break loop
         elif op == '(':
             args, kwargs = arg
-            scope[Path] += t_path[2:i+2:2]
+            scope[Path] += args[:cur_arg+1]
             cur = scope[glom](
                 target, Call(cur, args, kwargs), scope)
             # call with target rather than cur,
@@ -1650,9 +1647,9 @@ def _t_eval(target, _t, scope):
                 pae = PathAccessError(e, Path(_t), i // 2)
         if pae:
             raise pae
-        i += 2
+        cur_op += 1
     if root is A:
-        op, arg = t_path[-2:]
+        op, arg = ops[-1], args[-1]
         if cur is scope:
             op = '['  # all assignment on scope is setitem
         _assign_op(dest=cur, op=op, arg=arg, val=target, path=_t, scope=scope)
@@ -1701,13 +1698,10 @@ def _extend_children(children, item, get_handler):
             pass
 
 
-T = TType()  # target aka Mr. T aka "this"
-S = TType()  # like T, but means grab stuff from Scope, not Target
-A = TType()  # like S, but shorthand to assign target to scope
+T = TType(None, 'T')  # target aka Mr. T aka "this"
+S = TType(None, 'S')  # like T, but means grab stuff from Scope, not Target
+A = TType(None, 'A')  # like S, but shorthand to assign target to scope
 
-_T_PATHS[T] = (T,)
-_T_PATHS[S] = (S,)
-_T_PATHS[A] = (A,)
 
 _T_STAR = T.__star__()  # helper constant for Path.from_text
 _T_STARSTAR = T.__starstar__()  # helper constant for Path.from_text
