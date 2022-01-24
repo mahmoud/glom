@@ -13,6 +13,22 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
+22.1.0
+------
+*(January 24, 2022)*
+
+Adds optional `*` and `**` expansion to the default glom access (i.e.,
+`glom.glom('a.b.*')` will get all items under `b` as a list). `**` is
+similar, except recursive.
+
+This functionality is off by default in this version, as it
+technically would break code using `'*'` and `'**'` as plain
+keys. Note that this behavior will break in the next couple months,
+and an in-library warning has been added to this effect.
+
+Set `glom.core.PATH_STAR = True` to enable the new feature and take it
+for a spin!
+
 20.11.0
 -------
 *(November 3, 2020)*
