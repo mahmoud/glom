@@ -1916,6 +1916,13 @@ class _ObjStyleKeysMeta(type):
 class _ObjStyleKeys(_ObjStyleKeysMeta('_AbstractKeys', (object,), {})):
     __metaclass__ = _ObjStyleKeysMeta
 
+    @staticmethod
+    def get_keys(obj):
+        ret = obj.__dict__.keys()
+        if PY2:
+            ret.sort()
+        return ret
+
 
 def _get_sequence_item(target, index):
     return target[int(index)]
@@ -2062,7 +2069,7 @@ class TargetRegistry(object):
         self.register(list, get=_get_sequence_item)
         self.register(tuple, get=_get_sequence_item)
         self.register(_AbstractIterable, iterate=iter)
-        self.register(_ObjStyleKeys, keys=lambda v: v.__dict__.keys())
+        self.register(_ObjStyleKeys, keys=_ObjStyleKeys.get_keys)
 
     def _register_fuzzy_type(self, op, new_type, _type_tree=None):
         """Build a "type tree", an OrderedDict mapping registered types to
