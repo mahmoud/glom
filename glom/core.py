@@ -1426,8 +1426,8 @@ class TType(object):
        equivalent to accessing the ``__class__`` attribute.
 
     """
-    # __ops is a string of single character operators
-    # __args is a tuple of operators
+    # __ops__ is a string of single character operators
+    # __args__ is a tuple of operators
     __slots__ = ('__ops__', '__args__')
 
     def __init__(self, parent, op, *args):
