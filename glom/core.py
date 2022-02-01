@@ -664,13 +664,13 @@ class Path(object):
         return _t_eval(target, self.path_t, scope)
 
     def __len__(self):
-        return (len(_T_PATHS[self.path_t]) - 1) // 2
+        return (len(self.path_t.__ops__) - 1) // 2
 
     def __eq__(self, other):
         if type(other) is Path:
-            return _T_PATHS[self.path_t] == _T_PATHS[other.path_t]
+            return self.path_t == other.path_t
         elif type(other) is TType:
-            return _T_PATHS[self.path_t] == _T_PATHS[other]
+            return self.path_t == other
         return False
 
     def __ne__(self, other):
@@ -683,8 +683,10 @@ class Path(object):
         >>> Path(T.a.b, 'c', T['d']).values()
         ('a', 'b', 'c', 'd')
         """
-        cur_t_path = _T_PATHS[self.path_t]
-        return cur_t_path[2::2]
+        # TODO: this doesn't "chunk" correctly --
+        # before call would be (..., (arg, kwarg), ...)
+        # now it is (..., arg, kwarg, ...)
+        return self.path_t.__args__
 
     def items(self):
         """
@@ -709,10 +711,9 @@ class Path(object):
 
     def from_t(self):
         '''return the same path but starting from T'''
-        t_path = _T_PATHS[self.path_t]
-        if t_path[0] is S:
-            new_t = TType()
-            _T_PATHS[new_t] = (T,) + t_path[1:]
+        if self.path_t.__ops__[0] != 'T':
+            new_t = copy.copy(self.path_t)
+            new_t.__ops__[0] = 'T'
             return Path(new_t)
         return self
 
@@ -742,12 +743,26 @@ class Path(object):
         return Path(new_t)
 
     def __repr__(self):
-        return _format_path(_T_PATHS[self.path_t][1:])
+        return _format_path(self.path_t)
 
 
-def _format_path(t_path):
+def _format_path(t):
     path_parts, cur_t_path = [], []
     i = 0
+    ops = t.__ops__
+    args = t.__args__
+    arg_index = 0
+    for op in ops:
+        if op == 'P':
+            if cur_t_path:
+                path_parts.append(cur_t_path)
+                cur_t_path = []
+            path_parts.append(arg)
+        else:
+            cur_t_path.append(op)
+            cur_t_path.append(arg)
+
+
     while i < len(t_path):
         op, arg = t_path[i], t_path[i + 1]
         i += 2
@@ -1434,7 +1449,8 @@ class TType(object):
         if parent is None:
             assert len(op) == 1, "root TType op must be name"
             assert args == (), "root TType cannot have args"
-            self.__ops__ = ''
+            assert op in 'TSA'
+            self.__ops__ = op
             self.__args__ = ()
         else:
             self.__ops__ = parent.__ops__ + op
@@ -1468,6 +1484,41 @@ class TType(object):
     def __stars__(self):
         """how many times the result will be wrapped in extra lists"""
         return self.__ops.count('x') + self.__ops.count('X')
+
+    def __suffix_from__(self, op_num):
+        """
+        create a new child from the given op index
+        T.child_from(0) == T
+        T.a.b.child_from(1) == T.b
+        etc
+        (this turns out to be a utility that is needed for a lot of helpers)
+        """
+        if op_num > len(self.__ops__):
+            raise IndexError(
+                "tried to take suffix from {} of T with only {} operators".format(
+                    op_num, len(self.__ops__) - 1))
+        arg_index = 0
+        for op in self.__ops__[1:op_num + 1]:
+            if op == '(':
+                arg_index += 2
+            elif op not in _T_NO_ARGS:
+                arg_index += 1
+        suffix = TType(None, self.__ops__[0])
+        suffix.__ops__ += self.__ops__[op_num + 1:]
+        suffix.__args__ = self.__args__[arg_index:]
+        return suffix
+
+    def __t_items__(self):
+        """(relatively) low performance iteration over operators + args"""
+        arg_index = 0
+        args = self.__args__
+        ops = self.__ops__[1:]
+        for op in self.ops:
+            if op in '.[P+-*#/%:&|^':
+                arg = args[arg_index]
+                arg += 1
+                yield op, arg
+
 
     def __add__(self, arg):
         return TType(self, '+', arg)
@@ -1511,8 +1562,11 @@ class TType(object):
         return TType(self, '.', '__' + name)
 
     def __repr__(self):
-        t_path = _T_PATHS[self]
-        return _format_t(t_path[1:], t_path[0])
+        return _format_t(self)
+
+
+_T_NO_ARGS = '~_xX'
+_T_2_ARGS = '('
 
 
 def _s_first_magic(scope, key, _t):
@@ -1719,11 +1773,16 @@ def _format_slice(x):
     return fmt(x.start) + ":" + fmt(x.stop) + ":" + fmt(x.step)
 
 
-def _format_t(path, root=T):
-    prepr = [{T: 'T', S: 'S', A: 'A'}[root]]
-    i = 0
-    while i < len(path):
-        op, arg = path[i], path[i + 1]
+def _format_t(t):
+    prepr = [t.__ops__[0]]  # should always be one of 'TSA'
+    args = t.__args__
+    ops = t.__ops__[1:]
+    arg_index = 0
+    has_arithmetic_op = False  # after this, we need to parenthesize
+    for op in ops:
+        if op in '.[P+-*#/%:&|^':
+            arg = args[arg_index]
+            arg_index += 1
         if op == '.':
             prepr.append('.' + arg)
         elif op == '[':
@@ -1733,27 +1792,26 @@ def _format_t(path, root=T):
                 index = _format_slice(arg)
             prepr.append("[%s]" % (index,))
         elif op == '(':
-            args, kwargs = arg
+            args, kwargs = args[arg_index:arg_index + 2]
+            arg_index += 2
             prepr.append(format_invocation(args=args, kwargs=kwargs, repr=bbrepr))
-        elif op == 'P':
-            return _format_path(path)
         elif op == 'x':
             prepr.append(".__star__()")
         elif op == 'X':
             prepr.append(".__starstar__()")
-        elif op in ('_', '~'):  # unary arithmetic operators
-            if any([o in path[:i] for o in '+-/%:&|^~_']):
+        elif op in '_~':  # unary arithmetic operators
+            if has_arithmetic_op:
                 prepr = ['('] + prepr + [')']
             prepr = ['-' if op == '_' else op] + prepr
+            has_arithmetic_op = True
         else:  # binary arithmetic operators
             formatted_arg = bbrepr(arg)
             if type(arg) is TType:
-                arg_path = _T_PATHS[arg]
-                if any([o in arg_path for o in '+-/%:&|^~_']):
+                if any(o in arg.__ops__ for o in '+-/%:&|^~_'):
                     formatted_arg = '(' + formatted_arg + ')'
             prepr.append(' ' + ('**' if op == ':' else op) + ' ')
             prepr.append(formatted_arg)
-        i += 2
+            has_arithmetic_op = True
     return "".join(prepr)
 
 
