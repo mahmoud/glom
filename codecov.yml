@@ -1,0 +1,2 @@
+ignore:
+  - "**/*_backport.py"  # ignore coverage on vendored py2 backports
