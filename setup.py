@@ -3,6 +3,7 @@ import os
 import sys
 
 from setuptools import setup
+from Cython.Build import cythonize
 
 __author__ = 'Mahmoud Hashemi and Kurt Rose'
 __contact__ = 'mahmoud@hatnote.com'
@@ -34,6 +35,7 @@ setup(name='glom',
           'Documentation': 'https://glom.readthedocs.io/en/latest/',
       },
       packages=['glom', 'glom.test'],
+      ext_modules=cythonize("glom/*.pyx"),
       install_requires=['boltons>=19.3.0', 'attrs', 'face>=20.1.0'],
       extras_require={
           'yaml': ['PyYAML'],
