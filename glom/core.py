@@ -42,11 +42,12 @@ if PY2:
     _AbstractIterableBase = object
     from .chainmap_backport import ChainMap
     from repr import Repr
+    from .reprlib_backport import recursive_repr
 else:
     basestring = str
     _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
     from collections import ChainMap
-    from reprlib import Repr
+    from reprlib import Repr, recursive_repr
 
 GLOM_DEBUG = os.getenv('GLOM_DEBUG', '').strip().lower()
 GLOM_DEBUG = False if (GLOM_DEBUG in ('', '0', 'false')) else True
@@ -111,6 +112,8 @@ in case of exceptions
 """
 
 MODE =  make_sentinel('MODE')
+
+MIN_MODE =  make_sentinel('MIN_MODE')
 
 CHILD_ERRORS = make_sentinel('CHILD_ERRORS')
 CHILD_ERRORS.__doc__ = """
@@ -187,11 +190,17 @@ class GlomError(Exception):
         return exc_get_message()
 
 
-def _unpack_stack(scope):
+def _unpack_stack(scope, only_errors=True):
     """
     convert scope to [[scope, spec, target, error, [children]]]
 
     this is a convenience method for printing stacks
+
+    only_errors=True means ignore branches which may still be hanging around
+    which were not involved in the stack trace of the error
+
+    only_errors=False could be useful for debugger / introspection (similar
+    to traceback.print_stack())
     """
     stack = []
     scope = scope.maps[0]
@@ -215,6 +224,11 @@ def _unpack_stack(scope):
         cur, nxt = stack[i], stack[i + 1]
         if cur[3] == nxt[3]:
             cur[3] = None
+    if only_errors:  # trim the stack to the last error
+        # leave at least 1 to not break formatting func below
+        # TODO: make format_target_spec_trace() tolerate an "empty" stack cleanly
+        while len(stack) > 1 and stack[-1][3] is None:
+            stack.pop()
     return stack
 
 
@@ -279,7 +293,7 @@ def format_oneline_trace(scope):
     # if the target is the same, don't repeat it
     segments = []
     prev_target = _MISSING
-    for scope, spec, target, error, branches in _unpack_stack(scope):
+    for scope, spec, target, error, branches in _unpack_stack(scope, only_errors=False):
         segments.append('/')
         if type(spec) in (TType, Path):
             segments.append(bbrepr(spec))
@@ -526,7 +540,7 @@ class _BBRepr(Repr):
         return _BUILTIN_ID_NAME_MAP.get(id(x), ret)
 
 
-bbrepr = _BBRepr().repr
+bbrepr = recursive_repr()(_BBRepr().repr)
 
 
 class _BBReprFormatter(string.Formatter):
@@ -925,7 +939,7 @@ class Coalesce(object):
                 continue
         else:
             if self.default is not _MISSING:
-                ret = self.default
+                ret = arg_val(target, self.default, scope)
             elif self.default_factory is not _MISSING:
                 ret = self.default_factory()
             else:
@@ -1087,19 +1101,8 @@ class Call(object):
 
     def glomit(self, target, scope):
         'run against the current target'
-        def _eval(t):
-            if type(t) in (Spec, TType):
-                return scope[glom](target, t, scope)
-            return t
-        if type(self.args) is TType:
-            args = _eval(self.args)
-        else:
-            args = [_eval(a) for a in self.args]
-        if type(self.kwargs) is TType:
-            kwargs = _eval(self.kwargs)
-        else:
-            kwargs = {name: _eval(val) for name, val in self.kwargs.items()}
-        return _eval(self.func)(*args, **kwargs)
+        r = lambda spec: arg_val(target, spec, scope)
+        return r(self.func)(*r(self.args), **r(self.kwargs))
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -1566,7 +1569,7 @@ def _t_eval(target, _t, scope):
             # S(var='spec') style assignment
             _, kwargs = t_path[2]
             scope.update({
-                k: scope[glom](target, v, scope) for k, v in kwargs.items()})
+                k: arg_val(target, v, scope) for k, v in kwargs.items()})
             return target
 
     else:
@@ -1574,8 +1577,7 @@ def _t_eval(target, _t, scope):
     pae = None
     while i < fetch_till:
         op, arg = t_path[i], t_path[i + 1]
-        if type(arg) in (Spec, TType, Val):
-            arg = scope[glom](target, arg, scope)
+        arg = arg_val(target, arg, scope)
         if op == '.':
             try:
                 cur = getattr(cur, arg)
@@ -2258,6 +2260,7 @@ def glom(target, spec, **kwargs):
         Path: kwargs.pop('path', []),
         Inspect: kwargs.pop('inspector', None),
         MODE: AUTO,
+        MIN_MODE: None,
         CHILD_ERRORS: [],
         'globals': ScopeVars({}, {}),
     })
@@ -2274,7 +2277,7 @@ def glom(target, spec, **kwargs):
         except skip_exc:
             if default is _MISSING:
                 raise
-            ret = default
+            ret = default  # should this also be arg_val'd?
     except Exception as e:
         if glom_debug:
             raise
@@ -2335,16 +2338,19 @@ def _glom(target, spec, scope):
         UP: parent,
         CHILD_ERRORS: [],
         MODE: pmap[MODE],
+        MIN_MODE: pmap[MIN_MODE],
     })
     pmap[LAST_CHILD_SCOPE] = scope
 
     try:
         if type(spec) is TType:  # must go first, due to callability
+            scope[MIN_MODE] = None  # None is tombstone
             return _t_eval(target, spec, scope)
         elif _has_callable_glomit(spec):
+            scope[MIN_MODE] = None
             return spec.glomit(target, scope)
 
-        return scope.maps[0][MODE](target, spec, scope)
+        return (scope.maps[0][MIN_MODE] or scope.maps[0][MODE])(target, spec, scope)
     except Exception as e:
         scope.maps[1][CHILD_ERRORS].append(scope)
         scope.maps[0][CUR_ERROR] = e
@@ -2538,3 +2544,38 @@ def FILL(target, spec, scope):
     if callable(spec):
         return spec(target)
     return spec
+
+class _ArgValuator(object):
+    def __init__(self):
+        self.cache = {}
+
+    def mode(self, target, spec, scope):
+        """
+        similar to FILL, but without function calling;
+        useful for default, scope assignment, call/invoke, etc
+        """
+        recur = lambda val: scope[glom](target, val, scope)
+        result = spec
+        if type(spec) in (list, dict):  # can contain themselves
+            if id(spec) in self.cache:
+                return self.cache[id(spec)]
+            result = self.cache[id(spec)] = type(spec)()
+            if type(spec) is dict:
+                result.update({recur(key): recur(val) for key, val in spec.items()})
+            else:
+                result.extend([recur(val) for val in spec])
+        if type(spec) in (tuple, set, frozenset):  # cannot contain themselves
+            result = type(spec)([recur(val) for val in spec])
+        return result
+
+
+def arg_val(target, arg, scope):
+    """
+    evaluate an argument to find its value
+    (arg_val phonetically similar to "eval" -- evaluate as an arg)
+    """
+    mode = scope[MIN_MODE]
+    scope[MIN_MODE] = _ArgValuator().mode
+    result = scope[glom](target, arg, scope)
+    scope[MIN_MODE] = mode
+    return result

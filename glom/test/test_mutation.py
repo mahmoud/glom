@@ -1,7 +1,7 @@
 import pytest
 
 from glom import glom, Path, T, S, Spec, Glommer, PathAssignError, PathAccessError
-from glom import assign, Assign, delete, Delete, PathDeleteError
+from glom import assign, Assign, delete, Delete, PathDeleteError, Or
 from glom import core
 from glom.core import UnregisteredTarget
 
@@ -36,8 +36,17 @@ def test_assign():
     assert repr(assign_spec) == repr(eval(repr(assign_spec)))
 
 
+def test_assign_recursive():
+    val = {}
+    val[1] = [val]
+    recur_out = glom({}, Assign(T['a'], val))['a']
+    assert recur_out[1][0] is recur_out
+
+
 def test_assign_spec_val():
     output = glom({'b': 'c'}, Assign('a', Spec('b')))
+    assert output['a'] == output['b'] == 'c'
+    output = glom({'b': 'c'}, Assign('a', Or('d', 'b')))
     assert output['a'] == output['b'] == 'c'
 
 

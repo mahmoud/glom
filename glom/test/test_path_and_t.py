@@ -1,7 +1,7 @@
 
 from pytest import raises
 
-from glom import glom, Path, S, T, A, PathAccessError, GlomError, BadSpec, Assign, Delete
+from glom import glom, Path, S, T, A, PathAccessError, GlomError, BadSpec, Or, Assign, Delete
 from glom import core
 
 def test_list_path_access():
@@ -102,6 +102,30 @@ def test_t_picklability():
 
     s_spec = S.attribute
     assert repr(s_spec) == repr(pickle.loads(pickle.dumps(s_spec)))
+
+
+def test_t_subspec():
+    # tests that arg-mode is a min-mode, allowing for
+    # other specs to be embedded inside T calls
+    data = [
+        {'id': 1},
+        {'pk': 1}]
+
+    get_ids = (
+        S(id_type=int),
+        [S.id_type(Or('id', 'pk'))])
+
+    assert glom(data, get_ids) == [1, 1]
+
+    data = {'a': 1, 'b': 2, 'c': 3}
+
+    # test that "shallow" data structures translate as-is
+    get_vals = (
+        S(seq_type=tuple),
+        S.seq_type([T['a'], T['b'], Or('c', 'd')])
+    )
+
+    assert glom(data, get_vals) == (1, 2, 3)
 
 
 def test_a_forbidden():
@@ -222,8 +246,12 @@ def test_path_star():
             self.a = 1
             self.b = {'c': 2}
     val = A()
-    assert glom(val, '*') == [1, {'c': 2}]
-    assert glom(val, '**') == [1, {'c': 2}, 2]
+    if core.PY2:  # compensate for unpredictable attribute order
+        assert sorted(glom(val, '*')) == sorted([1, {'c': 2}])
+        assert sorted(glom(val, '**')) == sorted([1, {'c': 2}, 2])
+    else:
+        assert glom(val, '*') == [1, {'c': 2}]
+        assert glom(val, '**') == [1, {'c': 2}, 2]
     core.PATH_STAR = False
 
 

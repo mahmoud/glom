@@ -60,20 +60,6 @@ def test_line_trace():
     assert fmtd_stack == '/tuple!list/list<0>/dict!int/S'
 
 
-def test_short_trace():
-    stacklifier = ([{'data': S}],)
-    scope = glom([1], stacklifier)[0]['data'][ROOT][LAST_CHILD_SCOPE]
-    fmtd_stack = format_target_spec_trace(scope, None)
-    exp_lines = [
-        " - Target: [1]",
-        " - Spec: ([{'data': S}],)",
-        " - Spec: [{'data': S}]",
-        " - Target: 1",
-        " - Spec: {'data': S}",
-        " - Spec: S",
-    ]
-    assert fmtd_stack.splitlines() == exp_lines
-
 # full traceback testing:
 
 def _norm_stack(formatted_stack, exc):
