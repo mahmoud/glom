@@ -1,4 +1,7 @@
-from _thread import get_ident
+try:
+    from _thread import get_ident
+except ImportError:  # py2
+    from thread import get_ident
 
 def recursive_repr(fillvalue='...'):
     'Decorator to make a repr function return fillvalue for a recursive call'
