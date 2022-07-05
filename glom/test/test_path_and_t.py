@@ -246,8 +246,12 @@ def test_path_star():
             self.a = 1
             self.b = {'c': 2}
     val = A()
-    assert glom(val, '*') == [1, {'c': 2}]
-    assert glom(val, '**') == [1, {'c': 2}, 2]
+    if core.PY2:  # compensate for unpredictable attribute order
+        assert sorted(glom(val, '*')) == sorted([1, {'c': 2}])
+        assert sorted(glom(val, '**')) == sorted([1, {'c': 2}, 2])
+    else:
+        assert glom(val, '*') == [1, {'c': 2}]
+        assert glom(val, '**') == [1, {'c': 2}, 2]
     core.PATH_STAR = False
 
 
