@@ -127,7 +127,7 @@ on the target input's type.
     glom((1, 2, 3), (
         {
             "type": type,
-            "result": [lambda v: v + 1]  # arbitrary operation
+            "result": [T + 1]  # arbitrary operation
         }, T['type'](T['result'])))
 
 
