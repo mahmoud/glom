@@ -3,7 +3,7 @@ alabaster==0.7.10
 argh==0.26.2
 Babel==2.9.1
 backports-abc==0.5
-certifi==2018.11.29
+certifi==2022.12.7
 chardet==3.0.4
 docutils==0.14
 funcsigs==1.0.2
