@@ -21,7 +21,7 @@ except ImportError:
 from boltons.iterutils import split_iter, chunked_iter, windowed_iter, unique_iter, first
 from boltons.funcutils import FunctionBuilder
 
-from .core import glom, T, STOP, SKIP, _MISSING, Path, TargetRegistry, Call, Spec, S, bbrepr, format_invocation
+from .core import glom, T, STOP, SKIP, _MISSING, Path, TargetRegistry, Call, Spec, Pipe, S, bbrepr, format_invocation
 from .matching import Check
 
 class Iter(object):
@@ -332,7 +332,7 @@ class Iter(object):
         Note that this spec will always consume the whole iterable, and as
         such, the spec returned is *not* an :class:`Iter()` instance.
         """
-        return (self, list)
+        return Pipe(self, list)
 
     def first(self, key=T, default=None):
         """A convenience method for lazily yielding a single truthy item from
