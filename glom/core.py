@@ -2391,6 +2391,18 @@ def register(target_type, **kwargs):
     """Register *target_type* so :meth:`~Glommer.glom()` will
     know how to handle instances of that type as targets.
 
+    Here's an example of adding basic iterabile support for Django's ORM:
+
+    .. code-block:: python
+
+        import glom
+        import django.db.models
+
+        glom.register(django.db.models.Manager, iterate=lambda m: m.all())
+        glom.register(django.db.models.QuerySet, iterate=lambda qs: qs.all())
+
+
+
     Args:
        target_type (type): A type expected to appear in a glom()
           call target
@@ -2420,7 +2432,8 @@ def register(target_type, **kwargs):
 
 def register_op(op_name, **kwargs):
     """For extension authors needing to add operations beyond the builtin
-    'get' and 'iterate' to the default scope. See TargetRegistry for more details.
+    'get', 'iterate', 'keys', 'assign', and 'delete' to the default scope. 
+    See TargetRegistry for more details.
     """
     _DEFAULT_SCOPE[TargetRegistry].register_op(op_name, **kwargs)
     return
