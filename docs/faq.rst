@@ -57,6 +57,27 @@ If functionality in the top-level package is not documented, please
 file an issue or pull request so we can get that sorted out. Thanks in
 advance!
 
+What's a convenience function?
+------------------------------
+
+The primary entrypoint for glom is the ``glom()`` function, but over the years
+several other single-purpose functions were added, mostly for readability. 
+
+If you see a function with the same name as a specifier type, but lowercased, 
+that's a convenience function. Take :class:`~glom.Assign` and :func:`~glom.assign` 
+as examples:
+
+.. code-block:: python
+
+  glom({}, Assign('a'), 'b')
+  # is equivalent to
+  assign({}, 'a', 'b')
+
+At the time of writing, other convenience functions include :class:`~glom.delete`, 
+:class:`~glom.flatten`, and :class:`~glom.merge`. Note that when performing multiple 
+glom operations (access, assignment, delete, etc.), it's clearer and more efficient to 
+create a spec and execute it with the :func:`~glom.glom` top-level function.
+
 Other glom tips?
 ----------------
 
