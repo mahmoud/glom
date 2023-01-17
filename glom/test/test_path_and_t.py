@@ -229,9 +229,9 @@ def test_path_star():
     # multi-paths eat errors
     assert glom(val, Path('a', T.__star__(), T.b)) == []
     val = [[[1]]]
-    assert glom(val, '**') == [ [[1]], [1], 1]
-    val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'d': {'c': 3}}]}]}
-    assert glom(val, '**.c') == [1, 2, 3]
+    assert glom(val, '**') == [val, [[1]], [1], 1]
+    val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'d': {'c': 3}}]}], 'c': 4}
+    assert glom(val, '**.c') == [4, 1, 2, 3]
     assert glom(val, 'a.**.c') == [1, 2, 3]
     assert glom(val, T['a'].__starstar__()['c']) == [1, 2, 3]
     assert glom(val, 'a.*.b.*.c') == [[1, 2]]
@@ -239,7 +239,8 @@ def test_path_star():
     class ErrDict(dict):
         def __getitem__(key): 1/0
     assert ErrDict(val).keys()  # it will try to iterate
-    assert glom(ErrDict(val), '**') == []
+    assert glom(ErrDict(val), '**') == [val]
+    assert glom(ErrDict(val), '*') == []
     # object access
     class A:
         def __init__(self):
@@ -251,7 +252,7 @@ def test_path_star():
         assert sorted(glom(val, '**')) == sorted([1, {'c': 2}, 2])
     else:
         assert glom(val, '*') == [1, {'c': 2}]
-        assert glom(val, '**') == [1, {'c': 2}, 2]
+        assert glom(val, '**') == [val, 1, {'c': 2}, 2]
     core.PATH_STAR = False
 
 
