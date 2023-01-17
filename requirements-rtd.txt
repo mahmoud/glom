@@ -15,9 +15,7 @@ MarkupSafe==2.1.1
 more-itertools==9.0.0
 packaging==23.0
 pluggy==0.13.1
-py==1.11.0
 Pygments==2.14.0
-pytest==4.1.1
 pytz==2022.7.1
 requests==2.28.2
 six==1.16.0
