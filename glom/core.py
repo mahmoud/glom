@@ -1910,7 +1910,6 @@ class _AbstractIterable(_AbstractIterableBase):
         return callable(getattr(C, "__iter__", None))
 
 
-
 class _ObjStyleKeysMeta(type):
     def __instancecheck__(cls, C):
         return hasattr(C, "__dict__") and hasattr(C.__dict__, "keys")
@@ -2047,7 +2046,6 @@ class TargetRegistry(object):
                 raise UnregisteredTarget(op, obj_type, type_map=type_map, path=path)
 
             self._type_cache[cache_key] = ret
-
         return self._type_cache[cache_key]
 
     def get_type_map(self, op):
@@ -2071,6 +2069,8 @@ class TargetRegistry(object):
         self.register(dict, keys=dict.keys)
         self.register(list, get=_get_sequence_item)
         self.register(tuple, get=_get_sequence_item)
+        self.register(OrderedDict, get=operator.getitem)
+        self.register(OrderedDict, keys=OrderedDict.keys)
         self.register(_AbstractIterable, iterate=iter)
         self.register(_ObjStyleKeys, keys=_ObjStyleKeys.get_keys)
 
@@ -2165,7 +2165,7 @@ class TargetRegistry(object):
                                in self._op_type_map.values()], []))
         type_map = self._op_type_map.get(op_name, OrderedDict())
         type_tree = self._op_type_tree.get(op_name, OrderedDict())
-        for t in known_types:
+        for t in sorted(known_types, key=lambda t: t.__name__):
             if t in type_map:
                 continue
             try:
