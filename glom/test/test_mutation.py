@@ -318,10 +318,8 @@ def test_delete_ignore_missing():
 
 
 def test_star_broadcast():
-    core.PATH_STAR = True
     val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'c': 3}]}]}
     assert glom(val, (Assign('a.*.b.*.d', 'a'), 'a.*.b.*.d')) == [['a', 'a', 'a']]
     glom(val, Delete('a.*.b.*.d'))
     assert 'c' in val['a'][0]['b'][0]
     assert 'd' not in val['a'][0]['b'][0]
-    core.PATH_STAR = False

@@ -54,9 +54,9 @@ GLOM_DEBUG = False if (GLOM_DEBUG in ('', '0', 'false')) else True
 
 TRACE_WIDTH = max(get_wrap_width(max_width=110), 50)   # min width
 
-PATH_STAR = False
+PATH_STAR = True
 # should * and ** be interpreted as parallel traversal in Path.from_text()?
-# (will change to True in a later version)
+# Changed to True in 23.1, this option to disable will go away soon
 
 _type_type = type
 
@@ -666,7 +666,7 @@ class Path(object):
             elif not cls._STAR_WARNED:
                 if '*' in segs or '**' in segs:
                     warnings.warn(
-                        "'*' and '**' will changed behavior in a future glom version."
+                        "'*' and '**' have changed behavior in glom version 23.1."
                         " Recommend switch to T['*'] or T['**'].")
                     cls._STAR_WARNED = True
             return cls(*segs)
