@@ -1602,12 +1602,13 @@ def _t_eval(target, _t, scope):
                 # TODO: so many try/except -- could scope[TargetRegistry] stuff be cached on type?
                 _extend_children(nxt, cur, get_handler)
             elif op == 'X':
-                sofar = {id(cur)}
+                sofar = set()
                 _extend_children(nxt, cur, get_handler)
                 for item in nxt:
                     if id(item) not in sofar:
                         sofar.add(id(item))
                         _extend_children(nxt, item, get_handler)
+                nxt.insert(0, cur)
             # handle the rest of the t_path in recursive calls
             cur = []
             todo = TType()
