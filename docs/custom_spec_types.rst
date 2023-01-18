@@ -189,9 +189,9 @@ Now, let's take a look at the interesting parts, referencing the comments above:
      :ref:`new types and operations to be registered
      <setup-and-registration>` with the ``TargetRegistry``. Specifier types
      should respect this by contextually fetching these standard
-     operators as demonstrated above. At the time of writing, three
-     primary operators are used by glom itself, ``"get"``,
-     ``"iterate"``, and ``"assign"``.
+     operators as demonstrated above. At the time of writing, the
+     primary operators used by glom itself are ``"get"``,
+     ``"iterate"``, ``"keys"``, ``"assign"``, and ``"delete"``.
   5. In the event that the current target does not support your
      Specifier type's desired operation, it's customary to raise a helpful
      error. Consider creating your own exception type and inheriting

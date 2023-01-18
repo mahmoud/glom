@@ -617,6 +617,10 @@ class Path(object):
     Path('a')
     >>> path[-2:]
     Path(1, 2)
+
+    To build a Path object from a string, use :meth:`Path.from_text()`. 
+    This is the default behavior when the top-level :func:`~glom.glom` 
+    function gets a string spec.
     """
     def __init__(self, *path_parts):
         if not path_parts:
@@ -655,6 +659,7 @@ class Path(object):
         >>> Path.from_text('a.b.c')
         Path('a', 'b', 'c')
 
+        This is the default behavior when :func:`~glom.glom` gets a string spec.
         """
         def create():
             segs = text.split('.')
@@ -2209,9 +2214,21 @@ def glom(target, spec, **kwargs):
     'c'
 
     Here the *spec* was just a string denoting a path,
-    ``'a.b.``. As simple as it should be. The next example shows
-    how to use nested data to access many fields at once, and make
-    a new nested structure.
+    ``'a.b.``. As simple as it should be. You can also use 
+    :mod:`glob`-like wildcard selectors:
+
+    >>> target = {'a': [{'k': 'v1'}, {'k': 'v2'}]}
+    >>> glom(target, 'a.*.k')
+    ['v1', 'v2']
+
+    In addition to ``*``, you can also use ``**`` for recursive access:
+
+    >>> target = {'a': [{'k': 'v3'}, {'k': 'v4'}], 'k': 'v0'}
+    >>> glom(target, '**.k')
+    ['v0', 'v3', 'v4']
+    
+    The next example shows how to use nested data to 
+    access many fields at once, and make a new nested structure.
 
     Constructing, or restructuring more-complicated nested data:
 
