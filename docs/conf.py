@@ -38,7 +38,7 @@ author = u'Mahmoud Hashemi'
 # The short X.Y version
 version = u'23.1'
 # The full version, including alpha/beta/rc tags
-release = u'23.1.0'
+release = u'23.1.1'
 
 
 todo_add_to_theme_to_keep_menus_expanded = """

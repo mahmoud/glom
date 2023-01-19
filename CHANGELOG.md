@@ -13,6 +13,12 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
+23.1.1
+------
+*(January 19, 2023)*
+
+Fix a dependency issue by pinning the `face` library.
+
 23.1.0
 ------
 *(January 18, 2023)*
