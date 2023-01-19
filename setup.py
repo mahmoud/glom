@@ -7,7 +7,6 @@ from setuptools import setup
 __author__ = 'Mahmoud Hashemi and Kurt Rose'
 __contact__ = 'mahmoud@hatnote.com'
 __url__ = 'https://github.com/mahmoud/glom'
-__license__ = 'BSD'
 
 CUR_PATH = os.path.abspath(os.path.dirname(__file__))
 _version_mod_path = os.path.join(CUR_PATH, 'glom', '_version.py')
@@ -41,8 +40,8 @@ setup(name='glom',
       entry_points={'console_scripts': ['glom = glom.cli:console_main']},
       include_package_data=True,
       zip_safe=False,
-      license=__license__,
       platforms='any',
+      license_files=['LICENSE'],
       classifiers=[
           'Topic :: Utilities',
           'Intended Audience :: Developers',
