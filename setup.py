@@ -72,8 +72,8 @@ A brief checklist for release:
 * bump docs/conf.py version
 * git commit
 * write CHANGELOG
-* git tag -a vx.y.z -m "brief summary"
 * git commit
+* git tag -a vx.y.z -m "brief summary"
 * bump glom/_version.py onto n+1 dev
 * git commit
 * git push
