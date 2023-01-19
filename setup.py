@@ -71,8 +71,8 @@ A brief checklist for release:
 * twine upload dist/*
 * bump docs/conf.py version
 * git commit
-* git tag -a vx.y.z -m "brief summary"
 * write CHANGELOG
+* git tag -a vx.y.z -m "brief summary"
 * git commit
 * bump glom/_version.py onto n+1 dev
 * git commit
