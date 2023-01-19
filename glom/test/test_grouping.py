@@ -2,15 +2,15 @@ from __future__ import division
 
 from pytest import raises
 
-from glom import glom, T, SKIP, STOP, Auto, BadSpec
+from glom import glom, T, SKIP, STOP, Auto, BadSpec, Val
 from glom.grouping import Group, First, Avg, Max, Min, Sample, Limit
 
 from glom.reduction import Merge, Flatten, Sum, Count
 
 
 def test_bucketing():
-    assert glom(range(4), Group({lambda t: t % 2 == 0: [T]})) == {True: [0, 2], False: [1, 3]}
-    assert (glom(range(6), Group({lambda t: t % 3: {lambda t: t % 2: [lambda t: t / 10.0]}})) ==
+    assert glom(range(4), Group({T % 2: [T]})) == {0: [0, 2], 1: [1, 3]}
+    assert (glom(range(6), Group({T % 3: {T % 2: [T / 10.0]}})) ==
         {0: {0: [0.0], 1: [0.3]}, 1: {1: [0.1], 0: [0.4]}, 2: {0: [0.2], 1: [0.5]}})
 
 
@@ -19,10 +19,10 @@ def test_corner_cases():
     target = range(5)
 
     # immediate stop dict
-    assert glom(target, Group({(lambda t: STOP): [T]})) == {}
+    assert glom(target, Group({Val(STOP): [T]})) == {}
 
     # immediate stop list
-    assert glom(target, Group([lambda t: STOP])) == []
+    assert glom(target, Group([Val(STOP)])) == []
 
     # dict key SKIP
     assert glom(target, Group({(lambda t: SKIP if t < 3 else t): T})) == {3: 3, 4: 4}
