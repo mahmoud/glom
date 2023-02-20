@@ -10,12 +10,6 @@ from glom import glom, S, T, GlomError, Switch, Coalesce, Or, Path
 from glom.core import format_oneline_trace, format_target_spec_trace, bbrepr, ROOT, LAST_CHILD_SCOPE
 from glom.matching import M, MatchError, TypeMatchError, Match
 
-try:
-    unicode
-except NameError:
-    unicode = str  # py3
-
-_PY2 = type("") != unicode
 
 # basic tests:
 
@@ -64,13 +58,6 @@ def test_line_trace():
 
 def _norm_stack(formatted_stack, exc):
 
-    if _PY2:
-        # lil hack for py2
-        # note that we only support the one unicode character
-        formatted_stack = formatted_stack.decode('utf8') .replace(r'\xc3\xa9', u'é')
-        formatted_stack = re.sub(r'\bu"', '"', formatted_stack)
-        formatted_stack = re.sub(r"\bu'", "'", formatted_stack)
-
     normalized = []
     for line in formatted_stack.splitlines():
         if line.strip().startswith(u'File'):
@@ -85,7 +72,7 @@ def _norm_stack(formatted_stack, exc):
         # qualify python2's unqualified error type names
         exc_type_name = exc.__class__.__name__
         if exc_type_name in line:
-            mod_name = unicode(getattr(exc.__class__, '__module__', '') or '')
+            mod_name = str(getattr(exc.__class__, '__module__', '') or '')
             exc_type_qual_name = exc_type_name
             if 'builtin' not in mod_name:
                 exc_type_qual_name = mod_name + '.' + exc_type_name
@@ -189,10 +176,8 @@ glom.core.PathAccessError: could not access 'value', part 0 of Path('value'), go
     #glom.core.GLOM_DEBUG = True
     actual = _make_stack({'results': [{u'valué': u'value'}]})
     print(actual)
-    if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
-        assert len(actual.split("\n")) == len(expected.split("\n"))
-    else:
-        assert actual == expected
+
+    assert actual == expected
 
 
 # used by the test below, but at the module level to make stack traces
@@ -276,10 +261,7 @@ glom.matching.MatchError: error raised while processing, details below.
  |X glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
 glom.matching.MatchError: no matches for target in Switch
 """
-    if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
-        assert len(actual.split("\n")) == len(expected.split("\n"))
-    else:
-        assert actual == expected
+    assert actual == expected
 
 
 def test_midway_branch():
@@ -305,10 +287,7 @@ glom.core.PathAccessError: error raised while processing, details below.
  || Spec: T.a
 glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
 """
-    if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
-        assert len(actual.split("\n")) == len(expected.split("\n"))
-    else:
-        assert actual == expected
+    assert actual == expected
     # branch and another branch
     actual = _make_stack(Match(Switch(
         [(1, 1), ('a', 'a'), ([None], Switch(
@@ -338,10 +317,7 @@ glom.core.PathAccessError: error raised while processing, details below.
  ||| Spec: T.a
 glom.core.PathAccessError: could not access 'a', part 0 of T.a, got error: AttributeError("'list' object has no attribute 'a'")
 """
-    if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
-        assert len(actual.split("\n")) == len(expected.split("\n"))
-    else:
-        assert actual == expected
+    assert actual == expected
 
 
 def test_partially_failing_branch():
@@ -387,10 +363,7 @@ glom.core.CoalesceError: error raised while processing, details below.
  |X glom.core.PathAccessError: could not access 'yyy', part 0 of Path('yyy'), got error: KeyError('yyy')
 glom.core.CoalesceError: no valid values found. Tried ('xxx', 'yyy') and got (PathAccessError, PathAccessError) (at path [])
 """
-    if _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
-        assert len(actual.split("\n")) == len(expected.split("\n"))
-    else:
-        assert actual == expected
+    assert actual == expected
 
 
 def test_nesting_stack():
@@ -532,5 +505,4 @@ def test_unicode_stack():
     val = {u'resumé': u'beyoncé'}
     stack = _make_stack(target=val, spec=u'a.é.i.o')
     assert 'beyonc' in stack
-    if not _PY2: # see https://github.com/pytest-dev/pytest/issues/1347
-        assert u'é' in stack
+    assert u'é' in stack

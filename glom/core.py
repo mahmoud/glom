@@ -37,17 +37,10 @@ from boltons.typeutils import make_sentinel
 from boltons.iterutils import is_iterable
 #from boltons.funcutils import format_invocation
 
-PY2 = (sys.version_info[0] == 2)
-if PY2:
-    _AbstractIterableBase = object
-    from .chainmap_backport import ChainMap
-    from repr import Repr
-    from .reprlib_backport import recursive_repr
-else:
-    basestring = str
-    _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
-    from collections import ChainMap
-    from reprlib import Repr, recursive_repr
+basestring = str
+_AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
+from collections import ChainMap
+from reprlib import Repr, recursive_repr
 
 GLOM_DEBUG = os.getenv('GLOM_DEBUG', '').strip().lower()
 GLOM_DEBUG = False if (GLOM_DEBUG in ('', '0', 'false')) else True
@@ -1926,8 +1919,6 @@ class _ObjStyleKeys(_ObjStyleKeysMeta('_AbstractKeys', (object,), {})):
     @staticmethod
     def get_keys(obj):
         ret = obj.__dict__.keys()
-        if PY2:
-            ret.sort()
         return ret
 
 
