@@ -1049,10 +1049,6 @@ class CheckError(GlomError):
             msg += ' got %s errors: %r' % (len(self.msgs), self.msgs)
         return msg
 
-    def __copy__(self):
-        # py27 struggles to copy PAE without this method
-        return type(self)(self.msgs, self.check_obj, self.path)
-
     def __repr__(self):
         cn = self.__class__.__name__
         return '%s(%r, %r, %r)' % (cn, self.msgs, self.check_obj, self.path)

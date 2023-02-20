@@ -180,8 +180,9 @@ glom.core.PathAccessError: could not access 'value', part 0 of Path('value'), go
     assert actual == expected
 
 
-# used by the test below, but at the module level to make stack traces
-# more uniform between py2 and py3 (py3 tries to qualify lambdas and
+# used by the test below, but at the module level.
+# originally added to make stack traces more uniform between 
+# python versions (py3 tries to qualify lambdas and
 # other functions inside of local scopes.)
 
 def _uses_another_glom():
