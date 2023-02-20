@@ -15,7 +15,7 @@ __version__ = _version_mod.__version__
 
 open_kwarg = {}
 
-with open('README.md', 'utf8') as read_me:
+with open('README.md', encoding='utf8') as read_me:
     long_description = read_me.read()
 
 setup(name='glom',
