@@ -1,6 +1,5 @@
 import imp
 import os
-import sys
 
 from setuptools import setup
 
@@ -15,10 +14,8 @@ __version__ = _version_mod.__version__
 
 
 open_kwarg = {}
-if sys.version_info[0] == 3:
-    open_kwarg['encoding'] = 'utf-8'
 
-with open('README.md', **open_kwarg) as read_me:
+with open('README.md', encoding='utf8') as read_me:
     long_description = read_me.read()
 
 setup(name='glom',
@@ -47,7 +44,6 @@ setup(name='glom',
           'Intended Audience :: Developers',
           'Topic :: Software Development :: Libraries',
           'Development Status :: 5 - Production/Stable',
-          'Programming Language :: Python :: 2.7',
           'Programming Language :: Python :: 3.6',
           'Programming Language :: Python :: 3.7',
           'Programming Language :: Python :: 3.8',

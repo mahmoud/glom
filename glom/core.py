@@ -37,17 +37,10 @@ from boltons.typeutils import make_sentinel
 from boltons.iterutils import is_iterable
 #from boltons.funcutils import format_invocation
 
-PY2 = (sys.version_info[0] == 2)
-if PY2:
-    _AbstractIterableBase = object
-    from .chainmap_backport import ChainMap
-    from repr import Repr
-    from .reprlib_backport import recursive_repr
-else:
-    basestring = str
-    _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
-    from collections import ChainMap
-    from reprlib import Repr, recursive_repr
+basestring = str
+_AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
+from collections import ChainMap
+from reprlib import Repr, recursive_repr
 
 GLOM_DEBUG = os.getenv('GLOM_DEBUG', '').strip().lower()
 GLOM_DEBUG = False if (GLOM_DEBUG in ('', '0', 'false')) else True
@@ -348,10 +341,6 @@ class PathAccessError(GlomError, AttributeError, KeyError, IndexError):
         self.path = path
         self.part_idx = part_idx
 
-    def __copy__(self):
-        # py27 struggles to copy PAE without this method
-        return type(self)(self.exc, self.path, self.part_idx)
-
     def get_message(self):
         path_part = Path(self.path).values()[self.part_idx]
         return ('could not access %r, part %r of %r, got error: %r'
@@ -382,10 +371,6 @@ class PathAssignError(GlomError):
         self.exc = exc
         self.path = path
         self.dest_name = dest_name
-
-    def __copy__(self):
-        # py27 struggles to copy PAE without this method
-        return type(self)(self.exc, self.path, self.dest_name)
 
     def get_message(self):
         return ('could not assign %r on object at %r, got error: %r'
@@ -431,10 +416,6 @@ class CoalesceError(GlomError):
         self.coal_obj = coal_obj
         self.skipped = skipped
         self.path = path
-
-    def __copy__(self):
-        # py27 struggles to copy PAE without this method
-        return type(self)(self.coal_obj, self.skipped, self.path)
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -522,13 +503,12 @@ _BUILTIN_ID_NAME_MAP = dict([(id(v), k)
                              for k, v in __builtins__.items()])
 
 
-# on py27, Repr is an old-style class, hence the lack of super() below
 class _BBRepr(Repr):
     """A better repr for builtins, when the built-in repr isn't
     roundtrippable.
     """
     def __init__(self):
-        Repr.__init__(self)
+        super().__init__()
         # turn up all the length limits very high
         for name in self.__dict__:
             setattr(self, name, 1024)
@@ -1926,8 +1906,6 @@ class _ObjStyleKeys(_ObjStyleKeysMeta('_AbstractKeys', (object,), {})):
     @staticmethod
     def get_keys(obj):
         ret = obj.__dict__.keys()
-        if PY2:
-            ret.sort()
         return ret
 
 

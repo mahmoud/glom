@@ -678,9 +678,7 @@ def _handle_dict(target, spec, scope):
     if not isinstance(target, dict):
         raise TypeMatchError(type(target), dict)
     spec_keys = spec  # cheating a little bit here, list-vs-dict, but saves an object copy sometimes
-    if sys.version_info < (3, 6):
-        # apply a deterministic precedence if the python version itself does not guarantee ordering
-        spec_keys = sorted(spec_keys, key=_precedence)
+
     required = {
         key for key in spec_keys
         if _precedence(key) == 0 and type(key) is not Optional
@@ -1050,10 +1048,6 @@ class CheckError(GlomError):
         else:
             msg += ' got %s errors: %r' % (len(self.msgs), self.msgs)
         return msg
-
-    def __copy__(self):
-        # py27 struggles to copy PAE without this method
-        return type(self)(self.msgs, self.check_obj, self.path)
 
     def __repr__(self):
         cn = self.__class__.__name__
