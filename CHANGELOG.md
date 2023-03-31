@@ -13,6 +13,14 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
+23.3.0
+------
+*(March 30, 2023)*
+
+Officially drop Python 2/3.6 support and fix a small warning caused by a docstring ([#258][i258]).
+
+[i258]: https://github.com/mahmoud/glom/issues/258
+
 23.1.1
 ------
 *(January 19, 2023)*
