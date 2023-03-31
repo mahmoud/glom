@@ -762,7 +762,7 @@ def _glom_match(target, spec, scope):
 
 
 class Switch(object):
-    """The :class:`Switch` specifier type routes data processing based on
+    r"""The :class:`Switch` specifier type routes data processing based on
     matching keys, much like the classic switch statement.
 
     Here is a spec which differentiates between lowercase English
