@@ -1,2 +1,2 @@
-version_info = (23, 3, 0, "")
+version_info = (23, 3, 1, "dev")
 __version__ = '.'.join([str(part) for part in version_info if part or part == 0])
