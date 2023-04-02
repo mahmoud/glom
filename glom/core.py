@@ -37,25 +37,19 @@ from boltons.typeutils import make_sentinel
 from boltons.iterutils import is_iterable
 #from boltons.funcutils import format_invocation
 
-PY2 = (sys.version_info[0] == 2)
-if PY2:
-    _AbstractIterableBase = object
-    from .chainmap_backport import ChainMap
-    from repr import Repr
-else:
-    basestring = str
-    _AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
-    from collections import ChainMap
-    from reprlib import Repr
+basestring = str
+_AbstractIterableBase = ABCMeta('_AbstractIterableBase', (object,), {})
+from collections import ChainMap
+from reprlib import Repr, recursive_repr
 
 GLOM_DEBUG = os.getenv('GLOM_DEBUG', '').strip().lower()
 GLOM_DEBUG = False if (GLOM_DEBUG in ('', '0', 'false')) else True
 
 TRACE_WIDTH = max(get_wrap_width(max_width=110), 50)   # min width
 
-PATH_STAR = False
+PATH_STAR = True
 # should * and ** be interpreted as parallel traversal in Path.from_text()?
-# (will change to True in a later version)
+# Changed to True in 23.1, this option to disable will go away soon
 
 _type_type = type
 
@@ -111,6 +105,8 @@ in case of exceptions
 """
 
 MODE =  make_sentinel('MODE')
+
+MIN_MODE =  make_sentinel('MIN_MODE')
 
 CHILD_ERRORS = make_sentinel('CHILD_ERRORS')
 CHILD_ERRORS.__doc__ = """
@@ -187,11 +183,17 @@ class GlomError(Exception):
         return exc_get_message()
 
 
-def _unpack_stack(scope):
+def _unpack_stack(scope, only_errors=True):
     """
     convert scope to [[scope, spec, target, error, [children]]]
 
     this is a convenience method for printing stacks
+
+    only_errors=True means ignore branches which may still be hanging around
+    which were not involved in the stack trace of the error
+
+    only_errors=False could be useful for debugger / introspection (similar
+    to traceback.print_stack())
     """
     stack = []
     scope = scope.maps[0]
@@ -215,6 +217,11 @@ def _unpack_stack(scope):
         cur, nxt = stack[i], stack[i + 1]
         if cur[3] == nxt[3]:
             cur[3] = None
+    if only_errors:  # trim the stack to the last error
+        # leave at least 1 to not break formatting func below
+        # TODO: make format_target_spec_trace() tolerate an "empty" stack cleanly
+        while len(stack) > 1 and stack[-1][3] is None:
+            stack.pop()
     return stack
 
 
@@ -279,7 +286,7 @@ def format_oneline_trace(scope):
     # if the target is the same, don't repeat it
     segments = []
     prev_target = _MISSING
-    for scope, spec, target, error, branches in _unpack_stack(scope):
+    for scope, spec, target, error, branches in _unpack_stack(scope, only_errors=False):
         segments.append('/')
         if type(spec) in (TType, Path):
             segments.append(bbrepr(spec))
@@ -334,10 +341,6 @@ class PathAccessError(GlomError, AttributeError, KeyError, IndexError):
         self.path = path
         self.part_idx = part_idx
 
-    def __copy__(self):
-        # py27 struggles to copy PAE without this method
-        return type(self)(self.exc, self.path, self.part_idx)
-
     def get_message(self):
         path_part = Path(self.path).values()[self.part_idx]
         return ('could not access %r, part %r of %r, got error: %r'
@@ -368,10 +371,6 @@ class PathAssignError(GlomError):
         self.exc = exc
         self.path = path
         self.dest_name = dest_name
-
-    def __copy__(self):
-        # py27 struggles to copy PAE without this method
-        return type(self)(self.exc, self.path, self.dest_name)
 
     def get_message(self):
         return ('could not assign %r on object at %r, got error: %r'
@@ -417,10 +416,6 @@ class CoalesceError(GlomError):
         self.coal_obj = coal_obj
         self.skipped = skipped
         self.path = path
-
-    def __copy__(self):
-        # py27 struggles to copy PAE without this method
-        return type(self)(self.coal_obj, self.skipped, self.path)
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -508,13 +503,12 @@ _BUILTIN_ID_NAME_MAP = dict([(id(v), k)
                              for k, v in __builtins__.items()])
 
 
-# on py27, Repr is an old-style class, hence the lack of super() below
 class _BBRepr(Repr):
     """A better repr for builtins, when the built-in repr isn't
     roundtrippable.
     """
     def __init__(self):
-        Repr.__init__(self)
+        super().__init__()
         # turn up all the length limits very high
         for name in self.__dict__:
             setattr(self, name, 1024)
@@ -526,7 +520,7 @@ class _BBRepr(Repr):
         return _BUILTIN_ID_NAME_MAP.get(id(x), ret)
 
 
-bbrepr = _BBRepr().repr
+bbrepr = recursive_repr()(_BBRepr().repr)
 
 
 class _BBReprFormatter(string.Formatter):
@@ -603,6 +597,10 @@ class Path(object):
     Path('a')
     >>> path[-2:]
     Path(1, 2)
+
+    To build a Path object from a string, use :meth:`Path.from_text()`. 
+    This is the default behavior when the top-level :func:`~glom.glom` 
+    function gets a string spec.
     """
     def __init__(self, *path_parts):
         if not path_parts:
@@ -641,6 +639,7 @@ class Path(object):
         >>> Path.from_text('a.b.c')
         Path('a', 'b', 'c')
 
+        This is the default behavior when :func:`~glom.glom` gets a string spec.
         """
         def create():
             segs = text.split('.')
@@ -652,7 +651,7 @@ class Path(object):
             elif not cls._STAR_WARNED:
                 if '*' in segs or '**' in segs:
                     warnings.warn(
-                        "'*' and '**' will changed behavior in a future glom version."
+                        "'*' and '**' have changed behavior in glom version 23.1."
                         " Recommend switch to T['*'] or T['**'].")
                     cls._STAR_WARNED = True
             return cls(*segs)
@@ -925,7 +924,7 @@ class Coalesce(object):
                 continue
         else:
             if self.default is not _MISSING:
-                ret = self.default
+                ret = arg_val(target, self.default, scope)
             elif self.default_factory is not _MISSING:
                 ret = self.default_factory()
             else:
@@ -1087,19 +1086,8 @@ class Call(object):
 
     def glomit(self, target, scope):
         'run against the current target'
-        def _eval(t):
-            if type(t) in (Spec, TType):
-                return scope[glom](target, t, scope)
-            return t
-        if type(self.args) is TType:
-            args = _eval(self.args)
-        else:
-            args = [_eval(a) for a in self.args]
-        if type(self.kwargs) is TType:
-            kwargs = _eval(self.kwargs)
-        else:
-            kwargs = {name: _eval(val) for name, val in self.kwargs.items()}
-        return _eval(self.func)(*args, **kwargs)
+        r = lambda spec: arg_val(target, spec, scope)
+        return r(self.func)(*r(self.args), **r(self.kwargs))
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -1563,7 +1551,7 @@ def _t_eval(target, _t, scope):
             # S(var='spec') style assignment
             _, kwargs = t_path[2]
             scope.update({
-                k: scope[glom](target, v, scope) for k, v in kwargs.items()})
+                k: arg_val(target, v, scope) for k, v in kwargs.items()})
             return target
 
     else:
@@ -1571,8 +1559,7 @@ def _t_eval(target, _t, scope):
     pae = None
     while i < fetch_till:
         op, arg = t_path[i], t_path[i + 1]
-        if type(arg) in (Spec, TType, Val):
-            arg = scope[glom](target, arg, scope)
+        arg = arg_val(target, arg, scope)
         if op == '.':
             try:
                 cur = getattr(cur, arg)
@@ -1597,12 +1584,13 @@ def _t_eval(target, _t, scope):
                 # TODO: so many try/except -- could scope[TargetRegistry] stuff be cached on type?
                 _extend_children(nxt, cur, get_handler)
             elif op == 'X':
-                sofar = {id(cur)}
+                sofar = set()
                 _extend_children(nxt, cur, get_handler)
                 for item in nxt:
                     if id(item) not in sofar:
                         sofar.add(id(item))
                         _extend_children(nxt, item, get_handler)
+                nxt.insert(0, cur)
             # handle the rest of the t_path in recursive calls
             cur = []
             todo = TType()
@@ -1904,7 +1892,6 @@ class _AbstractIterable(_AbstractIterableBase):
         return callable(getattr(C, "__iter__", None))
 
 
-
 class _ObjStyleKeysMeta(type):
     def __instancecheck__(cls, C):
         return hasattr(C, "__dict__") and hasattr(C.__dict__, "keys")
@@ -1916,8 +1903,6 @@ class _ObjStyleKeys(_ObjStyleKeysMeta('_AbstractKeys', (object,), {})):
     @staticmethod
     def get_keys(obj):
         ret = obj.__dict__.keys()
-        if PY2:
-            ret.sort()
         return ret
 
 
@@ -2041,7 +2026,6 @@ class TargetRegistry(object):
                 raise UnregisteredTarget(op, obj_type, type_map=type_map, path=path)
 
             self._type_cache[cache_key] = ret
-
         return self._type_cache[cache_key]
 
     def get_type_map(self, op):
@@ -2065,6 +2049,8 @@ class TargetRegistry(object):
         self.register(dict, keys=dict.keys)
         self.register(list, get=_get_sequence_item)
         self.register(tuple, get=_get_sequence_item)
+        self.register(OrderedDict, get=operator.getitem)
+        self.register(OrderedDict, keys=OrderedDict.keys)
         self.register(_AbstractIterable, iterate=iter)
         self.register(_ObjStyleKeys, keys=_ObjStyleKeys.get_keys)
 
@@ -2159,7 +2145,7 @@ class TargetRegistry(object):
                                in self._op_type_map.values()], []))
         type_map = self._op_type_map.get(op_name, OrderedDict())
         type_tree = self._op_type_tree.get(op_name, OrderedDict())
-        for t in known_types:
+        for t in sorted(known_types, key=lambda t: t.__name__):
             if t in type_map:
                 continue
             try:
@@ -2203,9 +2189,21 @@ def glom(target, spec, **kwargs):
     'c'
 
     Here the *spec* was just a string denoting a path,
-    ``'a.b.``. As simple as it should be. The next example shows
-    how to use nested data to access many fields at once, and make
-    a new nested structure.
+    ``'a.b.``. As simple as it should be. You can also use 
+    :mod:`glob`-like wildcard selectors:
+
+    >>> target = {'a': [{'k': 'v1'}, {'k': 'v2'}]}
+    >>> glom(target, 'a.*.k')
+    ['v1', 'v2']
+
+    In addition to ``*``, you can also use ``**`` for recursive access:
+
+    >>> target = {'a': [{'k': 'v3'}, {'k': 'v4'}], 'k': 'v0'}
+    >>> glom(target, '**.k')
+    ['v0', 'v3', 'v4']
+    
+    The next example shows how to use nested data to 
+    access many fields at once, and make a new nested structure.
 
     Constructing, or restructuring more-complicated nested data:
 
@@ -2255,6 +2253,7 @@ def glom(target, spec, **kwargs):
         Path: kwargs.pop('path', []),
         Inspect: kwargs.pop('inspector', None),
         MODE: AUTO,
+        MIN_MODE: None,
         CHILD_ERRORS: [],
         'globals': ScopeVars({}, {}),
     })
@@ -2271,7 +2270,7 @@ def glom(target, spec, **kwargs):
         except skip_exc:
             if default is _MISSING:
                 raise
-            ret = default
+            ret = default  # should this also be arg_val'd?
     except Exception as e:
         if glom_debug:
             raise
@@ -2332,16 +2331,19 @@ def _glom(target, spec, scope):
         UP: parent,
         CHILD_ERRORS: [],
         MODE: pmap[MODE],
+        MIN_MODE: pmap[MIN_MODE],
     })
     pmap[LAST_CHILD_SCOPE] = scope
 
     try:
         if type(spec) is TType:  # must go first, due to callability
+            scope[MIN_MODE] = None  # None is tombstone
             return _t_eval(target, spec, scope)
         elif _has_callable_glomit(spec):
+            scope[MIN_MODE] = None
             return spec.glomit(target, scope)
 
-        return scope.maps[0][MODE](target, spec, scope)
+        return (scope.maps[0][MIN_MODE] or scope.maps[0][MODE])(target, spec, scope)
     except Exception as e:
         scope.maps[1][CHILD_ERRORS].append(scope)
         scope.maps[0][CUR_ERROR] = e
@@ -2382,6 +2384,18 @@ def register(target_type, **kwargs):
     """Register *target_type* so :meth:`~Glommer.glom()` will
     know how to handle instances of that type as targets.
 
+    Here's an example of adding basic iterabile support for Django's ORM:
+
+    .. code-block:: python
+
+        import glom
+        import django.db.models
+
+        glom.register(django.db.models.Manager, iterate=lambda m: m.all())
+        glom.register(django.db.models.QuerySet, iterate=lambda qs: qs.all())
+
+
+
     Args:
        target_type (type): A type expected to appear in a glom()
           call target
@@ -2411,7 +2425,8 @@ def register(target_type, **kwargs):
 
 def register_op(op_name, **kwargs):
     """For extension authors needing to add operations beyond the builtin
-    'get' and 'iterate' to the default scope. See TargetRegistry for more details.
+    'get', 'iterate', 'keys', 'assign', and 'delete' to the default scope. 
+    See TargetRegistry for more details.
     """
     _DEFAULT_SCOPE[TargetRegistry].register_op(op_name, **kwargs)
     return
@@ -2535,3 +2550,38 @@ def FILL(target, spec, scope):
     if callable(spec):
         return spec(target)
     return spec
+
+class _ArgValuator(object):
+    def __init__(self):
+        self.cache = {}
+
+    def mode(self, target, spec, scope):
+        """
+        similar to FILL, but without function calling;
+        useful for default, scope assignment, call/invoke, etc
+        """
+        recur = lambda val: scope[glom](target, val, scope)
+        result = spec
+        if type(spec) in (list, dict):  # can contain themselves
+            if id(spec) in self.cache:
+                return self.cache[id(spec)]
+            result = self.cache[id(spec)] = type(spec)()
+            if type(spec) is dict:
+                result.update({recur(key): recur(val) for key, val in spec.items()})
+            else:
+                result.extend([recur(val) for val in spec])
+        if type(spec) in (tuple, set, frozenset):  # cannot contain themselves
+            result = type(spec)([recur(val) for val in spec])
+        return result
+
+
+def arg_val(target, arg, scope):
+    """
+    evaluate an argument to find its value
+    (arg_val phonetically similar to "eval" -- evaluate as an arg)
+    """
+    mode = scope[MIN_MODE]
+    scope[MIN_MODE] = _ArgValuator().mode
+    result = scope[glom](target, arg, scope)
+    scope[MIN_MODE] = mode
+    return result

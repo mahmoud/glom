@@ -47,8 +47,6 @@ from face.utils import isatty
 import glom
 from glom import Path, GlomError, Inspect
 
-PY3 = (sys.version_info[0] == 3)
-
 def glom_cli(target, spec, indent, debug, inspect):
     """Command-line interface to the glom library, providing nested data
     access and data restructuring with the power of Python.
@@ -218,9 +216,6 @@ def _compile_code(code_str, name, env=None, verbose=False):
         print(code_str)
     if env is None:
         env = {}
-    if PY3:
-        exec(code, env)
-    else:
-        exec("exec code in env")
+    exec(code, env)
 
     return env[name]

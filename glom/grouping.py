@@ -52,14 +52,14 @@ class Group(object):
 
     For example, here we get a map of even and odd counts::
 
-    >>> glom(range(10), Group({lambda x: x % 2: T}))
+    >>> glom(range(10), Group({T % 2: T}))
     {0: 8, 1: 9}
 
     And here we create a `"bucketized"
     <https://boltons.readthedocs.io/en/latest/iterutils.html#boltons.iterutils.bucketize>`_
     map of even and odd numbers::
 
-    >>> glom(range(10), Group({lambda x: x % 2: [T]}))
+    >>> glom(range(10), Group({T % 2: [T]}))
     {0: [0, 2, 4, 6, 8], 1: [1, 3, 5, 7, 9]}
 
     target is the current target, accumulator is a dict
@@ -101,7 +101,7 @@ def GROUP(target, spec, scope):
     Group mode dispatcher; also sentinel for current mode = group
     """
     recurse = lambda spec: scope[glom](target, spec, scope)
-    tree = scope[ACC_TREE]  # current acuumulator support structure
+    tree = scope[ACC_TREE]  # current accumulator support structure
     if callable(getattr(spec, "agg", None)):
         return spec.agg(target, tree)
     elif callable(spec):

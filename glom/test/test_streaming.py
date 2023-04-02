@@ -207,4 +207,4 @@ def test_all():
     out = glom(int_iter, Iter().all())
     assert out == list(range(10))
     assert next(int_iter, None) is None
-    assert repr(Iter().all()) == repr((Iter(), list))
+    assert repr(Iter().all()) == 'Pipe(Iter(), list)'

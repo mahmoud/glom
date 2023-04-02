@@ -1,8 +1,8 @@
-attrs==19.1.0
+attrs==19.2.0
 boltons>=20.2.0
 coverage
-face>=20.1.1
-pytest==4.1.1
+face<22.0.0
+pytest==4.6.11;python_version<'3.6'
+pytest>=6.2.5;python_version >= '3.6'
 tox==3.7.0
-virtualenv==15.1.0
 PyYAML==5.4.1

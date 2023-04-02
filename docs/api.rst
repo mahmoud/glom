@@ -253,4 +253,5 @@ vast majority of objects out there in Python-land. However, for that
 very special remainder, glom is readily extensible!
 
 .. autofunction:: glom.register
+.. autofunction:: glom.register_op
 .. autoclass:: glom.Glommer

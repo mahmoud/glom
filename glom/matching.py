@@ -14,7 +14,7 @@ from pprint import pprint
 from boltons.iterutils import is_iterable
 from boltons.typeutils import make_sentinel
 
-from .core import GlomError, glom, T, MODE, bbrepr, bbformat, format_invocation, Path, chain_child, Val
+from .core import GlomError, glom, T, MODE, bbrepr, bbformat, format_invocation, Path, chain_child, Val, arg_val
 
 
 _MISSING = make_sentinel('_MISSING')
@@ -152,7 +152,7 @@ class Match(object):
         except GlomError:
             if self.default is _MISSING:
                 raise
-            ret = self.default
+            ret = arg_val(target, self.default, scope)
         return ret
 
     def verify(self, target):
@@ -284,7 +284,7 @@ class _Bool(object):
             return self._glomit(target, scope)
         except GlomError:
             if self.default is not _MISSING:
-                return self.default
+                return arg_val(target, self.default, scope)
             raise
 
     def _m_repr(self):
@@ -678,16 +678,15 @@ def _handle_dict(target, spec, scope):
     if not isinstance(target, dict):
         raise TypeMatchError(type(target), dict)
     spec_keys = spec  # cheating a little bit here, list-vs-dict, but saves an object copy sometimes
-    if sys.version_info < (3, 6):
-        # apply a deterministic precedence if the python version itself does not guarantee ordering
-        spec_keys = sorted(spec_keys, key=_precedence)
+
     required = {
         key for key in spec_keys
         if _precedence(key) == 0 and type(key) is not Optional
         or type(key) is Required}
-    result = {  # pre-load result with defaults
+    defaults = {  # pre-load result with defaults
         key.key: key.default for key in spec_keys
         if type(key) is Optional and key.default is not _MISSING}
+    result = {}
     for key, val in target.items():
         for maybe_spec_key in spec_keys:
             # handle Required as a special case here rather than letting it be a stand-alone spec
@@ -705,6 +704,8 @@ def _handle_dict(target, spec, scope):
                 break
         else:
             raise MatchError("key {0!r} didn't match any of {1!r}", key, spec_keys)
+    for key in set(defaults) - set(result):
+        result[key] = arg_val(target, defaults[key], scope)
     if required:
         raise MatchError("target missing expected keys: {0}", ', '.join([bbrepr(r) for r in required]))
     return result
@@ -761,7 +762,7 @@ def _glom_match(target, spec, scope):
 
 
 class Switch(object):
-    """The :class:`Switch` specifier type routes data processing based on
+    r"""The :class:`Switch` specifier type routes data processing based on
     matching keys, much like the classic switch statement.
 
     Here is a spec which differentiates between lowercase English
@@ -852,7 +853,7 @@ class Switch(object):
                 continue
             return scope[glom](target, valspec, chain_child(scope))
         if self.default is not _MISSING:
-            return self.default
+            return arg_val(target, self.default, scope)
         raise MatchError("no matches for target in %s"  % self.__class__.__name__)
 
     def __repr__(self):
@@ -961,7 +962,7 @@ class Check(object):
             target = scope[glom](target, self.spec, scope)
         if self.types and type(target) not in self.types:
             if self.default is not RAISE:
-                return self.default
+                return arg_val(target, self.default, scope)
             errs.append('expected type to be %r, found type %r' %
                         (self.types[0].__name__ if len(self.types) == 1
                          else tuple([t.__name__ for t in self.types]),
@@ -969,7 +970,7 @@ class Check(object):
 
         if self.vals and target not in self.vals:
             if self.default is not RAISE:
-                return self.default
+                return arg_val(target, self.default, scope)
             if len(self.vals) == 1:
                 errs.append("expected {}, found {}".format(self.vals[0], target))
             else:
@@ -996,7 +997,7 @@ class Check(object):
             # (early return to avoid potentially expensive or even error-causeing
             # string formats)
             if self.default is not RAISE:
-                return self.default
+                return arg_val(target, self.default, scope)
             errs.append('expected instance of %r, found instance of %r' %
                         (self.instance_of[0].__name__ if len(self.instance_of) == 1
                          else tuple([t.__name__ for t in self.instance_of]),
@@ -1047,10 +1048,6 @@ class CheckError(GlomError):
         else:
             msg += ' got %s errors: %r' % (len(self.msgs), self.msgs)
         return msg
-
-    def __copy__(self):
-        # py27 struggles to copy PAE without this method
-        return type(self)(self.msgs, self.check_obj, self.path)
 
     def __repr__(self):
         cn = self.__class__.__name__

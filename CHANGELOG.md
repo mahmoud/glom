@@ -13,6 +13,44 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
+23.3.0
+------
+*(March 30, 2023)*
+
+Officially drop Python 2/3.6 support and fix a small warning caused by a docstring ([#258][i258]).
+
+[i258]: https://github.com/mahmoud/glom/issues/258
+
+23.1.1
+------
+*(January 19, 2023)*
+
+Fix a dependency issue by pinning the `face` library.
+
+23.1.0
+------
+*(January 18, 2023)*
+
+Note: Planned last release to support Python 2. 
+
+Two long-awaited big changes in this release, with a couple smaller ones:
+
+* Enabled the star/wildcard (`*`/`**`) behavior initially released in 22.1.0 (see below) by default.
+  * If you had a spec broken by this, you can quick-fix it without downgrading by setting `glom.core.PATH_STAR = False`. 
+  * You can fix the broken paths by using the `Path` spec type explicitly, e.g., `Path('a', '*')` instead of simply `'a.*'`.
+  * `**` now includes the current target element itself. Useful for `**`-prefixed specs (e.g., `'**.key'`) so that the root element is considered.
+* Rationalized argument behavior for several spec types
+  * Affected spec types: `Coalesce, Call, T, Match, And, Or, Not, Check, Assign`
+  * In short, before 23.1.0, each of these implemented their own logic around interpreting arguments. Some treated them as literals, others had varying support for specs.
+  * Now they all use `glom.core.arg_val` to consistently handle arguments. In brief, they now all support conservative evaluation of specs (such as explicit `T` objects), very useful for when you want your spec's `default` to reference the target.
+  * More docs forthcoming.
+  * We did our best to make this as seamless and sane as possible. If this breaks something, please file an issue, we're eager to hear from you.
+* Patched an issue where OrderedDict would be treated as a plain object by Delete ([#246][i246]).
+  * Even better fix forthcoming.
+* Tweaked `Iter()` to use `Pipe()` for `.all()`, mostly for benefits to the repr.
+
+[i246]: https://github.com/mahmoud/glom/issues/246
+
 22.1.0
 ------
 *(January 24, 2022)*

@@ -102,6 +102,9 @@ def test_defaults():
 def test_match_default():
     default = []
     res = glom(None, Match(list, default=default))
+    assert res == default
+    default = []
+    res = glom(None, Match(list, default=Val(default)))
     assert res is default
 
 
@@ -500,7 +503,7 @@ def test_switch():
     	Switch({})
     with pytest.raises(TypeError):
     	Switch("wrong type")
-    assert glom(None, Switch({S(a=lambda t: 1): S['a']})) == 1
+    assert glom(None, Switch({S(a=1): S['a']})) == 1
     repr(Switch(cases))
 
 

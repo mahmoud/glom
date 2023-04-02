@@ -294,7 +294,7 @@ def test_spec_and_recursion():
     assert glom(['cat', {'cat': 1}], T[1][T[0]]) == 1
     assert glom(
         [['ab', 'cd', 'ef'], ''.join],
-        Call(T[1], args=(Spec((T[0], [T[1:]])),))) == 'bdf'
+        Call(T[1], args=(Auto((T[0], [T[1:]])),))) == 'bdf'
 
     # test that spec works on the left of a dict spec
     assert glom({'a': 'A'}, {Spec('a'): 'a', 'a': 'a'}) == {'A': 'A', 'a': 'A'}
@@ -410,7 +410,7 @@ def test_ref():
 
     etree2dicts = Ref('ElementTree',
         {"tag": "tag", "text": "text", "attrib": "attrib", "children": (iter, [Ref('ElementTree')])})
-    etree2tuples = Fill(Ref('ElementTree', (T.tag, Iter(Ref('ElementTree')).all())))
+    etree2tuples = Fill(Ref('ElementTree', (T.tag, (Iter(Ref('ElementTree')), list) )))
     etree = ElementTree.fromstring('''
     <html>
       <head>
@@ -421,7 +421,10 @@ def test_ref():
       </body>
     </html>''')
     glom(etree, etree2dicts)
-    glom(etree, etree2tuples)
+    res = glom(etree, etree2tuples)
+    # TODO: list(res[1][0]) gives back:
+    # UnregisteredTarget: UnregisteredTarget('iterate', <type 'Element'>, ...
+    # This is even more visible with Iter(Ref('ElementTree')).all()
 
 
 def test_pipe():

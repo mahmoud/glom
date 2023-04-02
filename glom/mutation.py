@@ -11,7 +11,8 @@ import operator
 from pprint import pprint
 
 from .core import Path, T, S, Spec, glom, UnregisteredTarget, GlomError, PathAccessError, UP
-from .core import TType, register_op, TargetRegistry, bbrepr, PathAssignError, _assign_op
+from .core import TType, register_op, TargetRegistry, bbrepr, PathAssignError, arg_val, _assign_op
+
 
 try:
     basestring
@@ -149,10 +150,7 @@ class Assign(object):
         self.missing = missing
 
     def glomit(self, target, scope):
-        if type(self.val) is Spec:
-            val = scope[glom](target, self.val, scope)
-        else:
-            val = self.val
+        val = arg_val(target, self.val, scope)
 
         op, arg, path = self.op, self.arg, self.path
         if self.path.startswith(S):

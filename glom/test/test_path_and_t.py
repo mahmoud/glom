@@ -1,7 +1,7 @@
 
 from pytest import raises
 
-from glom import glom, Path, S, T, A, PathAccessError, GlomError, BadSpec, Assign, Delete
+from glom import glom, Path, S, T, A, PathAccessError, GlomError, BadSpec, Or, Assign, Delete
 from glom import core
 
 def test_list_path_access():
@@ -104,6 +104,30 @@ def test_t_picklability():
     assert repr(s_spec) == repr(pickle.loads(pickle.dumps(s_spec)))
 
 
+def test_t_subspec():
+    # tests that arg-mode is a min-mode, allowing for
+    # other specs to be embedded inside T calls
+    data = [
+        {'id': 1},
+        {'pk': 1}]
+
+    get_ids = (
+        S(id_type=int),
+        [S.id_type(Or('id', 'pk'))])
+
+    assert glom(data, get_ids) == [1, 1]
+
+    data = {'a': 1, 'b': 2, 'c': 3}
+
+    # test that "shallow" data structures translate as-is
+    get_vals = (
+        S(seq_type=tuple),
+        S.seq_type([T['a'], T['b'], Or('c', 'd')])
+    )
+
+    assert glom(data, get_vals) == (1, 2, 3)
+
+
 def test_a_forbidden():
     with raises(BadSpec):
         A()  # cannot assign to function call
@@ -195,7 +219,6 @@ def test_path_items():
 
 
 def test_path_star():
-    core.PATH_STAR = True
     val = {'a': [1, 2, 3]}
     assert glom(val, 'a.*') == [1, 2, 3]
     val['a'] = [{'b': v} for v in val['a']]
@@ -205,9 +228,9 @@ def test_path_star():
     # multi-paths eat errors
     assert glom(val, Path('a', T.__star__(), T.b)) == []
     val = [[[1]]]
-    assert glom(val, '**') == [ [[1]], [1], 1]
-    val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'d': {'c': 3}}]}]}
-    assert glom(val, '**.c') == [1, 2, 3]
+    assert glom(val, '**') == [val, [[1]], [1], 1]
+    val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'d': {'c': 3}}]}], 'c': 4}
+    assert glom(val, '**.c') == [4, 1, 2, 3]
     assert glom(val, 'a.**.c') == [1, 2, 3]
     assert glom(val, T['a'].__starstar__()['c']) == [1, 2, 3]
     assert glom(val, 'a.*.b.*.c') == [[1, 2]]
@@ -215,32 +238,35 @@ def test_path_star():
     class ErrDict(dict):
         def __getitem__(key): 1/0
     assert ErrDict(val).keys()  # it will try to iterate
-    assert glom(ErrDict(val), '**') == []
+    assert glom(ErrDict(val), '**') == [val]
+    assert glom(ErrDict(val), '*') == []
     # object access
     class A:
         def __init__(self):
             self.a = 1
             self.b = {'c': 2}
     val = A()
+
     assert glom(val, '*') == [1, {'c': 2}]
-    assert glom(val, '**') == [1, {'c': 2}, 2]
-    core.PATH_STAR = False
+    assert glom(val, '**') == [val, 1, {'c': 2}, 2]
 
 
 def test_star_broadcast():
-    core.PATH_STAR = True
     val = {'a': [1, 2, 3]}
     assert glom(val, Path.from_text('a.*').path_t + 1) == [2, 3, 4]
     val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'c': 3}]}]}
     assert glom(val, Path.from_text('**.c').path_t + 1) == [2, 3, 4]
-    core.PATH_STAR = False
 
 
 def test_star_warning():
     '''check that the default behavior is as expected; this will change when * is default on'''
-    assert glom({'*': 1}, '*') == 1
-    assert Path._STAR_WARNED
-
+    assert core.PATH_STAR is True
+    try:
+        core.PATH_STAR = False
+        assert glom({'*': 1}, '*') == 1
+        assert Path._STAR_WARNED
+    finally:
+        core.PATH_STAR = True
 
 def test_path_eq():
     assert Path('a', 'b') == Path('a', 'b')

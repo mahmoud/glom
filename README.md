@@ -18,8 +18,8 @@ glom is a new and powerful way to handle real-world data, featuring:
 * Built-in data exploration and debugging features
 
 All of that and more, available as a [fully-documented][rtd],
-pure-Python package, tested on Python 2.7-3.7, as well as
-PyPy. Installation is as easy as:
+pure-Python package, tested on Python 3.7+, as well as
+PyPy3. Installation is as easy as:
 
 ```
   pip install glom
