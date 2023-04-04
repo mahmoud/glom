@@ -616,7 +616,7 @@ class Path(object):
             if isinstance(part, Path):
                 part = part.path_t
             if isinstance(part, TType):
-                sub_parts = _T_PATHS[part]
+                sub_parts = part.__ops__
                 if sub_parts[0] is not T:
                     raise ValueError('path segment must be path from T, not %r'
                                      % sub_parts[0])
@@ -668,13 +668,13 @@ class Path(object):
         return _t_eval(target, self.path_t, scope)
 
     def __len__(self):
-        return (len(_T_PATHS[self.path_t]) - 1) // 2
+        return (len(self.path_t.__ops__) - 1) // 2
 
     def __eq__(self, other):
         if type(other) is Path:
-            return _T_PATHS[self.path_t] == _T_PATHS[other.path_t]
+            return self.path_t.__ops__ == other.path_t.__ops__
         elif type(other) is TType:
-            return _T_PATHS[self.path_t] == _T_PATHS[other]
+            return self.path_t.__ops__ == other.__ops__
         return False
 
     def __ne__(self, other):
@@ -687,7 +687,7 @@ class Path(object):
         >>> Path(T.a.b, 'c', T['d']).values()
         ('a', 'b', 'c', 'd')
         """
-        cur_t_path = _T_PATHS[self.path_t]
+        cur_t_path = self.path_t.__ops__
         return cur_t_path[2::2]
 
     def items(self):
@@ -698,7 +698,7 @@ class Path(object):
         (('.', 'a'), ('.', 'b'), ('P', 'c'), ('[', 'd'))
 
         """
-        cur_t_path = _T_PATHS[self.path_t]
+        cur_t_path = self.path_t.__ops__
         return tuple(zip(cur_t_path[1::2], cur_t_path[2::2]))
 
     def startswith(self, other):
@@ -708,20 +708,20 @@ class Path(object):
             other = other.path_t
         if not isinstance(other, TType):
             raise TypeError('can only check if Path starts with string, Path or T')
-        o_path = _T_PATHS[other]
-        return _T_PATHS[self.path_t][:len(o_path)] == o_path
+        o_path = other.__ops__
+        return self.path_t.__ops__[:len(o_path)] == o_path
 
     def from_t(self):
         '''return the same path but starting from T'''
-        t_path = _T_PATHS[self.path_t]
+        t_path = self.path_t.__ops__
         if t_path[0] is S:
             new_t = TType()
-            _T_PATHS[new_t] = (T,) + t_path[1:]
+            new_t.__ops__ = (T,) + t_path[1:]
             return Path(new_t)
         return self
 
     def __getitem__(self, i):
-        cur_t_path = _T_PATHS[self.path_t]
+        cur_t_path = self.path_t.__ops__
         try:
             step = i.step
             start = i.start if i.start is not None else 0
@@ -742,11 +742,11 @@ class Path(object):
         if step is not None and step != 1:
             new_path = tuple(zip(new_path[::2], new_path[1::2]))[::step]
             new_path = sum(new_path, ())
-        _T_PATHS[new_t] = (cur_t_path[0],) + new_path
+        new_t.__ops__ = (cur_t_path[0],) + new_path
         return Path(new_t)
 
     def __repr__(self):
-        return _format_path(_T_PATHS[self.path_t][1:])
+        return _format_path(self.path_t.__ops__[1:])
 
 
 def _format_path(t_path):
@@ -1419,7 +1419,7 @@ class TType(object):
        equivalent to accessing the ``__class__`` attribute.
 
     """
-    __slots__ = ('__weakref__',)
+    __slots__ = ('__ops__',)
 
     def __getattr__(self, name):
         if name.startswith('__'):
@@ -1448,7 +1448,7 @@ class TType(object):
 
     def __stars__(self):
         """how many times the result will be wrapped in extra lists"""
-        t_ops = _T_PATHS[self][1::2]
+        t_ops = self.__ops__[1::2]
         return t_ops.count('x') + t_ops.count('X')
 
     def __add__(self, arg):
@@ -1493,28 +1493,25 @@ class TType(object):
         return _t_child(self, '.', '__' + name)
 
     def __repr__(self):
-        t_path = _T_PATHS[self]
+        t_path = self.__ops__
         return _format_t(t_path[1:], t_path[0])
 
     def __getstate__(self):
-        t_path = _T_PATHS[self]
+        t_path = self.__ops__
         return tuple(({T: 'T', S: 'S', A: 'A'}[t_path[0]],) + t_path[1:])
 
     def __setstate__(self, state):
-        _T_PATHS[self] = ({'T': T, 'S': S, 'A': A}[state[0]],) + state[1:]
-
-
-_T_PATHS = weakref.WeakKeyDictionary()
+        self.__ops__ = ({'T': T, 'S': S, 'A': A}[state[0]],) + state[1:]
 
 
 def _t_child(parent, operation, arg):
-    t = TType()
-    base = _T_PATHS[parent]
+    base = parent.__ops__
     if base[0] is A and operation not in ('.', '[', 'P'):
         # whitelist rather than blacklist assignment friendly operations
         # TODO: error type?
         raise BadSpec("operation not allowed on A assignment path")
-    _T_PATHS[t] = base + (operation, arg)
+    t = TType()
+    t.__ops__ = base + (operation, arg)
     return t
 
 
@@ -1534,7 +1531,7 @@ def _s_first_magic(scope, key, _t):
 
 
 def _t_eval(target, _t, scope):
-    t_path = _T_PATHS[_t]
+    t_path = _t.__ops__
     i = 1
     fetch_till = len(t_path)
     root = t_path[0]
@@ -1597,7 +1594,7 @@ def _t_eval(target, _t, scope):
             # handle the rest of the t_path in recursive calls
             cur = []
             todo = TType()
-            _T_PATHS[todo] = (root,) + t_path[i+2:]
+            todo.__ops__ = (root,) + t_path[i+2:]
             for child in nxt:
                 try:
                     cur.append(_t_eval(child, todo, scope))
@@ -1699,9 +1696,9 @@ T = TType()  # target aka Mr. T aka "this"
 S = TType()  # like T, but means grab stuff from Scope, not Target
 A = TType()  # like S, but shorthand to assign target to scope
 
-_T_PATHS[T] = (T,)
-_T_PATHS[S] = (S,)
-_T_PATHS[A] = (A,)
+T.__ops__ = (T,)
+S.__ops__ = (S,)
+A.__ops__ = (A,)
 
 _T_STAR = T.__star__()  # helper constant for Path.from_text
 _T_STARSTAR = T.__starstar__()  # helper constant for Path.from_text
@@ -1748,7 +1745,7 @@ def _format_t(path, root=T):
         else:  # binary arithmetic operators
             formatted_arg = bbrepr(arg)
             if type(arg) is TType:
-                arg_path = _T_PATHS[arg]
+                arg_path = arg.__ops__
                 if any([o in arg_path for o in '+-/%:&|^~_']):
                     formatted_arg = '(' + formatted_arg + ')'
             prepr.append(' ' + ('**' if op == ':' else op) + ' ')
