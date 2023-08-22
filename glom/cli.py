@@ -125,7 +125,7 @@ def mw_handle_target(target_text, target_format):
     elif target_format in ('yaml', 'yml'):
         try:
             import yaml
-            load_func = yaml.load
+            load_func = yaml.safe_load
         except ImportError:
             raise UsageError('No YAML package found. To process yaml files, run: pip install PyYAML')
     elif target_format == 'python':
