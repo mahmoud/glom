@@ -5,4 +5,4 @@ face<22.0.0
 pytest==4.6.11;python_version<'3.6'
 pytest>=6.2.5;python_version >= '3.6'
 tox==3.7.0
-PyYAML==5.4.1
+PyYAML==6.0.1
