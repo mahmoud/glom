@@ -11,7 +11,8 @@ __url__ = 'https://github.com/mahmoud/glom'
 def import_path(module_name, path):
     spec = importlib.util.spec_from_file_location(module_name, path)
     module = importlib.util.module_from_spec(spec)
-    return spec.loader.exec_module(module)
+    spec.loader.exec_module(module)
+    return module
 
 
 CUR_PATH = os.path.abspath(os.path.dirname(__file__))
