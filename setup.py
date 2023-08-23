@@ -1,4 +1,4 @@
-import imp
+import importlib.util
 import os
 
 from setuptools import setup
@@ -7,9 +7,17 @@ __author__ = 'Mahmoud Hashemi and Kurt Rose'
 __contact__ = 'mahmoud@hatnote.com'
 __url__ = 'https://github.com/mahmoud/glom'
 
+
+def import_path(module_name, path):
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 CUR_PATH = os.path.abspath(os.path.dirname(__file__))
 _version_mod_path = os.path.join(CUR_PATH, 'glom', '_version.py')
-_version_mod = imp.load_source('_version', _version_mod_path)
+_version_mod = import_path('_version', _version_mod_path)
 __version__ = _version_mod.__version__
 
 
