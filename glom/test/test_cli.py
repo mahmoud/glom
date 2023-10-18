@@ -37,7 +37,7 @@ def basic_target_path(tmp_path):
 
 def test_cli_blank(cc):
     res = cc.run(['glom'])
-    res.stdout == '{}'
+    assert res.stdout == '{}\n'
 
 
 def test_cli_spec_target_argv_basic(cc):
