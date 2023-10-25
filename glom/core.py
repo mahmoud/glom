@@ -161,6 +161,10 @@ class GlomError(Exception):
                 break
             limit += 1
         self._tb_lines = tb_lines[-limit:]
+        # if the first line is trying to put a caret at a byte-code location on a line that
+        # isn't being displayed, skip it
+        if set(self._tb_lines[0]) <= {' ', '^', '~'}:
+            self._tb_lines = self._tb_lines[1:]
         self._scope = scope
 
     def __str__(self):
@@ -511,6 +515,8 @@ class _BBRepr(Repr):
         super().__init__()
         # turn up all the length limits very high
         for name in self.__dict__:
+            if not isinstance(getattr(self, name), int):
+                continue
             setattr(self, name, 1024)
 
     def repr1(self, x, level):
