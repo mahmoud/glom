@@ -507,3 +507,19 @@ def test_unicode_stack():
     stack = _make_stack(target=val, spec=u'a.é.i.o')
     assert 'beyonc' in stack
     assert u'é' in stack
+
+
+def test_3_11_byte_code_caret():
+    """the ~~^ used to mark the current byte code position should be removed"""
+    assert _make_stack(target=1, spec=[]) == """\
+Traceback (most recent call last):
+  File "test_error.py", line ___, in _make_stack
+    glom(target, spec)
+  File "core.py", line ___, in glom
+    raise err
+glom.core.GlomError.wrap(IndexError): error raised while processing, details below.
+ Target-spec trace (most recent last):
+ - Target: 1
+ - Spec: []
+IndexError: list index out of range
+"""
