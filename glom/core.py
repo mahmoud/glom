@@ -515,6 +515,8 @@ class _BBRepr(Repr):
         super().__init__()
         # turn up all the length limits very high
         for name in self.__dict__:
+            if not isinstance(getattr(self, name), int):
+                continue
             setattr(self, name, 1024)
 
     def repr1(self, x, level):
