@@ -13,6 +13,14 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
+23.4.0
+------
+*(November 7, 2023)*
+
+Officially add Python 3.11 support, fixing traceback formatting issues. 
+
+Also, change the implementation of T under the hood, no expected behavioral changes.
+
 23.3.0
 ------
 *(March 30, 2023)*
