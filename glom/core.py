@@ -2195,7 +2195,7 @@ def glom(target, spec, **kwargs):
     'c'
 
     Here the *spec* was just a string denoting a path,
-    ``'a.b.``. As simple as it should be. You can also use 
+    ``'a.b'``. As simple as it should be. You can also use 
     :mod:`glob`-like wildcard selectors:
 
     >>> target = {'a': [{'k': 'v1'}, {'k': 'v2'}]}
