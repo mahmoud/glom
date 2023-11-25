@@ -111,7 +111,7 @@ def mw_handle_target(target_text, target_format):
 
     Args:
         target_text (str): String that specifies where 6
-        target_format (str): Valid formats include `.json`, `.toml` and `.yml` or `.yaml`
+        target_format (str): Valid formats include `.json`, `.toml`, and `.yml` or `.yaml`
     Returns:
         The content of the file that you specified
     Raises:
