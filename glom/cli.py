@@ -11,8 +11,8 @@ Flags:
   --help / -h                 show this help message and exit
   --target-file TARGET_FILE   path to target data source (optional)
   --target-format TARGET_FORMAT
-                              format of the source data (json or python)
-                              (defaults to 'json')
+                              format of the source data (json, python, toml,
+                              or yaml) (defaults to 'json')
   --spec-file SPEC_FILE       path to glom spec definition (optional)
   --spec-format SPEC_FORMAT   format of the glom spec definition (json, python,
                               python-full) (defaults to 'python')
@@ -110,8 +110,8 @@ def mw_handle_target(target_text, target_format):
     """ Handles reading in a file specified in cli command.
 
     Args:
-        target_text (str): String that specifies where 6
-        target_format (str): Valid formats include `.json` and `.yml` or `.yaml`
+        target_text (str): The target data to load, as text
+        target_format (str): Valid formats include `.json`, `.toml`, and `.yml` or `.yaml`
     Returns:
         The content of the file that you specified
     Raises:
@@ -128,6 +128,17 @@ def mw_handle_target(target_text, target_format):
             load_func = yaml.safe_load
         except ImportError:
             raise UsageError('No YAML package found. To process yaml files, run: pip install PyYAML')
+    elif target_format == 'toml':
+        missing =  UsageError('No TOML package found. To process toml files, upgrade to Python 3.11 or run: pip install tomli')
+        try:
+            import tomllib
+            load_func = tomllib.loads
+        except ImportError:
+            try:
+                import tomli
+                load_func = tomli.loads
+            except ImportError:
+                raise missing
     elif target_format == 'python':
         load_func = ast.literal_eval
     else:

@@ -78,6 +78,10 @@ def test_usage_errors(cc, basic_spec_path, basic_target_path):
     res = cc.fail_1(['glom', '--target-format', 'yaml', BASIC_SPEC, '{' + BASIC_TARGET])
     assert 'could not load target data' in res.stdout  # TODO: stderr
 
+    # bad target toml
+    res = cc.fail_1(['glom', '--target-format', 'toml', BASIC_SPEC, '{' + BASIC_TARGET])
+    assert 'could not load target data' in res.stdout  # TODO: stderr
+
     # TODO: bad target python?
 
     # bad target format  TODO: fail_2
@@ -130,6 +134,23 @@ def test_main_yaml_target():
     with pytest.raises(CommandLineError) as excinfo:
         cli.main(argv)
     assert 'expected <block end>, but found' in str(excinfo.value)
+
+
+def test_main_toml_target():
+    cwd = os.path.dirname(os.path.abspath(__file__))
+    # Handles the filepath if running tox
+    if '.tox' in cwd:
+        cwd = os.path.join(cwd.split('.tox')[0] + '/glom/test/')
+    path = os.path.join(cwd, 'data/test_valid.toml')
+    argv = ['__', '--target-file', path, '--target-format', 'toml', 'Hello']
+    assert cli.main(argv) == 0
+
+    path = os.path.join(cwd, 'data/test_invalid.toml')
+    argv = ['__', '--target-file', path, '--target-format', 'toml', 'Hello']
+    # Makes sure correct improper toml exception is raised
+    with pytest.raises(CommandLineError) as excinfo:
+        cli.main(argv)
+    assert 'Invalid initial character for a key part' in str(excinfo.value)
 
 
 def test_main_python_full_spec_python_target():
