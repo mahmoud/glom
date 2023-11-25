@@ -110,7 +110,7 @@ def mw_handle_target(target_text, target_format):
     """ Handles reading in a file specified in cli command.
 
     Args:
-        target_text (str): String that specifies where 6
+        target_text (str): The target data to load, as text
         target_format (str): Valid formats include `.json`, `.toml`, and `.yml` or `.yaml`
     Returns:
         The content of the file that you specified
