@@ -40,6 +40,7 @@ setup(name='glom',
       packages=['glom', 'glom.test'],
       install_requires=['boltons>=19.3.0', 'attrs', 'face==20.1.1'],
       extras_require={
+          'toml': ['tomli; python_version<"3.11"'],
           'yaml': ['PyYAML'],
       },
       entry_points={'console_scripts': ['glom = glom.cli:console_main']},

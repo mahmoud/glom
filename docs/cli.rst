@@ -22,8 +22,9 @@ All the power of ``glom``, without even opening your text editor!
 
    --help / -h                     show this help message and exit
    --target-file TARGET_FILE       path to target data source (optional)
-   --target-format TARGET_FORMAT   format of the source data (json or python)
-                                     (defaults to 'json')
+   --target-format TARGET_FORMAT
+                                   format of the source data (json, python, toml
+                                   or yaml) (defaults to 'json')
    --spec-file SPEC_FILE           path to glom spec definition (optional)
    --spec-format SPEC_FORMAT       format of the glom spec definition (json, python,
                                      python-full) (defaults to 'python')
