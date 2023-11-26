@@ -343,10 +343,10 @@ Store and Retrieve Current Target
 The :data:`~glom.A` scope assignment helper makes it 
 convenient to hold on to the current target and then reset it.
 
-The `(A.t, ..., S.t)` "sandwich" is a convenient idiom for these
+The ``(A.t, ..., S.t)`` "sandwich" is a convenient idiom for these
 cases.
 
-For example, we could use this to update a `dict`:
+For example, we could use this to update a ``dict``:
 
 
 .. code-block:: python
@@ -390,5 +390,5 @@ You can play with glom scopes `in your browser here`__.
 
 Note that at the time of writing, glom doesn't yet have full tree traversal, so the nesting of 
 the spec is going to roughly match the nesting of your data. If you need this to work in an 
-arbitrarily nested structure, we recommend `remap <https://sedimental.org/remap.html>`, 
+arbitrarily nested structure, we recommend `remap <https://sedimental.org/remap.html>`_, 
 the recursive map function.
