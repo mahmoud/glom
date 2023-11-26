@@ -126,19 +126,19 @@ def mw_handle_target(target_text, target_format):
         try:
             import yaml
             load_func = yaml.safe_load
-        except ImportError:
-            raise UsageError('No YAML package found. To process yaml files, run: pip install PyYAML')
+        except ImportError:  # pragma: no cover
+            raise UsageError('No YAML package found. To process yaml files, run: pip install PyYAML')  # pragma: no cover
     elif target_format == 'toml':
         missing =  UsageError('No TOML package found. To process toml files, upgrade to Python 3.11 or run: pip install tomli')
         try:
-            import tomllib
+            import tomllib 
             load_func = tomllib.loads
         except ImportError:
             try:
                 import tomli
                 load_func = tomli.loads
-            except ImportError:
-                raise missing
+            except ImportError:  # pragma: no cover
+                raise missing  # pragma: no cover
     elif target_format == 'python':
         load_func = ast.literal_eval
     else:
