@@ -39,13 +39,14 @@ Flags:
 
   --help / -h                     show this help message and exit
   --target-file TARGET_FILE       path to target data source (optional)
-  --target-format TARGET_FORMAT   format of the source data (json or python) (defaults
-                                  to 'json')
+  --target-format TARGET_FORMAT
+                                  format of the source data (json, python, toml,
+                                  or yaml) (defaults to 'json')
   --spec-file SPEC_FILE           path to glom spec definition (optional)
   --spec-format SPEC_FORMAT       format of the glom spec definition (json, python,
-                                  python-full) (defaults to 'python')
+                                    python-full) (defaults to 'python')
   --indent INDENT                 number of spaces to indent the result, 0 to disable
-                                  pretty-printing (defaults to 2)
+                                    pretty-printing (defaults to 2)
   --debug                         interactively debug any errors that come up
   --inspect                       interactively explore the data
 
