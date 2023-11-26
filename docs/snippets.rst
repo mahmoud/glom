@@ -337,11 +337,10 @@ function names, and identifiers must be the native string type for a
 given Python, i.e., bytestrings in Python 2 and unicode in Python 3.
 
 
-
 Store and Retrieve Current Target
 ---------------------------------
 
-The :data:`~glom.A` scope assignment helper makes it extremely
+The :data:`~glom.A` scope assignment helper makes it 
 convenient to hold on to the current target and then reset it.
 
 The `(A.t, ..., S.t)` "sandwich" is a convenient idiom for these
@@ -353,3 +352,43 @@ For example, we could use this to update a `dict`:
 .. code-block:: python
 
     glom({}, (A.t, T.update({1: 1}), S.t))
+
+
+Accessing Ancestry
+------------------
+
+The technique above can be useful when you want to flatten an object structure by combining child, 
+parent, and/or grandparent data. For instance:
+
+.. code-block:: python
+
+    input_data = {"a": {"b": {"c": 1}}}
+    # transform to:
+    output_data = [{"value": 1, "grandparent": "a"}]
+
+We can do this by leveraging glom's Scopes_. Here's the spec to get the results above:
+
+.. code-block:: python
+
+    (
+        T.items(),
+        [
+            (
+                A.globals.gp_item,  # save the grandparent item to the global scope
+                T[1].values(),      # access the values as usual
+                [{"value": "c", "grandparent": S.globals.gp_item[0]}],  # access the grandparent item
+            )
+        ],
+        Flatten(),
+    )
+
+You can play with glom scopes `in your browser here`__.
+
+.. __: https://yak.party/glompad/#spec=%28%0A++++T.items%28%29%2C%0A++++%5B%28%0A++++++++++++A.globals.gp_item%2C%0A++++++++++++T%5B1%5D.values%28%29%2C%0A++++++++++++%5B%7B%22val%22%3A+%22c%22%2C+%22path%22%3A+S.globals.gp_item%5B0%5D%7D%5D%2C%0A++++%29%5D%2C%0A++++Flatten%28%29%2C%0A%29%0A&target=%7B%0A++%22a%22%3A+%7B%0A++++%22b%22%3A+%7B%0A++++++%22c%22%3A+1%0A++++%7D%0A++%7D%0A%7D&v=1
+
+.. _Scopes: https://glom.readthedocs.io/en/latest/api.html#updating-the-scope-s-a
+
+Note that at the time of writing, glom doesn't yet have full tree traversal, so the nesting of 
+the spec is going to roughly match the nesting of your data. If you need this to work in an 
+arbitrarily nested structure, we recommend `remap <https://sedimental.org/remap.html>`, 
+the recursive map function.
