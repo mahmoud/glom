@@ -111,7 +111,7 @@ def mw_handle_target(target_text, target_format):
 
     Args:
         target_text (str): The target data to load, as text
-        target_format (str): Valid formats include `.json`, `.toml`, and `.yml` or `.yaml`
+        target_format (str): Valid formats include `json`, `toml`, and `yml`/`yaml`
     Returns:
         The content of the file that you specified
     Raises:
@@ -142,7 +142,7 @@ def mw_handle_target(target_text, target_format):
     elif target_format == 'python':
         load_func = ast.literal_eval
     else:
-        raise UsageError('expected target-format to be one of python, json, or yaml')
+        raise UsageError('expected target-format to be one of python, json, toml, or yaml')
 
 
     try:

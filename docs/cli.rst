@@ -3,9 +3,7 @@
 
 .. note::
 
-   glom's CLI is still under construction. Definitely usable and
-   useful, but glom is a library *first*, and if you're reading this,
-   the CLI should not be considered stable.
+   glom's CLI is usable and useful, but keep in mind glom is a library *first*.
 
 
 All the power of ``glom``, without even opening your text editor!
@@ -13,7 +11,7 @@ All the power of ``glom``, without even opening your text editor!
 .. code-block:: text
 
    $ glom --help
-   Usage: /home/mahmoud/virtualenvs/glom/bin/glom [FLAGS] [spec [target]]
+   Usage: /home/mahmoud/bin/glom [FLAGS] [spec [target]]
 
    Command-line interface to the glom library, providing nested data
    access and data restructuring with the power of Python.
