@@ -14,8 +14,10 @@ glom
 * Plus, :doc:`deep assignment <mutation>`, :doc:`streaming <streaming>`, :doc:`data validation <matching>`, and *more*!
 
 While it may sound like a lot, glom's straightforward approach becomes
-second-nature very quickly. :doc:`Get started with a few minutes on the
-tutorial! <tutorial>`
+second-nature very quickly. Start with the :doc:`tutorial<tutorial>`, 
+or `try glom in your browser now`__!
+
+.. __: https://yak.party/glompad/#spec=%22a.b.c%22%0A&target=%7B%22a%22%3A+%7B%22b%22%3A+%7B%22c%22%3A+%22d%22%7D%7D%7D%0A&v=1
 
 Installation
 ------------
