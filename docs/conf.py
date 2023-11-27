@@ -36,9 +36,9 @@ copyright = u'2023, Mahmoud Hashemi'
 author = u'Mahmoud Hashemi'
 
 # The short X.Y version
-version = u'23.4'
+version = u'23.5'
 # The full version, including alpha/beta/rc tags
-release = u'23.4.0'
+release = u'23.5.0'
 
 
 todo_add_to_theme_to_keep_menus_expanded = """
