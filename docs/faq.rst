@@ -133,6 +133,31 @@ facility <glom.Inspect>`, and a compact, composable design.
 In short, thanks to Python, glom can provide a Pythonic solution for
 those times when pure Python wasn't Pythonic enough.
 
+Should I use glom or remap?
+---------------------------
+
+These days, you have a lot of choices when it comes to nested data manipulation.
+One choice is between glom and `remap`_, the recursive ``map()``. 
+Given that the same people wrote both utilties, we recommend:
+
+  * If you know the shape of the output ahead of time, then go with glom.
+  * If your output shape is determined by the input, then use remap.
+
+Remap performs a full traversal of a nested data structure, walking it like a tree. 
+In contrast, glom only goes where it's told by the spec.
+
+For example, imagine an error reporting service. 
+Users send you an arbitrary dictionary of metadata related to the error. 
+But you have a requirement that you don't store secrets.
+
+Remap is a great way to traverse that full structure, 
+looking for all keys containing the substring "secret", 
+replacing the associated value with "[REDACTED]". 
+The output shape will be the same as the input shape.
+
+At the time of writing (2023), glom isn't designed for this use case.
+
+.. _remap: https://boltons.readthedocs.io/en/latest/iterutils.html#nested
 
 How does glom work?
 -------------------
