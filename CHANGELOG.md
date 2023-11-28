@@ -236,7 +236,7 @@ and other minor additions and fixes.
   what `break` is to `continue`. Useful as a default with conditional specs like
   [`Check()`](https://glom.readthedocs.io/en/latest/matching.html#validation-with-check).
 
-  18.3.1
+## 18.3.1
 
 ---
 
