@@ -5,6 +5,7 @@ htmlcov/
 
 *.py[cod]
 .pytest_cache
+venv*
 
 
 # emacs

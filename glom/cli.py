@@ -47,6 +47,9 @@ from face.utils import isatty
 import glom
 from glom import Path, GlomError, Inspect
 
+# TODO: --target-format scalar = unquoted if single value, error otherwise, maybe even don't output newline
+# TODO: --default
+
 def glom_cli(target, spec, indent, debug, inspect):
     """Command-line interface to the glom library, providing nested data
     access and data restructuring with the power of Python.
