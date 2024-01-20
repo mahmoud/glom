@@ -43,14 +43,14 @@ from face import (Command,
                   CommandLineError,
                   UsageError)
 from face.utils import isatty
+from boltons.iterutils import is_scalar
 
 import glom
 from glom import Path, GlomError, Inspect
 
-# TODO: --target-format scalar = unquoted if single value, error otherwise, maybe even don't output newline
-# TODO: --default
+# TODO: --default?
 
-def glom_cli(target, spec, indent, debug, inspect):
+def glom_cli(target, spec, indent, debug, inspect, scalar):
     """Command-line interface to the glom library, providing nested data
     access and data restructuring with the power of Python.
     """
@@ -70,7 +70,11 @@ def glom_cli(target, spec, indent, debug, inspect):
 
     if not indent:
         indent = None
-    print(json.dumps(result, indent=indent, sort_keys=True))
+    
+    if scalar and is_scalar(result):
+        print(result, end='')
+    else:
+        print(json.dumps(result, indent=indent, sort_keys=True))
     return
 
 
@@ -86,7 +90,10 @@ def get_command():
 
     cmd.add('--indent', int, missing=2,
             doc='number of spaces to indent the result, 0 to disable pretty-printing')
-
+    
+    cmd.add('--scalar', parse_as=True,
+            doc="if the result is a single value (not a collection), output it"
+            " without quotes or whitespace, for easier usage in scripts")
     cmd.add('--debug', parse_as=True, doc='interactively debug any errors that come up')
     cmd.add('--inspect', parse_as=True, doc='interactively explore the data')
     return cmd
