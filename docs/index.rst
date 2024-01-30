@@ -22,7 +22,7 @@ or `try glom in your browser now`__!
 Installation
 ------------
 
-glom is pure Python, and tested on Python 3.7+, as well as
+glom is pure Python, and tested on Python 3.8+, as well as
 PyPy3. Installation is easy::
 
   pip install glom
