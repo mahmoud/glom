@@ -53,7 +53,7 @@ def run(spec, data):
     start = time.time()
     glom(data, spec)
     end = time.time()
-    print("{} us per object".format((end - start) / len(data) * 1e6))
+    print(f"{(end - start) / len(data) * 1e6} us per object")
 
 
 def ratio(spec, func, data):

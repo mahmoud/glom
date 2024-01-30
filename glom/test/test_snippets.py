@@ -23,7 +23,7 @@ def _get_codeblock(lines, offset):
 
 def _find_snippets():
     path = os.path.dirname(os.path.abspath(__file__)) + '/../../docs/snippets.rst'
-    with open(path, 'r') as snippet_file:
+    with open(path) as snippet_file:
         lines = list(snippet_file)
     snippets = []
     for line_no in range(len(lines)):

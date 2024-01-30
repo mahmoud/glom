@@ -449,7 +449,7 @@ def _default_email(contact):
 
 
 @attr.s
-class ContactManager(object):
+class ContactManager:
     """This type implements an oversimplified storage manager, wrapping an
     OrderedDict instead of a database. Those familiar with Django and
     SQLAlchemy will recognize the pattern being sketched here.
@@ -466,7 +466,7 @@ class ContactManager(object):
 
 
 @attr.s
-class Contact(object):
+class Contact:
     id = attr.ib(Factory(_contact_autoincrement), init=False)
     name = attr.ib('')
     pref_name = attr.ib('')
@@ -487,7 +487,7 @@ class Contact(object):
 
 
 @attr.s
-class Email(object):
+class Email:
     id = attr.ib(Factory(_email_autoincrement), init=False)
     email = attr.ib('')
     email_type = attr.ib('personal')

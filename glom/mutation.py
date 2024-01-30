@@ -58,7 +58,7 @@ def _apply_for_each(func, path, val):
         func(val)
 
 
-class Assign(object):
+class Assign:
     """*New in glom 18.3.0*
 
     The ``Assign`` specifier type enables glom to modify the target,
@@ -146,7 +146,7 @@ class Assign(object):
 
         if missing is not None:
             if not callable(missing):
-                raise TypeError('expected missing to be callable, not %r' % (missing,))
+                raise TypeError(f'expected missing to be callable, not {missing!r}')
         self.missing = missing
 
     def glomit(self, target, scope):
@@ -182,8 +182,8 @@ class Assign(object):
     def __repr__(self):
         cn = self.__class__.__name__
         if self.missing is None:
-            return '%s(%r, %r)' % (cn, self._orig_path, self.val)
-        return '%s(%r, %r, missing=%s)' % (cn, self._orig_path, self.val, bbrepr(self.missing))
+            return f'{cn}({self._orig_path!r}, {self.val!r})'
+        return f'{cn}({self._orig_path!r}, {self.val!r}, missing={bbrepr(self.missing)})'
 
 
 def assign(obj, path, val, missing=None):
@@ -209,7 +209,7 @@ _BUILTIN_BASE_TYPES = [v for v in _ALL_BUILTIN_TYPES
                        if not issubclass(v, tuple([t for t in _ALL_BUILTIN_TYPES
                                                    if t not in (v, type, object)]))]
 _UNASSIGNABLE_BASE_TYPES = tuple(set(_BUILTIN_BASE_TYPES)
-                                 - set([dict, list, BaseException, object, type]))
+                                 - {dict, list, BaseException, object, type})
 
 
 def _set_sequence_item(target, idx, val):
@@ -232,7 +232,7 @@ def _assign_autodiscover(type_obj):
 register_op('assign', auto_func=_assign_autodiscover, exact=False)
 
 
-class Delete(object):
+class Delete:
     """
     In addition to glom's core "deep-get" and ``Assign``'s "deep-set",
     the ``Delete`` specifier type performs a "deep-del", which can
@@ -320,7 +320,7 @@ class Delete(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r)' % (cn, self._orig_path)
+        return f'{cn}({self._orig_path!r})'
 
 
 def delete(obj, path, ignore_missing=False):

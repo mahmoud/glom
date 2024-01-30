@@ -1,6 +1,3 @@
-
-from __future__ import print_function
-
 import pytest
 
 import glom
@@ -8,10 +5,10 @@ from glom import Glommer, PathAccessError, UnregisteredTarget
 from glom.core import TargetRegistry
 
 
-class A(object):
+class A:
     pass
 
-class B(object):
+class B:
     pass
 
 class C(A):
@@ -106,7 +103,7 @@ def test_exact_register():
 
 
 def test_duck_register():
-    class LilRanger(object):
+    class LilRanger:
         def __init__(self):
             self.lil_list = list(range(5))
 
@@ -205,7 +202,7 @@ def test_faulty_op_registration():
     with pytest.raises(TypeError, match="callable, not:"):
         treg.register_op('fake_op', object())
 
-    class NewType(object):
+    class NewType:
         pass
 
     def _autodiscover_raise(type_obj):
@@ -254,7 +251,7 @@ def test_faulty_op_registration():
 def test_reregister_type():
     treg = TargetRegistry()
 
-    class NewType(object):
+    class NewType:
         pass
 
     treg.register(NewType, op=lambda obj: obj)

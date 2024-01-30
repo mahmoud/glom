@@ -1,4 +1,3 @@
-
 import re
 import json
 
@@ -396,7 +395,7 @@ def test_nested_struct():
         Match(Or(
             And(dict, {Ref('json'): Ref('json')}),
             And(list, [Ref('json')]),
-            And(type(u''), Auto(str)),
+            And(str, Auto(str)),
             object)))
 
     rule_spec = Match({
@@ -448,7 +447,7 @@ def test_check_ported_tests():
     assert glom('hello', spec, glom_debug=True) == 'h'
     assert glom('', spec) == ''  # would fail with IndexError if STOP didn't work
 
-    target = [1, u'a']
+    target = [1, 'a']
     assert glom(target, [Match(unicode, default=SKIP)]) == ['a']
     assert glom(target, Match([Or(unicode, int)])) == [1, 'a']
 

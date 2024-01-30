@@ -1,4 +1,3 @@
-
 from pytest import raises
 
 from glom import glom, Path, S, T, A, PathAccessError, GlomError, BadSpec, Or, Assign, Delete
@@ -88,7 +87,7 @@ def test_path_access_error_message():
 def test_t_picklability():
     import pickle
 
-    class TargetType(object):
+    class TargetType:
         def __init__(self):
             self.attribute = lambda: None
             self.attribute.method = lambda: {'key': lambda x: x * 2}

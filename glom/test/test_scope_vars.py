@@ -1,4 +1,3 @@
-
 import pytest
 
 from glom import glom, Path, S, A, T, Vars, Val, GlomError, M, SKIP, Let
@@ -22,7 +21,7 @@ def test_s_scope_assign():
     with pytest.raises(GlomError):
         glom(1, (S(v=1), A.v.a))
 
-    class FailAssign(object):
+    class FailAssign:
         def __setattr__(self, name, val):
             raise Exception('nope')
 
@@ -97,7 +96,7 @@ def test_let():  # backwards compat 2020-07
     with pytest.raises(GlomError):
         glom(1, (Let(v=lambda t: 1), A.v.a))
 
-    class FailAssign(object):
+    class FailAssign:
         def __setattr__(self, name, val):
             raise Exception('nope')
 

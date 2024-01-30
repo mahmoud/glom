@@ -1,4 +1,3 @@
-
 from glom.cli import console_main
 
 if __name__ == '__main__':

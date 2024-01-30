@@ -1,6 +1,6 @@
 attrs>=19.2.0
 boltons>=20.2.0
-coverage<=7.2.7  # can unpin when dropping py37
+coverage
 face>=20.1.1
 pytest>=6.2.5
 tox>=3.7.0

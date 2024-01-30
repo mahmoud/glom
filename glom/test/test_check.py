@@ -1,4 +1,3 @@
-
 from pytest import raises
 
 from glom import glom, Check, CheckError, Coalesce, SKIP, STOP, T
@@ -32,7 +31,7 @@ def test_check_basic():
     assert repr(Check(instance_of=dict)) == 'Check(instance_of=dict)'
     assert repr(Check(T(len), validate=sum)) == 'Check(T(len), validate=sum)'
 
-    target = [1, u'a']
+    target = [1, 'a']
     assert glom(target, [Check(type=unicode, default=SKIP)]) == ['a']
     assert glom(target, [Check(type=(unicode, int))]) == [1, 'a']
     assert glom(target, [Check(instance_of=unicode, default=SKIP)]) == ['a']
