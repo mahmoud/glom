@@ -1,5 +1,3 @@
-from __future__ import division
-
 from pytest import raises
 
 from glom import glom, T, SKIP, STOP, Auto, BadSpec, Val

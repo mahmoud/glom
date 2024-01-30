@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Configuration file for the Sphinx documentation builder.
 #
@@ -31,14 +30,14 @@ pprint(os.environ)
 
 # -- Project information -----------------------------------------------------
 
-project = u'glom'
-copyright = u'2023, Mahmoud Hashemi'
-author = u'Mahmoud Hashemi'
+project = 'glom'
+copyright = '2023, Mahmoud Hashemi'
+author = 'Mahmoud Hashemi'
 
 # The short X.Y version
-version = u'23.5'
+version = '23.5'
 # The full version, including alpha/beta/rc tags
-release = u'23.5.0'
+release = '23.5.0'
 
 
 todo_add_to_theme_to_keep_menus_expanded = """
@@ -95,7 +94,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = [u'_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'default'
@@ -167,8 +166,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'glom.tex', u'glom Documentation',
-     u'Mahmoud Hashemi', 'manual'),
+    (master_doc, 'glom.tex', 'glom Documentation',
+     'Mahmoud Hashemi', 'manual'),
 ]
 
 
@@ -177,7 +176,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'glom', u'glom Documentation',
+    (master_doc, 'glom', 'glom Documentation',
      [author], 1)
 ]
 
@@ -188,7 +187,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'glom', u'glom Documentation',
+    (master_doc, 'glom', 'glom Documentation',
      author, 'glom', 'One line description of project.',
      'Miscellaneous'),
 ]

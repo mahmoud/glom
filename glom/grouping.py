@@ -1,7 +1,6 @@
 """
 Group mode
 """
-from __future__ import division
 
 import random
 
@@ -41,7 +40,7 @@ def target_iter(target, scope):
     return iterator
 
 
-class Group(object):
+class Group:
     """supports nesting grouping operations --
     think of a glom-style recursive boltons.iterutils.bucketize
 
@@ -93,7 +92,7 @@ class Group(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r)' % (cn, self.spec)
+        return '{}({!r})'.format(cn, self.spec)
 
 
 def GROUP(target, spec, scope):
@@ -153,10 +152,10 @@ def GROUP(target, spec, scope):
             if result is not SKIP:
                 acc.append(result)
         return acc
-    raise ValueError("{} not a valid spec type for Group mode".format(_spec_type))  # pragma: no cover
+    raise ValueError(f"{_spec_type} not a valid spec type for Group mode")  # pragma: no cover
 
 
-class First(object):
+class First:
     """
     holds onto the first value
 
@@ -175,7 +174,7 @@ class First(object):
         return '%s()' % self.__class__.__name__
 
 
-class Avg(object):
+class Avg:
     """
     takes the numerical average of all values;
     raises exception on non-numeric value
@@ -199,7 +198,7 @@ class Avg(object):
         return '%s()' % self.__class__.__name__
 
 
-class Max(object):
+class Max:
     """
     takes the maximum of all values;
     raises exception on values that are not comparable
@@ -218,7 +217,7 @@ class Max(object):
         return '%s()' % self.__class__.__name__
 
 
-class Min(object):
+class Min:
     """
     takes the minimum of all values;
     raises exception on values that are not comparable
@@ -237,7 +236,7 @@ class Min(object):
         return '%s()' % self.__class__.__name__
 
 
-class Sample(object):
+class Sample:
     """takes a random sample of the values
 
     >>> glom([1, 2, 3], Group(Sample(2)))  # doctest: +SKIP
@@ -271,11 +270,11 @@ class Sample(object):
         return sample
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.size)
+        return '{}({!r})'.format(self.__class__.__name__, self.size)
 
 
 
-class Limit(object):
+class Limit:
     """
     Limits the number of values passed to sub-accumulator
 
@@ -314,4 +313,4 @@ class Limit(object):
         return scope[glom](target, self.subspec, scope)
 
     def __repr__(self):
-        return '%s(%r, %r)' % (self.__class__.__name__, self.n, self.subspec)
+        return '{}({!r}, {!r})'.format(self.__class__.__name__, self.n, self.subspec)

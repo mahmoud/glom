@@ -24,7 +24,7 @@ from boltons.funcutils import FunctionBuilder
 from .core import glom, T, STOP, SKIP, _MISSING, Path, TargetRegistry, Call, Spec, Pipe, S, bbrepr, format_invocation
 from .matching import Check
 
-class Iter(object):
+class Iter:
     """``Iter()`` is glom's counterpart to Python's built-in :func:`iter()`
     function. Given an iterable target, ``Iter()`` yields the result
     of applying the passed spec to each element of the target, similar
@@ -275,7 +275,7 @@ class Iter(object):
         try:
             islice([], *args)
         except TypeError:
-            raise TypeError('invalid slice arguments: %r' % (args,))
+            raise TypeError('invalid slice arguments: {!r}'.format(args))
         return self._add_op('slice', args, lambda it, scope: islice(it, *args))
 
     def limit(self, count):
@@ -352,7 +352,7 @@ class Iter(object):
         return (self, First(key=key, default=default))
 
 
-class First(object):
+class First:
     """Get the first element of an iterable which matches *key*, if there
     is one, otherwise return *default* (``None`` if unset).
 
@@ -381,5 +381,5 @@ class First(object):
     def __repr__(self):
         cn = self.__class__.__name__
         if self._default is None:
-            return '%s(%s)' % (cn, bbrepr(self._spec))
-        return '%s(%s, default=%s)' % (cn, bbrepr(self._spec), bbrepr(self._default))
+            return '{}({})'.format(cn, bbrepr(self._spec))
+        return '{}({}, default={})'.format(cn, bbrepr(self._spec), bbrepr(self._default))

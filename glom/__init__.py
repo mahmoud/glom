@@ -1,4 +1,3 @@
-
 from glom.core import (glom,
                        Fill,
                        Auto,

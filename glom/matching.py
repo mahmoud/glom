@@ -35,7 +35,7 @@ class MatchError(GlomError):
 
     """
     def __init__(self, fmt, *args):
-        super(MatchError, self).__init__(fmt, *args)
+        super().__init__(fmt, *args)
 
     def get_message(self):
         fmt, args = self.args[0], self.args[1:]
@@ -60,7 +60,7 @@ class TypeMatchError(MatchError, TypeError):
     """
 
     def __init__(self, actual, expected):
-        super(TypeMatchError, self).__init__(
+        super().__init__(
             "expected type {0.__name__}, not {1.__name__}", expected, actual)
 
     def __copy__(self):
@@ -69,7 +69,7 @@ class TypeMatchError(MatchError, TypeError):
         return TypeMatchError(self.args[2], self.args[1])
 
 
-class Match(object):
+class Match:
     """glom's ``Match`` specifier type enables a new mode of glom usage:
     pattern matching.  In particular, this mode has been designed for
     nested data validation.
@@ -186,24 +186,24 @@ class Match(object):
         return True
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, bbrepr(self.spec))
+        return '{}({})'.format(self.__class__.__name__, bbrepr(self.spec))
 
 
 _RE_FULLMATCH = getattr(re, "fullmatch", None)
-_RE_VALID_FUNCS = set((_RE_FULLMATCH, None, re.search, re.match))
+_RE_VALID_FUNCS = {_RE_FULLMATCH, None, re.search, re.match}
 _RE_FUNC_ERROR = ValueError("'func' must be one of %s" % (", ".join(
     sorted(e and e.__name__ or "None" for e in _RE_VALID_FUNCS))))
 
 _RE_TYPES = ()
-try:   re.match(u"", u"")
+try:   re.match("", "")
 except Exception: pass  # pragma: no cover
-else:  _RE_TYPES += (type(u""),)
+else:  _RE_TYPES += (str,)
 try:   re.match(b"", b"")
 except Exception: pass  # pragma: no cover
-else:  _RE_TYPES += (type(b""),)
+else:  _RE_TYPES += (bytes,)
 
 
-class Regex(object):
+class Regex:
     """
     checks that target is a string which matches the passed regex pattern
 
@@ -226,7 +226,7 @@ class Regex(object):
             if _RE_FULLMATCH:
                 match_func = regex.fullmatch
             else:
-                regex = re.compile(r"(?:{})\Z".format(pattern), flags)
+                regex = re.compile(fr"(?:{pattern})\Z", flags)
                 match_func = regex.match
         self.flags, self.func = flags, func
         self.match_func, self.pattern = match_func, pattern
@@ -260,7 +260,7 @@ def _bool_child_repr(child):
     return bbrepr(child)
 
 
-class _Bool(object):
+class _Bool:
     def __init__(self, *children, **kw):
         self.children = children
         if not children:
@@ -299,7 +299,7 @@ class _Bool(object):
     def __repr__(self):
         child_reprs = [_bool_child_repr(c) for c in self.children]
         if self._m_repr() and self.default is _MISSING:
-            return " {} ".format(self.OP).join(child_reprs)
+            return f" {self.OP} ".join(child_reprs)
         if self.default is not _MISSING:
             child_reprs.append("default=" + repr(self.default))
         return self.__class__.__name__ + "(" + ", ".join(child_reprs) + ")"
@@ -386,7 +386,7 @@ class Not(_Bool):
 _M_OP_MAP = {'=': '==', '!': '!=', 'g': '>=', 'l': '<='}
 
 
-class _MSubspec(object):
+class _MSubspec:
     """used by MType.__call__ to wrap a sub-spec for comparison"""
     __slots__ = ('spec')
 
@@ -412,7 +412,7 @@ class _MSubspec(object):
         return _MExpr(self, 'l', other)
 
     def __repr__(self):
-        return 'M(%s)' % (bbrepr(self.spec),)
+        return 'M({})'.format(bbrepr(self.spec))
 
     def glomit(self, target, scope):
         match = scope[glom](target, self.spec, scope)
@@ -421,7 +421,7 @@ class _MSubspec(object):
         raise MatchError('expected truthy value from {0!r}, got {1!r}', self.spec, match)
 
 
-class _MExpr(object):
+class _MExpr:
     __slots__ = ('lhs', 'op', 'rhs')
 
     def __init__(self, lhs, op, rhs):
@@ -462,10 +462,10 @@ class _MExpr(object):
 
     def __repr__(self):
         op = _M_OP_MAP.get(self.op, self.op)
-        return "{!r} {} {!r}".format(self.lhs, op, self.rhs)
+        return f"{self.lhs!r} {op} {self.rhs!r}"
 
 
-class _MType(object):
+class _MType:
     """:attr:`~glom.M` is similar to :attr:`~glom.T`, a stand-in for the
     current target, but where :attr:`~glom.T` allows for attribute and
     key access and method calls, :attr:`~glom.M` allows for comparison
@@ -568,7 +568,7 @@ M = _MType()
 
 
 
-class Optional(object):
+class Optional:
     """Used as a :class:`dict` key in a :class:`~glom.Match()` spec,
     marks that a value match key which would otherwise be required is
     optional and should not raise :exc:`~glom.MatchError` even if no
@@ -593,7 +593,7 @@ class Optional(object):
             raise TypeError("double wrapping of Optional")
         hash(key)  # ensure is a valid key
         if _precedence(key) != 0:
-            raise ValueError("Optional() keys must be == match constants, not {!r}".format(key))
+            raise ValueError(f"Optional() keys must be == match constants, not {key!r}")
         self.key, self.default = key, default
 
     def glomit(self, target, scope):
@@ -602,10 +602,10 @@ class Optional(object):
         return target
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, bbrepr(self.key))
+        return '{}({})'.format(self.__class__.__name__, bbrepr(self.key))
 
 
-class Required(object):
+class Required:
     """Used as a :class:`dict` key in :class:`~glom.Match()` mode, marks
     that a key which might otherwise not be required should raise
     :exc:`~glom.MatchError` if the key in the target does not match.
@@ -651,7 +651,7 @@ class Required(object):
         self.key = key
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, bbrepr(self.key))
+        return '{}({})'.format(self.__class__.__name__, bbrepr(self.key))
 
 
 def _precedence(match):
@@ -761,7 +761,7 @@ def _glom_match(target, spec, scope):
     return target
 
 
-class Switch(object):
+class Switch:
     r"""The :class:`Switch` specifier type routes data processing based on
     matching keys, much like the classic switch statement.
 
@@ -857,13 +857,13 @@ class Switch(object):
         raise MatchError("no matches for target in %s"  % self.__class__.__name__)
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, bbrepr(self.cases))
+        return '{}({})'.format(self.__class__.__name__, bbrepr(self.cases))
 
 
 RAISE = make_sentinel('RAISE')  # flag object for "raise on check failure"
 
 
-class Check(object):
+class Check:
     """Check objects are used to make assertions about the target data,
     and either pass through the data or raise exceptions if there is a
     problem.
@@ -972,9 +972,9 @@ class Check(object):
             if self.default is not RAISE:
                 return arg_val(target, self.default, scope)
             if len(self.vals) == 1:
-                errs.append("expected {}, found {}".format(self.vals[0], target))
+                errs.append(f"expected {self.vals[0]}, found {target}")
             else:
-                errs.append('expected one of {}, found {}'.format(self.vals, target))
+                errs.append(f'expected one of {self.vals}, found {target}')
 
         if self.validators:
             for i, validator in enumerate(self.validators):
@@ -1042,13 +1042,13 @@ class CheckError(GlomError):
     def get_message(self):
         msg = 'target at path %s failed check,' % self.path
         if self.check_obj.spec is not T:
-            msg += ' subtarget at %r' % (self.check_obj.spec,)
+            msg += ' subtarget at {!r}'.format(self.check_obj.spec)
         if len(self.msgs) == 1:
-            msg += ' got error: %r' % (self.msgs[0],)
+            msg += ' got error: {!r}'.format(self.msgs[0])
         else:
-            msg += ' got %s errors: %r' % (len(self.msgs), self.msgs)
+            msg += ' got {} errors: {!r}'.format(len(self.msgs), self.msgs)
         return msg
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r, %r, %r)' % (cn, self.msgs, self.check_obj, self.path)
+        return '{}({!r}, {!r}, {!r})'.format(cn, self.msgs, self.check_obj, self.path)
