@@ -146,7 +146,7 @@ class Count(Fold):
             subspec=T, init=int, op=lambda cur, val: cur + 1)
 
     def __repr__(self):
-        return '%s()' % self.__class__.__name__
+        return f'{self.__class__.__name__}()'
 
 
 class Flatten(Fold):
@@ -250,12 +250,12 @@ def flatten(target, **kwargs):
     init = kwargs.pop('init', list)
     levels = kwargs.pop('levels', 1)
     if kwargs:
-        raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
+        raise TypeError(f'unexpected keyword args: {sorted(kwargs.keys())!r}')
 
     if levels == 0:
         return target
     if levels < 0:
-        raise ValueError('expected levels >= 0, not %r' % levels)
+        raise ValueError(f'expected levels >= 0, not {levels!r}')
     spec = (subspec,)
     spec += (Flatten(init="lazy"),) * (levels - 1)
     spec += (Flatten(init=init),)
@@ -343,6 +343,6 @@ def merge(target, **kwargs):
     init = kwargs.pop('init', dict)
     op = kwargs.pop('op', None)
     if kwargs:
-        raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
+        raise TypeError(f'unexpected keyword args: {sorted(kwargs.keys())!r}')
     spec = Merge(subspec, init, op)
     return glom(target, spec)

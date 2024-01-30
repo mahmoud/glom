@@ -64,7 +64,7 @@ def glom_cli(target, spec, indent, debug, inspect):
     try:
         result = glom.glom(target, spec)
     except GlomError as ge:
-        print('{}: {}'.format(ge.__class__.__name__, ge))
+        print(f'{ge.__class__.__name__}: {ge}')
         return 1
 
     if not indent:
@@ -172,7 +172,7 @@ def mw_get_target(next_, posargs_, target_file, target_format, spec_file, spec_f
             with open(spec_file) as f:
                 spec_text = f.read()
         except OSError as ose:
-            raise UsageError('could not read spec file {!r}, got: {}'.format(spec_file, ose))
+            raise UsageError(f'could not read spec file {spec_file!r}, got: {ose}')
 
     if not spec_text:
         spec = Path()
@@ -196,7 +196,7 @@ def mw_get_target(next_, posargs_, target_file, target_format, spec_file, spec_f
         try:
             target_text = open(target_file).read()
         except OSError as ose:
-            raise UsageError('could not read target file {!r}, got: {}'.format(target_file, ose))
+            raise UsageError(f'could not read target file {target_file!r}, got: {ose}')
     elif not target_text and not isatty(sys.stdin):
         target_text = sys.stdin.read()
 
@@ -217,7 +217,7 @@ def _from_glom_import_star():
 
 def _eval_python_full_spec(py_text):
     name = '__cli_glom_spec__'
-    code_str = '{} = {}'.format(name, py_text)
+    code_str = f'{name} = {py_text}'
     env = _from_glom_import_star()
     spec = _compile_code(code_str, name=name, env=env)
     return spec

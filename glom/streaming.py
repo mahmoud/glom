@@ -61,7 +61,7 @@ class Iter:
 
         self.sentinel = kwargs.pop('sentinel', STOP)
         if kwargs:
-            raise TypeError('unexpected keyword arguments: %r' % sorted(kwargs))
+            raise TypeError(f'unexpected keyword arguments: {sorted(kwargs)!r}')
         return
 
     def __repr__(self):
@@ -275,7 +275,7 @@ class Iter:
         try:
             islice([], *args)
         except TypeError:
-            raise TypeError('invalid slice arguments: {!r}'.format(args))
+            raise TypeError(f'invalid slice arguments: {args!r}')
         return self._add_op('slice', args, lambda it, scope: islice(it, *args))
 
     def limit(self, count):
@@ -381,5 +381,5 @@ class First:
     def __repr__(self):
         cn = self.__class__.__name__
         if self._default is None:
-            return '{}({})'.format(cn, bbrepr(self._spec))
-        return '{}({}, default={})'.format(cn, bbrepr(self._spec), bbrepr(self._default))
+            return f'{cn}({bbrepr(self._spec)})'
+        return f'{cn}({bbrepr(self._spec)}, default={bbrepr(self._default)})'

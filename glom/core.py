@@ -232,7 +232,7 @@ def _format_trace_value(value, maxlen):
     s = bbrepr(value).replace("\\'", "'")
     if len(s) > maxlen:
         try:
-            suffix = '... (len=%s)' % len(value)
+            suffix = f'... (len={len(value)})'
         except Exception:
             suffix = '...'
         s = s[:maxlen - len(suffix)] + suffix
@@ -351,7 +351,7 @@ class PathAccessError(GlomError, AttributeError, KeyError, IndexError):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '{}({!r}, {!r}, {!r})'.format(cn, self.exc, self.path, self.part_idx)
+        return f'{cn}({self.exc!r}, {self.path!r}, {self.part_idx!r})'
 
 
 class PathAssignError(GlomError):
@@ -381,7 +381,7 @@ class PathAssignError(GlomError):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '{}({!r}, {!r}, {!r})'.format(cn, self.exc, self.path, self.dest_name)
+        return f'{cn}({self.exc!r}, {self.path!r}, {self.dest_name!r})'
 
 
 class CoalesceError(GlomError):
@@ -422,22 +422,22 @@ class CoalesceError(GlomError):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '{}({!r}, {!r}, {!r})'.format(cn, self.coal_obj, self.skipped, self.path)
+        return f'{cn}({self.coal_obj!r}, {self.skipped!r}, {self.path!r})'
 
     def get_message(self):
         missed_specs = tuple(self.coal_obj.subspecs)
         skipped_vals = [v.__class__.__name__
                         if isinstance(v, self.coal_obj.skip_exc)
-                        else '<skipped %s>' % v.__class__.__name__
+                        else f'<skipped {v.__class__.__name__}>'
                         for v in self.skipped]
         msg = ('no valid values found. Tried %r and got (%s)'
                % (missed_specs, ', '.join(skipped_vals)))
         if self.coal_obj.skip is not _MISSING:
-            msg += ', skip set to {!r}'.format(self.coal_obj.skip)
+            msg += f', skip set to {self.coal_obj.skip!r}'
         if self.coal_obj.skip_exc is not GlomError:
-            msg += ', skip_exc set to {!r}'.format(self.coal_obj.skip_exc)
+            msg += f', skip_exc set to {self.coal_obj.skip_exc!r}'
         if self.path is not None:
-            msg += ' (at path {!r})'.format(self.path)
+            msg += f' (at path {self.path!r})'
         return msg
 
 
@@ -488,11 +488,11 @@ class UnregisteredTarget(GlomError):
             return ("glom() called without registering any types for operation '%s'. see"
                     " glom.register() or Glommer's constructor for details." % (self.op,))
         reg_types = sorted([t.__name__ for t, h in self.type_map.items() if h])
-        reg_types_str = '()' if not reg_types else ('(%s)' % ', '.join(reg_types))
+        reg_types_str = '()' if not reg_types else (f"({', '.join(reg_types)})")
         msg = ("target type %r not registered for '%s', expected one of"
                " registered types: %s" % (self.target_type.__name__, self.op, reg_types_str))
         if self.path:
-            msg += ' (at {!r})'.format(self.path)
+            msg += f' (at {self.path!r})'
         return msg
 
 
@@ -557,21 +557,21 @@ def format_invocation(name='', args=(), kwargs=None, **kw):
     """
     _repr = kw.pop('repr', bbrepr)
     if kw:
-        raise TypeError('unexpected keyword args: %r' % ', '.join(kw.keys()))
+        raise TypeError(f"unexpected keyword args: {', '.join(kw.keys())!r}")
     kwargs = kwargs or {}
     a_text = ', '.join([_repr(a) for a in args])
     if isinstance(kwargs, dict):
         kwarg_items = [(k, kwargs[k]) for k in sorted(kwargs)]
     else:
         kwarg_items = kwargs
-    kw_text = ', '.join(['{}={}'.format(k, _repr(v)) for k, v in kwarg_items])
+    kw_text = ', '.join([f'{k}={_repr(v)}' for k, v in kwarg_items])
 
     all_args_text = a_text
     if all_args_text and kw_text:
         all_args_text += ', '
     all_args_text += kw_text
 
-    return '{}({})'.format(name, all_args_text)
+    return f'{name}({all_args_text})'
 
 
 class Path:
@@ -819,8 +819,8 @@ class Spec:
     def __repr__(self):
         cn = self.__class__.__name__
         if self.scope:
-            return '{}({}, scope={!r})'.format(cn, bbrepr(self.spec), self.scope)
-        return '{}({})'.format(cn, bbrepr(self.spec))
+            return f'{cn}({bbrepr(self.spec)}, scope={self.scope!r})'
+        return f'{cn}({bbrepr(self.spec)})'
 
 
 class Coalesce:
@@ -914,7 +914,7 @@ class Coalesce:
             self.skip_func = lambda v: v == self.skip
         self.skip_exc = kwargs.pop('skip_exc', GlomError)
         if kwargs:
-            raise TypeError('unexpected keyword args: {!r}'.format(sorted(kwargs.keys())))
+            raise TypeError(f'unexpected keyword args: {sorted(kwargs.keys())!r}')
 
     def glomit(self, target, scope):
         skipped = []
@@ -996,13 +996,13 @@ class Inspect:
         if breakpoint is True:
             breakpoint = pdb.set_trace
         if breakpoint and not callable(breakpoint):
-            raise TypeError('breakpoint expected bool or callable, not: %r' % breakpoint)
+            raise TypeError(f'breakpoint expected bool or callable, not: {breakpoint!r}')
         self.breakpoint = breakpoint
         post_mortem = kw.pop('post_mortem', False)
         if post_mortem is True:
             post_mortem = pdb.post_mortem
         if post_mortem and not callable(post_mortem):
-            raise TypeError('post_mortem expected bool or callable, not: %r' % post_mortem)
+            raise TypeError(f'post_mortem expected bool or callable, not: {post_mortem!r}')
         self.post_mortem = post_mortem
 
     def __repr__(self):
@@ -1096,7 +1096,7 @@ class Call:
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '{}({}, args={!r}, kwargs={!r})'.format(cn, bbrepr(self.func), self.args, self.kwargs)
+        return f'{cn}({bbrepr(self.func)}, args={self.args!r}, kwargs={self.kwargs!r})'
 
 
 def _is_spec(obj, strict=False):
@@ -1439,7 +1439,7 @@ class TType:
     def __call__(self, *args, **kwargs):
         if self is S:
             if args:
-                raise TypeError('S() takes no positional arguments, got: {!r}'.format(args))
+                raise TypeError(f'S() takes no positional arguments, got: {args!r}')
             if not kwargs:
                 raise TypeError('S() expected at least one kwarg, got none')
             # TODO: typecheck kwarg vals?
@@ -1733,7 +1733,7 @@ def _format_t(path, root=T):
                 index = ", ".join([_format_slice(x) for x in arg])
             else:
                 index = _format_slice(arg)
-            prepr.append("[{}]".format(index))
+            prepr.append(f"[{index}]")
         elif op == '(':
             args, kwargs = arg
             prepr.append(format_invocation(args=args, kwargs=kwargs, repr=bbrepr))
@@ -1788,7 +1788,7 @@ class Val:
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '{}({})'.format(cn, bbrepr(self.value))
+        return f'{cn}({bbrepr(self.value)})'
 
 
 Literal = Val  # backwards compat for pre-20.7.0
@@ -1812,7 +1812,7 @@ class ScopeVars:
         return iter(self.__dict__.items())
 
     def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, bbrepr(self.__dict__))
+        return f"{self.__class__.__name__}({bbrepr(self.__dict__)})"
 
 
 class Vars:
@@ -1885,7 +1885,7 @@ class Auto:
     def __repr__(self):
         cn = self.__class__.__name__
         rpr = '' if self.spec is None else bbrepr(self.spec)
-        return '{}({})'.format(cn, rpr)
+        return f'{cn}({rpr})'
 
 
 class _AbstractIterable(_AbstractIterableBase):
@@ -2093,7 +2093,7 @@ class TargetRegistry:
 
     def register(self, target_type, **kwargs):
         if not isinstance(target_type, type):
-            raise TypeError('register expected a type, not an instance: {!r}'.format(target_type))
+            raise TypeError(f'register expected a type, not an instance: {target_type!r}')
         exact = kwargs.pop('exact', None)
         new_op_map = dict(kwargs)
 
@@ -2139,11 +2139,11 @@ class TargetRegistry:
         extensions.
         """
         if not isinstance(op_name, basestring):
-            raise TypeError('expected op_name to be a text name, not: {!r}'.format(op_name))
+            raise TypeError(f'expected op_name to be a text name, not: {op_name!r}')
         if auto_func is None:
             auto_func = lambda t: False
         elif not callable(auto_func):
-            raise TypeError('expected auto_func to be callable, not: {!r}'.format(auto_func))
+            raise TypeError(f'expected auto_func to be callable, not: {auto_func!r}')
 
         # determine support for any previously known types
         known_types = set(sum([list(m.keys()) for m
@@ -2268,7 +2268,7 @@ def glom(target, spec, **kwargs):
     scope.update(kwargs.pop('scope', {}))
     err = None
     if kwargs:
-        raise TypeError('unexpected keyword args: %r' % sorted(kwargs.keys()))
+        raise TypeError(f'unexpected keyword args: {sorted(kwargs.keys())!r}')
     try:
         try:
             ret = _glom(target, spec, scope)
@@ -2537,7 +2537,7 @@ class Fill:
     def __repr__(self):
         cn = self.__class__.__name__
         rpr = '' if self.spec is None else bbrepr(self.spec)
-        return '{}({})'.format(cn, rpr)
+        return f'{cn}({rpr})'
 
 
 def FILL(target, spec, scope):

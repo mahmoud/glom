@@ -101,7 +101,7 @@ def test_sequence_assign():
 
 
 def test_invalid_assign_op_target():
-    target = {'afunc': lambda x: 'hi %s' % x}
+    target = {'afunc': lambda x: f'hi {x}'}
     spec = T['afunc'](x=1)
 
     with pytest.raises(ValueError):
@@ -304,7 +304,7 @@ def test_sequence_delete():
 
 
 def test_invalid_delete_op_target():
-    target = {'afunc': lambda x: 'hi %s' % x}
+    target = {'afunc': lambda x: f'hi {x}'}
     spec = T['afunc'](x=1)
 
     with pytest.raises(ValueError):

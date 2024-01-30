@@ -146,7 +146,7 @@ class Assign:
 
         if missing is not None:
             if not callable(missing):
-                raise TypeError('expected missing to be callable, not {!r}'.format(missing))
+                raise TypeError(f'expected missing to be callable, not {missing!r}')
         self.missing = missing
 
     def glomit(self, target, scope):
@@ -182,8 +182,8 @@ class Assign:
     def __repr__(self):
         cn = self.__class__.__name__
         if self.missing is None:
-            return '{}({!r}, {!r})'.format(cn, self._orig_path, self.val)
-        return '{}({!r}, {!r}, missing={})'.format(cn, self._orig_path, self.val, bbrepr(self.missing))
+            return f'{cn}({self._orig_path!r}, {self.val!r})'
+        return f'{cn}({self._orig_path!r}, {self.val!r}, missing={bbrepr(self.missing)})'
 
 
 def assign(obj, path, val, missing=None):
@@ -320,7 +320,7 @@ class Delete:
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '{}({!r})'.format(cn, self._orig_path)
+        return f'{cn}({self._orig_path!r})'
 
 
 def delete(obj, path, ignore_missing=False):

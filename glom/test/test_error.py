@@ -96,11 +96,11 @@ def _make_stack(spec, **kwargs):
             return str(value)
         except BaseException as be:  # pragma: no cover
             try:
-                print(' !! failed to stringify {} object, got {}'.format(type(value).__name__, be))
+                print(f' !! failed to stringify {type(value).__name__} object, got {be}')
                 traceback.print_exc()
             except:
                 print(' !! unable to print trace')
-            return '<unprintable {} object got {}>'.format(type(value).__name__, be)
+            return f'<unprintable {type(value).__name__} object got {be}>'
 
     traceback._some_str = _debug_some_str
 
@@ -231,7 +231,7 @@ def test_long_target_repr():
 
     class ObjectWithLongRepr:
         def __repr__(self):
-            return '<{} {}>'.format(self.__class__.__name__, 'w' + ('ooooo' * 250))
+            return f"<{self.__class__.__name__} {'w' + 'ooooo' * 250}>"
 
     actual = _make_stack(target=ObjectWithLongRepr(), spec='badattr')
     assert '...' in actual

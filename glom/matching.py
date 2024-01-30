@@ -186,7 +186,7 @@ class Match:
         return True
 
     def __repr__(self):
-        return '{}({})'.format(self.__class__.__name__, bbrepr(self.spec))
+        return f'{self.__class__.__name__}({bbrepr(self.spec)})'
 
 
 _RE_FULLMATCH = getattr(re, "fullmatch", None)
@@ -264,11 +264,10 @@ class _Bool:
     def __init__(self, *children, **kw):
         self.children = children
         if not children:
-            raise ValueError("need at least one operand for {}".format(
-                self.__class__.__name__))
+            raise ValueError(f"need at least one operand for {self.__class__.__name__}")
         self.default = kw.pop('default', _MISSING)
         if kw:
-            raise TypeError('got unexpected kwargs: %r' % list(kw.keys()))
+            raise TypeError(f'got unexpected kwargs: {list(kw.keys())!r}')
 
     def __and__(self, other):
         return And(self, other)
@@ -412,7 +411,7 @@ class _MSubspec:
         return _MExpr(self, 'l', other)
 
     def __repr__(self):
-        return 'M({})'.format(bbrepr(self.spec))
+        return f'M({bbrepr(self.spec)})'
 
     def glomit(self, target, scope):
         match = scope[glom](target, self.spec, scope)
@@ -523,7 +522,7 @@ class _MType:
         if not isinstance(spec, type(T)):
             # TODO: open this up for other specs so we can do other
             # checks, like function calls
-            raise TypeError("M() only accepts T-style specs, not %s" % type(spec).__name__)
+            raise TypeError(f"M() only accepts T-style specs, not {type(spec).__name__}")
         return _MSubspec(spec)
 
     def __eq__(self, other):
@@ -602,7 +601,7 @@ class Optional:
         return target
 
     def __repr__(self):
-        return '{}({})'.format(self.__class__.__name__, bbrepr(self.key))
+        return f'{self.__class__.__name__}({bbrepr(self.key)})'
 
 
 class Required:
@@ -651,7 +650,7 @@ class Required:
         self.key = key
 
     def __repr__(self):
-        return '{}({})'.format(self.__class__.__name__, bbrepr(self.key))
+        return f'{self.__class__.__name__}({bbrepr(self.key)})'
 
 
 def _precedence(match):
@@ -854,10 +853,10 @@ class Switch:
             return scope[glom](target, valspec, chain_child(scope))
         if self.default is not _MISSING:
             return arg_val(target, self.default, scope)
-        raise MatchError("no matches for target in %s"  % self.__class__.__name__)
+        raise MatchError(f"no matches for target in {self.__class__.__name__}")
 
     def __repr__(self):
-        return '{}({})'.format(self.__class__.__name__, bbrepr(self.cases))
+        return f'{self.__class__.__name__}({bbrepr(self.cases)})'
 
 
 RAISE = make_sentinel('RAISE')  # flag object for "raise on check failure"
@@ -926,7 +925,7 @@ class Check:
         equal_to = kwargs.pop('equal_to', _MISSING)
         one_of = kwargs.pop('one_of', _MISSING)
         if kwargs:
-            raise TypeError('unexpected keyword arguments: %r' % kwargs.keys())
+            raise TypeError(f'unexpected keyword arguments: {kwargs.keys()!r}')
 
         self.validators = _get_arg_val('validate', 'callable', callable, validate)
         self.instance_of = _get_arg_val('instance_of', 'a type',
@@ -984,12 +983,12 @@ class Check:
                         raise self._ValidationError
                 except Exception as e:
                     msg = ('expected %r check to validate target'
-                           % getattr(validator, '__name__', None) or ('#%s' % i))
+                           % getattr(validator, '__name__', None) or (f'#{i}'))
                     if type(e) is self._ValidationError:
                         if self.default is not RAISE:
                             return self.default
                     else:
-                        msg += ' (got exception: %r)' % e
+                        msg += f' (got exception: {e!r})'
                     errs.append(msg)
 
         if self.instance_of and not isinstance(target, self.instance_of):
@@ -1040,15 +1039,15 @@ class CheckError(GlomError):
         self.path = path
 
     def get_message(self):
-        msg = 'target at path %s failed check,' % self.path
+        msg = f'target at path {self.path} failed check,'
         if self.check_obj.spec is not T:
-            msg += ' subtarget at {!r}'.format(self.check_obj.spec)
+            msg += f' subtarget at {self.check_obj.spec!r}'
         if len(self.msgs) == 1:
-            msg += ' got error: {!r}'.format(self.msgs[0])
+            msg += f' got error: {self.msgs[0]!r}'
         else:
-            msg += ' got {} errors: {!r}'.format(len(self.msgs), self.msgs)
+            msg += f' got {len(self.msgs)} errors: {self.msgs!r}'
         return msg
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '{}({!r}, {!r}, {!r})'.format(cn, self.msgs, self.check_obj, self.path)
+        return f'{cn}({self.msgs!r}, {self.check_obj!r}, {self.path!r})'

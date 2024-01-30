@@ -92,7 +92,7 @@ class Group:
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '{}({!r})'.format(cn, self.spec)
+        return f'{cn}({self.spec!r})'
 
 
 def GROUP(target, spec, scope):
@@ -171,7 +171,7 @@ class First:
         return STOP
 
     def __repr__(self):
-        return '%s()' % self.__class__.__name__
+        return f'{self.__class__.__name__}()'
 
 
 class Avg:
@@ -195,7 +195,7 @@ class Avg:
         return avg_acc[0] / avg_acc[1]
 
     def __repr__(self):
-        return '%s()' % self.__class__.__name__
+        return f'{self.__class__.__name__}()'
 
 
 class Max:
@@ -214,7 +214,7 @@ class Max:
         return tree[self]
 
     def __repr__(self):
-        return '%s()' % self.__class__.__name__
+        return f'{self.__class__.__name__}()'
 
 
 class Min:
@@ -233,7 +233,7 @@ class Min:
         return tree[self]
 
     def __repr__(self):
-        return '%s()' % self.__class__.__name__
+        return f'{self.__class__.__name__}()'
 
 
 class Sample:
@@ -270,7 +270,7 @@ class Sample:
         return sample
 
     def __repr__(self):
-        return '{}({!r})'.format(self.__class__.__name__, self.size)
+        return f'{self.__class__.__name__}({self.size!r})'
 
 
 
@@ -313,4 +313,4 @@ class Limit:
         return scope[glom](target, self.subspec, scope)
 
     def __repr__(self):
-        return '{}({!r}, {!r})'.format(self.__class__.__name__, self.n, self.subspec)
+        return f'{self.__class__.__name__}({self.n!r}, {self.subspec!r})'
