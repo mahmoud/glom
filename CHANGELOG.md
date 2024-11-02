@@ -12,6 +12,16 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
+## 24.11.0
+
+_(November 2, 2024)_
+
+- Add support for Python 3.12, dropping pre-Python 3.7 syntax.
+- Add `--scalar` flag to CLI to enable cleaner way to get single values at the console and in scripts
+- Upgrade requirements, fixing `face` pin (see [issue 284][i284]
+
+[i284]: https://github.com/mahmoud/glom/issues/284
+
 ## 23.5.0
 
 _(November 26, 2023)_
