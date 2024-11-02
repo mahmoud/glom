@@ -63,6 +63,14 @@ def test_cli_spec_argv_target_stdin_basic(cc):
     assert res.stdout == BASIC_OUT
 
 
+def test_cli_scalar(cc):
+    res = cc.run(['glom', 'a.b.c', '{"a": {"b": {"c": "d"}}}'])
+    assert res.stdout == '"d"\n'
+
+    res = cc.run(['glom', '--scalar', 'a.b.c', '{"a": {"b": {"c": "d"}}}'])
+    assert res.stdout == 'd'
+
+
 def test_cli_spec_target_files_basic(cc, basic_spec_path, basic_target_path):
     res = cc.run(['glom', '--indent', '0', '--target-file',
                   basic_target_path, '--spec-file', basic_spec_path])
