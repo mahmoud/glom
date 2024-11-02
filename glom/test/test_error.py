@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 import re
 import sys
@@ -60,12 +59,12 @@ def _norm_stack(formatted_stack, exc):
 
     normalized = []
     for line in formatted_stack.splitlines():
-        if line.strip().startswith(u'File'):
-            file_name = line.split(u'"')[1]
-            short_file_name = os.path.split(file_name.strip(u'"'))[1]
+        if line.strip().startswith('File'):
+            file_name = line.split('"')[1]
+            short_file_name = os.path.split(file_name.strip('"'))[1]
             line = line.replace(file_name, short_file_name)
-            line = line.partition(u'line')[0] + u'line ___,' + line.partition(u'line')[2].partition(u',')[2]
-        line = line.partition(u'0x')[0]  # scrub memory addresses
+            line = line.partition('line')[0] + 'line ___,' + line.partition('line')[2].partition(',')[2]
+        line = line.partition('0x')[0]  # scrub memory addresses
 
         line = line.rstrip()  # trailing whitespace shouldn't matter
 
@@ -81,8 +80,8 @@ def _norm_stack(formatted_stack, exc):
 
         normalized.append(line)
 
-    stack = u"\n".join(normalized) + u'\n'
-    stack = stack.replace(u',)', u')')  # py37 likes to do Exception('msg',)
+    stack = "\n".join(normalized) + '\n'
+    stack = stack.replace(',)', ')')  # py37 likes to do Exception('msg',)
     return stack
 
 
@@ -97,11 +96,11 @@ def _make_stack(spec, **kwargs):
             return str(value)
         except BaseException as be:  # pragma: no cover
             try:
-                print(' !! failed to stringify %s object, got %s' % (type(value).__name__, be))
+                print(f' !! failed to stringify {type(value).__name__} object, got {be}')
                 traceback.print_exc()
             except:
                 print(' !! unable to print trace')
-            return '<unprintable %s object got %s>' % (type(value).__name__, be)
+            return f'<unprintable {type(value).__name__} object got {be}>'
 
     traceback._some_str = _debug_some_str
 
@@ -156,7 +155,7 @@ Exception: unique message
 
 def test_glom_error_stack():
     # NoneType has not attribute value
-    expected = u"""\
+    expected = """\
 Traceback (most recent call last):
   File "test_error.py", line ___, in _make_stack
     glom(target, spec)
@@ -174,7 +173,7 @@ glom.core.PathAccessError: could not access 'value', part 0 of Path('value'), go
 """
     #import glom.core
     #glom.core.GLOM_DEBUG = True
-    actual = _make_stack({'results': [{u'valué': u'value'}]})
+    actual = _make_stack({'results': [{'valué': 'value'}]})
     print(actual)
 
     assert actual == expected
@@ -230,9 +229,9 @@ def test_long_target_repr():
     actual = _make_stack(target=[None] * 1000, spec='1001')
     assert '(len=1000)' in actual
 
-    class ObjectWithLongRepr(object):
+    class ObjectWithLongRepr:
         def __repr__(self):
-            return '<%s %s>' % (self.__class__.__name__, 'w' + ('ooooo' * 250))
+            return '<{} {}>'.format(self.__class__.__name__, 'w' + ('ooooo' * 250))
 
     actual = _make_stack(target=ObjectWithLongRepr(), spec='badattr')
     assert '...' in actual
@@ -411,7 +410,7 @@ def test_fallback():
             if not first:
                 1/0
             self.first = False
-            super(BadExc, self).__init__(self.first)
+            super().__init__(self.first)
 
     bad_exc = BadExc(True)
 
@@ -503,10 +502,10 @@ def test_glom_dev_debug():
 
 
 def test_unicode_stack():
-    val = {u'resumé': u'beyoncé'}
-    stack = _make_stack(target=val, spec=u'a.é.i.o')
+    val = {'resumé': 'beyoncé'}
+    stack = _make_stack(target=val, spec='a.é.i.o')
     assert 'beyonc' in stack
-    assert u'é' in stack
+    assert 'é' in stack
 
 
 def test_3_11_byte_code_caret():

@@ -7,7 +7,7 @@ from glom.core import UnregisteredTarget
 
 
 def test_assign():
-    class Foo(object):
+    class Foo:
         pass
 
     assert glom({}, Assign(T['a'], 1)) == {'a': 1}
@@ -63,7 +63,7 @@ def test_unregistered_assign():
 
 
 def test_bad_assign_target():
-    class BadTarget(object):
+    class BadTarget:
         def __setattr__(self, name, val):
             raise Exception("and you trusted me?")
 
@@ -135,7 +135,7 @@ def test_assign_missing_dict():
 
 def test_assign_missing_object():
     val = object()
-    class Container(object):
+    class Container:
         pass
 
     target = Container()
@@ -177,7 +177,7 @@ def test_assign_missing_unassignable():
 
     """
 
-    class Tarjay(object):
+    class Tarjay:
         init_count = 0
         def __init__(self):
             self.__class__.init_count += 1
@@ -209,7 +209,7 @@ def test_s_assign():
 
 
 def test_delete():
-    class Foo(object):
+    class Foo:
         def __init__(self, d=None):
             for k, v in d.items():
                 setattr(self, k, v)
@@ -271,7 +271,7 @@ def test_unregistered_delete():
 
 
 def test_bad_delete_target():
-    class BadTarget(object):
+    class BadTarget:
         def __delattr__(self, name):
             raise Exception("and you trusted me?")
 

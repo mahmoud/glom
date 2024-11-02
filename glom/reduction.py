@@ -1,4 +1,3 @@
-
 import operator
 import itertools
 from pprint import pprint
@@ -23,7 +22,7 @@ class FoldError(GlomError):
     pass
 
 
-class Fold(object):
+class Fold:
     """The `Fold` specifier type is glom's building block for reducing
     iterables in data, implementing the classic `fold
     <https://en.wikipedia.org/wiki/Fold_(higher-order_function)>`_
@@ -124,7 +123,7 @@ class Sum(Fold):
 
     """
     def __init__(self, subspec=T, init=int):
-        super(Sum, self).__init__(subspec=subspec, init=init, op=operator.iadd)
+        super().__init__(subspec=subspec, init=init, op=operator.iadd)
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -143,7 +142,7 @@ class Count(Fold):
     __slots__ = ()
 
     def __init__(self):
-        super(Count, self).__init__(
+        super().__init__(
             subspec=T, init=int, op=lambda cur, val: cur + 1)
 
     def __repr__(self):
@@ -169,12 +168,12 @@ class Flatten(Fold):
             init = list
         else:
             self.lazy = False
-        super(Flatten, self).__init__(subspec=subspec, init=init, op=operator.iadd)
+        super().__init__(subspec=subspec, init=init, op=operator.iadd)
 
     def _fold(self, iterator):
         if self.lazy:
             return itertools.chain.from_iterable(iterator)
-        return super(Flatten, self)._fold(iterator)
+        return super()._fold(iterator)
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -298,7 +297,7 @@ class Merge(Fold):
         if not callable(op):
             raise ValueError('expected callable "op" arg or an "init" with an .update()'
                              ' method not %r and %r' % (op, init))
-        super(Merge, self).__init__(subspec=subspec, init=init, op=op)
+        super().__init__(subspec=subspec, init=init, op=op)
 
     def _fold(self, iterator):
         # the difference here is that ret is mutated in-place, the

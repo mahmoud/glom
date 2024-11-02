@@ -1,4 +1,3 @@
-
 import pytest
 
 from glom import glom, Spec, T, S

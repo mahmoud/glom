@@ -58,6 +58,7 @@ setup(name='glom',
           'Programming Language :: Python :: 3.9',
           'Programming Language :: Python :: 3.10',
           'Programming Language :: Python :: 3.11',
+          'Programming Language :: Python :: 3.12',
           'Programming Language :: Python :: Implementation :: CPython',
           'Programming Language :: Python :: Implementation :: PyPy',
           'License :: OSI Approved :: BSD License',
@@ -82,5 +83,7 @@ A brief checklist for release:
 * bump glom/_version.py onto n+1 dev
 * git commit
 * git push
+
+NB: if dropping support for a python version, bump the pyupgrade argument in tox and run syntax-upgrade tox env.
 
 """

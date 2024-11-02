@@ -17,7 +17,6 @@ semantics.
 
 """
 
-from __future__ import print_function
 
 import os
 import sys
@@ -137,7 +136,7 @@ class GlomError(Exception):
         # defined in pure-python as well as C
         exc_type = type(exc)
         bases = (GlomError,) if issubclass(GlomError, exc_type) else (exc_type, GlomError)
-        exc_wrapper_type = type("GlomError.wrap({})".format(exc_type.__name__), bases, {})
+        exc_wrapper_type = type(f"GlomError.wrap({exc_type.__name__})", bases, {})
         try:
             wrapper = exc_wrapper_type(*exc.args)
             wrapper.__wrapped = exc
@@ -183,7 +182,7 @@ class GlomError(Exception):
         try:
             exc_get_message = self.get_message
         except AttributeError:
-            exc_get_message = super(GlomError, self).__str__
+            exc_get_message = super().__str__
         return exc_get_message()
 
 
@@ -352,7 +351,7 @@ class PathAccessError(GlomError, AttributeError, KeyError, IndexError):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.part_idx)
+        return f'{cn}({self.exc!r}, {self.path!r}, {self.part_idx!r})'
 
 
 class PathAssignError(GlomError):
@@ -382,7 +381,7 @@ class PathAssignError(GlomError):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r, %r, %r)' % (cn, self.exc, self.path, self.dest_name)
+        return f'{cn}({self.exc!r}, {self.path!r}, {self.dest_name!r})'
 
 
 class CoalesceError(GlomError):
@@ -423,7 +422,7 @@ class CoalesceError(GlomError):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%r, %r, %r)' % (cn, self.coal_obj, self.skipped, self.path)
+        return f'{cn}({self.coal_obj!r}, {self.skipped!r}, {self.path!r})'
 
     def get_message(self):
         missed_specs = tuple(self.coal_obj.subspecs)
@@ -434,11 +433,11 @@ class CoalesceError(GlomError):
         msg = ('no valid values found. Tried %r and got (%s)'
                % (missed_specs, ', '.join(skipped_vals)))
         if self.coal_obj.skip is not _MISSING:
-            msg += ', skip set to %r' % (self.coal_obj.skip,)
+            msg += f', skip set to {self.coal_obj.skip!r}'
         if self.coal_obj.skip_exc is not GlomError:
-            msg += ', skip_exc set to %r' % (self.coal_obj.skip_exc,)
+            msg += f', skip_exc set to {self.coal_obj.skip_exc!r}'
         if self.path is not None:
-            msg += ' (at path %r)' % (self.path,)
+            msg += f' (at path {self.path!r})'
         return msg
 
 
@@ -475,7 +474,7 @@ class UnregisteredTarget(GlomError):
         self.target_type = target_type
         self.type_map = type_map
         self.path = path
-        super(UnregisteredTarget, self).__init__(op, target_type, type_map, path)
+        super().__init__(op, target_type, type_map, path)
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -493,7 +492,7 @@ class UnregisteredTarget(GlomError):
         msg = ("target type %r not registered for '%s', expected one of"
                " registered types: %s" % (self.target_type.__name__, self.op, reg_types_str))
         if self.path:
-            msg += ' (at %r)' % (self.path,)
+            msg += f' (at {self.path!r})'
         return msg
 
 
@@ -503,8 +502,8 @@ if getattr(__builtins__, '__dict__', None) is not None:
     __builtins__ = __builtins__.__dict__
 
 
-_BUILTIN_ID_NAME_MAP = dict([(id(v), k)
-                             for k, v in __builtins__.items()])
+_BUILTIN_ID_NAME_MAP = {id(v): k
+                             for k, v in __builtins__.items()}
 
 
 class _BBRepr(Repr):
@@ -537,7 +536,7 @@ class _BBReprFormatter(string.Formatter):
     def convert_field(self, value, conversion):
         if conversion == 'r':
             return bbrepr(value).replace("\\'", "'")
-        return super(_BBReprFormatter, self).convert_field(value, conversion)
+        return super().convert_field(value, conversion)
 
 
 bbformat = _BBReprFormatter().format
@@ -565,17 +564,17 @@ def format_invocation(name='', args=(), kwargs=None, **kw):
         kwarg_items = [(k, kwargs[k]) for k in sorted(kwargs)]
     else:
         kwarg_items = kwargs
-    kw_text = ', '.join(['%s=%s' % (k, _repr(v)) for k, v in kwarg_items])
+    kw_text = ', '.join([f'{k}={_repr(v)}' for k, v in kwarg_items])
 
     all_args_text = a_text
     if all_args_text and kw_text:
         all_args_text += ', '
     all_args_text += kw_text
 
-    return '%s(%s)' % (name, all_args_text)
+    return f'{name}({all_args_text})'
 
 
-class Path(object):
+class Path:
     """Path objects specify explicit paths when the default
     ``'a.b.c'``-style general access syntax won't work or isn't
     desirable. Use this to wrap ints, datetimes, and other valid
@@ -779,7 +778,7 @@ def _format_path(t_path):
     return _format_t(cur_t_path)
 
 
-class Spec(object):
+class Spec:
     """Spec objects serve three purposes, here they are, roughly ordered
     by utility:
 
@@ -820,11 +819,11 @@ class Spec(object):
     def __repr__(self):
         cn = self.__class__.__name__
         if self.scope:
-            return '%s(%s, scope=%r)' % (cn, bbrepr(self.spec), self.scope)
-        return '%s(%s)' % (cn, bbrepr(self.spec))
+            return f'{cn}({bbrepr(self.spec)}, scope={self.scope!r})'
+        return f'{cn}({bbrepr(self.spec)})'
 
 
-class Coalesce(object):
+class Coalesce:
     """Coalesce objects specify fallback behavior for a list of
     subspecs.
 
@@ -915,7 +914,7 @@ class Coalesce(object):
             self.skip_func = lambda v: v == self.skip
         self.skip_exc = kwargs.pop('skip_exc', GlomError)
         if kwargs:
-            raise TypeError('unexpected keyword args: %r' % (sorted(kwargs.keys()),))
+            raise TypeError(f'unexpected keyword args: {sorted(kwargs.keys())!r}')
 
     def glomit(self, target, scope):
         skipped = []
@@ -942,7 +941,7 @@ class Coalesce(object):
         return format_invocation(cn, self.subspecs, self._orig_kwargs, repr=bbrepr)
 
 
-class Inspect(object):
+class Inspect:
     """The :class:`~glom.Inspect` specifier type provides a way to get
     visibility into glom's evaluation of a specification, enabling
     debugging of those tricky problems that may arise with unexpected
@@ -1041,7 +1040,7 @@ class Inspect(object):
         return ret
 
 
-class Call(object):
+class Call:
     """:class:`Call` specifies when a target should be passed to a function,
     *func*.
 
@@ -1097,7 +1096,7 @@ class Call(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%s, args=%r, kwargs=%r)' % (cn, bbrepr(self.func), self.args, self.kwargs)
+        return f'{cn}({bbrepr(self.func)}, args={self.args!r}, kwargs={self.kwargs!r})'
 
 
 def _is_spec(obj, strict=False):
@@ -1110,7 +1109,7 @@ def _is_spec(obj, strict=False):
     return _has_callable_glomit(obj)  # pragma: no cover
 
 
-class Invoke(object):
+class Invoke:
     """Specifier type designed for easy invocation of callables from glom.
 
     Args:
@@ -1322,7 +1321,7 @@ class Invoke(object):
         return func(*all_args, **all_kwargs)
 
 
-class Ref(object):
+class Ref:
     """Name a part of a spec and refer to it elsewhere in the same spec,
     useful for trees and other self-similar data structures.
 
@@ -1351,7 +1350,7 @@ class Ref(object):
         return "Ref(" + args + ")"
 
 
-class TType(object):
+class TType:
     """``T``, short for "target". A singleton object that enables
     object-oriented expression of a glom specification.
 
@@ -1440,7 +1439,7 @@ class TType(object):
     def __call__(self, *args, **kwargs):
         if self is S:
             if args:
-                raise TypeError('S() takes no positional arguments, got: %r' % (args,))
+                raise TypeError(f'S() takes no positional arguments, got: {args!r}')
             if not kwargs:
                 raise TypeError('S() expected at least one kwarg, got none')
             # TODO: typecheck kwarg vals?
@@ -1734,7 +1733,7 @@ def _format_t(path, root=T):
                 index = ", ".join([_format_slice(x) for x in arg])
             else:
                 index = _format_slice(arg)
-            prepr.append("[%s]" % (index,))
+            prepr.append(f"[{index}]")
         elif op == '(':
             args, kwargs = arg
             prepr.append(format_invocation(args=args, kwargs=kwargs, repr=bbrepr))
@@ -1760,7 +1759,7 @@ def _format_t(path, root=T):
     return "".join(prepr)
 
 
-class Val(object):
+class Val:
     """Val objects are specs which evaluate to the wrapped *value*.
 
     >>> target = {'a': {'b': 'c'}}
@@ -1789,13 +1788,13 @@ class Val(object):
 
     def __repr__(self):
         cn = self.__class__.__name__
-        return '%s(%s)' % (cn, bbrepr(self.value))
+        return f'{cn}({bbrepr(self.value)})'
 
 
 Literal = Val  # backwards compat for pre-20.7.0
 
 
-class ScopeVars(object):
+class ScopeVars:
     """This is the runtime partner of :class:`Vars` -- this is what
     actually lives in the scope and stores runtime values.
 
@@ -1813,10 +1812,10 @@ class ScopeVars(object):
         return iter(self.__dict__.items())
 
     def __repr__(self):
-        return "%s(%s)" % (self.__class__.__name__, bbrepr(self.__dict__))
+        return f"{self.__class__.__name__}({bbrepr(self.__dict__)})"
 
 
-class Vars(object):
+class Vars:
     """
     :class:`Vars` is a helper that can be used with **S** in order to
     store shared mutable state.
@@ -1843,7 +1842,7 @@ class Vars(object):
         return ret
 
 
-class Let(object):
+class Let:
     """
     Deprecated, kept for backwards compat. Use S(x='y') instead.
 
@@ -1868,7 +1867,7 @@ class Let(object):
         return format_invocation(cn, kwargs=self._binding, repr=bbrepr)
 
 
-class Auto(object):
+class Auto:
     """
     Switch to Auto mode (the default)
 
@@ -1886,7 +1885,7 @@ class Auto(object):
     def __repr__(self):
         cn = self.__class__.__name__
         rpr = '' if self.spec is None else bbrepr(self.spec)
-        return '%s(%s)' % (cn, rpr)
+        return f'{cn}({rpr})'
 
 
 class _AbstractIterable(_AbstractIterableBase):
@@ -1967,7 +1966,7 @@ def _handle_tuple(target, spec, scope):
     return res
 
 
-class Pipe(object):
+class Pipe:
     """Evaluate specs one after the other, passing the result of
     the previous evaluation in as the target of the next spec:
 
@@ -1987,7 +1986,7 @@ class Pipe(object):
         return self.__class__.__name__ + bbrepr(self.steps)
 
 
-class TargetRegistry(object):
+class TargetRegistry:
     '''
     responsible for registration of target types for iteration
     and attribute walking
@@ -2094,7 +2093,7 @@ class TargetRegistry(object):
 
     def register(self, target_type, **kwargs):
         if not isinstance(target_type, type):
-            raise TypeError('register expected a type, not an instance: %r' % (target_type,))
+            raise TypeError(f'register expected a type, not an instance: {target_type!r}')
         exact = kwargs.pop('exact', None)
         new_op_map = dict(kwargs)
 
@@ -2140,11 +2139,11 @@ class TargetRegistry(object):
         extensions.
         """
         if not isinstance(op_name, basestring):
-            raise TypeError('expected op_name to be a text name, not: %r' % (op_name,))
+            raise TypeError(f'expected op_name to be a text name, not: {op_name!r}')
         if auto_func is None:
             auto_func = lambda t: False
         elif not callable(auto_func):
-            raise TypeError('expected auto_func to be callable, not: %r' % (auto_func,))
+            raise TypeError(f'expected auto_func to be callable, not: {auto_func!r}')
 
         # determine support for any previously known types
         known_types = set(sum([list(m.keys()) for m
@@ -2320,7 +2319,7 @@ def chain_child(scope):
     return nxt_in_chain
 
 
-unbound_methods = set([type(str.__len__)]) #, type(Ref.glomit)])
+unbound_methods = {type(str.__len__)} #, type(Ref.glomit)])
 
 
 def _has_callable_glomit(obj):
@@ -2438,7 +2437,7 @@ def register_op(op_name, **kwargs):
     return
 
 
-class Glommer(object):
+class Glommer:
     """The :class:`Glommer` type mostly serves to encapsulate type
     registration context so that advanced uses of glom don't need to
     worry about stepping on each other.
@@ -2506,7 +2505,7 @@ class Glommer(object):
         return glom(target, spec, scope=self.scope, **kwargs)
 
 
-class Fill(object):
+class Fill:
     """A specifier type which switches to glom into "fill-mode". For the
     spec contained within the Fill, glom will only interpret explicit
     specifier types (including T objects). Whereas the default mode
@@ -2538,7 +2537,7 @@ class Fill(object):
     def __repr__(self):
         cn = self.__class__.__name__
         rpr = '' if self.spec is None else bbrepr(self.spec)
-        return '%s(%s)' % (cn, rpr)
+        return f'{cn}({rpr})'
 
 
 def FILL(target, spec, scope):
@@ -2557,7 +2556,7 @@ def FILL(target, spec, scope):
         return spec(target)
     return spec
 
-class _ArgValuator(object):
+class _ArgValuator:
     def __init__(self):
         self.cache = {}
 

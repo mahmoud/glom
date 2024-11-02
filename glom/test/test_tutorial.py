@@ -1,4 +1,3 @@
-
 from glom import glom, tutorial
 from glom.tutorial import Contact, Email
 

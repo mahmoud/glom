@@ -32,7 +32,7 @@ pprint(os.environ)
 # -- Project information -----------------------------------------------------
 
 project = u'glom'
-copyright = u'2023, Mahmoud Hashemi'
+copyright = u'2024, Mahmoud Hashemi'
 author = u'Mahmoud Hashemi'
 
 # The short X.Y version
