@@ -72,13 +72,12 @@ A brief checklist for release:
 * git commit (if applicable)
 * Bump glom/_version.py off of -dev
 * git commit -a -m "bump version for vx.y.z release"
+* write CHANGELOG
+* bump docs/conf.py version
+* git commit
 * rm -rf dist/*
 * python setup.py sdist bdist_wheel
 * twine upload dist/*
-* bump docs/conf.py version
-* git commit
-* write CHANGELOG
-* git commit
 * git tag -a vx.y.z -m "brief summary"
 * bump glom/_version.py onto n+1 dev
 * git commit
