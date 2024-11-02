@@ -1,6 +1,5 @@
-
 import sys
-from xml.etree import cElementTree as ElementTree
+from xml.etree import ElementTree as ElementTree
 
 import pytest
 
@@ -15,7 +14,7 @@ from glom import OMIT, Let, Literal  # backwards compat
 
 
 def test_initial_integration():
-    class Example(object):
+    class Example:
         pass
 
     example = Example()
@@ -180,7 +179,7 @@ def test_val():
 def test_abstract_iterable():
     assert isinstance([], glom_core._AbstractIterable)
 
-    class MyIterable(object):
+    class MyIterable:
         def __iter__(self):
             return iter([1, 2, 3])
     mi = MyIterable()
@@ -190,14 +189,14 @@ def test_abstract_iterable():
 
 
 def test_call_and_target():
-    class F(object):
+    class F:
         def __init__(s, a, b, c): s.a, s.b, s.c = a, b, c
 
     call_f = Call(F, kwargs=dict(a=T, b=T, c=T))
     assert repr(call_f)
     val = glom(1, call_f)
     assert (val.a, val.b, val.c) == (1, 1, 1)
-    class F(object):
+    class F:
         def __init__(s, a): s.a = a
     val = glom({'one': F('two')}, Call(F, args=(T['one'].a,)))
     assert val.a == 'two'
@@ -358,7 +357,7 @@ def test_python_native():
     spec = T['system']['planets'][-1].values()
 
     output = glom(target, spec)
-    assert set(output) == set(['jupiter', 69])  # for ordering reasons
+    assert set(output) == {'jupiter', 69}  # for ordering reasons
 
     with pytest.raises(glom_core.GlomError):
         spec = T['system']['comets'][-1].values()
@@ -444,7 +443,7 @@ def test_api_repr():
         if v.__repr__ is object.__repr__:
             spec_types_wo_reprs.append(k)  # pragma: no cover
 
-    assert set(spec_types_wo_reprs) == set([])
+    assert set(spec_types_wo_reprs) == set()
 
 
 def test_bbformat():

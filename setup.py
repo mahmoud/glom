@@ -84,4 +84,6 @@ A brief checklist for release:
 * git commit
 * git push
 
+NB: if dropping support for a python version, bump the pyupgrade argument in tox and run syntax-upgrade tox env.
+
 """
