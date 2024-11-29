@@ -59,6 +59,9 @@ def _norm_stack(formatted_stack, exc):
 
     normalized = []
     for line in formatted_stack.splitlines():
+        if set(line.strip()) <= set('^~'):
+            # python 3.13 added this error indicator which isn't really useful to test
+            continue
         if line.strip().startswith('File'):
             file_name = line.split('"')[1]
             short_file_name = os.path.split(file_name.strip('"'))[1]
@@ -67,16 +70,6 @@ def _norm_stack(formatted_stack, exc):
         line = line.partition('0x')[0]  # scrub memory addresses
 
         line = line.rstrip()  # trailing whitespace shouldn't matter
-
-        # qualify python2's unqualified error type names
-        exc_type_name = exc.__class__.__name__
-        if exc_type_name in line:
-            mod_name = str(getattr(exc.__class__, '__module__', '') or '')
-            exc_type_qual_name = exc_type_name
-            if 'builtin' not in mod_name:
-                exc_type_qual_name = mod_name + '.' + exc_type_name
-            if exc_type_qual_name not in line:
-                line = line.replace(exc_type_name, exc_type_qual_name)
 
         normalized.append(line)
 
