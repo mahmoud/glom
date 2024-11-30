@@ -186,6 +186,23 @@ class Assign:
         return f'{cn}({self._orig_path!r}, {self.val!r}, missing={bbrepr(self.missing)})'
 
 
+class Update(object):
+    """
+    Update a dict or set without otherwise modifying.
+    This allows dict creation to be broken into "chunks".
+
+    ({'a': 'a'}, [dict, Update({'b': 'b', 'c': 'c'})])
+    """
+    def __init__(self, subspec):
+        assert type(subspec) in (dict, set, frozenset)
+        self.subspec = subspec
+
+    def glomit(self, target, scope):
+        assert hasattr(target, 'update')
+        target.update(scope[glom](target, self.subspec, scope))
+        return target
+
+
 def assign(obj, path, val, missing=None):
     """*New in glom 18.3.0*
 
