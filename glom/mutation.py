@@ -6,6 +6,15 @@ are sure you want to modify in-place, glom has you covered, with the
 :func:`~glom.assign` function, and the :func:`~glom.Assign` specifier
 type.
 
+.. warning::
+
+   glom's deep assignment is powerful, and incorrect use can result in 
+   unintended assignments to global state, including class and module 
+   attributes, as well as function defaults. 
+   
+   Be careful when writing assignment specs, and especially careful when 
+   any part of the spec is data-driven or provided by an end user.
+
 """
 import operator
 from pprint import pprint
