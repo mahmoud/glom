@@ -919,14 +919,31 @@ class Coalesce:
     def glomit(self, target, scope):
         skipped = []
         for subspec in self.subspecs:
-            try:
-                ret = scope[glom](target, subspec, scope)
-                if not self.skip_func(ret):
-                    break
-                skipped.append(ret)
-            except self.skip_exc as e:
-                skipped.append(e)
-                continue
+            if isinstance(subspec, list):
+                ret = []
+                for i,subspec_item in enumerate(subspec,start=1):
+                    try:
+                        ret_item = scope[glom](target, subspec_item, scope)
+                        if not self.skip_func(ret_item):
+                            ret.append(ret_item)   # 只追加有效结果
+                        else:
+                            skipped.append(ret_item)
+
+                    except self.skip_exc as e:
+                        skipped.append(e)
+                        continue
+                if ret:  # 如果收集到有效结果，返回
+                    return ret
+                # 如果 ret 为空，继续外层循环
+            else:
+                try:
+                    ret = scope[glom](target, subspec, scope)
+                    if not self.skip_func(ret):
+                        break
+                    skipped.append(ret)
+                except self.skip_exc as e:
+                    skipped.append(e)
+                    continue
         else:
             if self.default is not _MISSING:
                 ret = arg_val(target, self.default, scope)
