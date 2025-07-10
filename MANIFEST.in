@@ -1,7 +1,0 @@
-include LICENSE CHANGELOG.md tox.ini requirements.txt requirements-rtd.txt .coveragerc Makefile pytest.ini .tox-coveragerc
-exclude TODO.md codecov.yml .readthedocs.yaml requirements.in
-global-exclude flycheck_*
-
-graft glom/test/data
-graft docs
-prune docs/_build
