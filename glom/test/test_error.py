@@ -68,6 +68,10 @@ def _norm_stack(formatted_stack, exc):
 
         line = line.rstrip()  # trailing whitespace shouldn't matter
 
+        # skip Python 3.11+ caret lines (e.g., "    ~~~~^^^^^^^^^^^^^^")
+        if line.strip() and frozenset(line.strip()) <= frozenset('~^'):
+            continue
+
         # qualify python2's unqualified error type names
         exc_type_name = exc.__class__.__name__
         if exc_type_name in line:
