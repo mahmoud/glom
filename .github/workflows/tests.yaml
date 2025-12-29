@@ -14,11 +14,6 @@ jobs:
   tests:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
-    env:
-      # Required for pytest tmp_path on Windows + Python 3.14 (no pwd module)
-      LOGNAME: runneradmin
-      USER: runneradmin
-      USERNAME: runneradmin
     strategy:
       fail-fast: false
       matrix:
