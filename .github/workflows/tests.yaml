@@ -14,6 +14,11 @@ jobs:
   tests:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    env:
+      # Required for pytest tmp_path on Windows + Python 3.14 (no pwd module)
+      LOGNAME: runneradmin
+      USER: runneradmin
+      USERNAME: runneradmin
     strategy:
       fail-fast: false
       matrix:
@@ -49,8 +54,6 @@ jobs:
           key: pip|${{ runner.os }}|${{ matrix.python }}|${{ hashFiles('setup.py') }}|${{ hashFiles('requirements/*.txt') }}
       - run: pip install tox
       - run: tox -e ${{ matrix.tox }},coverage-report
-        env:
-          USERNAME: runneradmin  # Required for pytest tmp_path on Windows + Python 3.14
       - name: "Upload coverage to Codecov"
         uses: "codecov/codecov-action@v3"
         with:
