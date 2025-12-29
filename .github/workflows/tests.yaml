@@ -49,6 +49,8 @@ jobs:
           key: pip|${{ runner.os }}|${{ matrix.python }}|${{ hashFiles('setup.py') }}|${{ hashFiles('requirements/*.txt') }}
       - run: pip install tox
       - run: tox -e ${{ matrix.tox }},coverage-report
+        env:
+          USERNAME: runneradmin  # Required for pytest tmp_path on Windows + Python 3.14
       - name: "Upload coverage to Codecov"
         uses: "codecov/codecov-action@v3"
         with:
