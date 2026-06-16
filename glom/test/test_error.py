@@ -5,7 +5,7 @@ import traceback
 
 import pytest
 
-from glom import glom, S, T, GlomError, Switch, Coalesce, Or, Path
+from glom import glom, S, T, GlomError, PathAccessError, Switch, Coalesce, Or, Path
 from glom.core import format_oneline_trace, format_target_spec_trace, bbrepr, ROOT, LAST_CHILD_SCOPE
 from glom.matching import M, MatchError, TypeMatchError, Match
 
@@ -38,6 +38,35 @@ def test_pae_api():
     assert exc_info.value.path.__class__ is Path
     assert exc_info.value.exc.__class__ is IndexError
     assert exc_info.value.part_idx == 1
+
+
+def test_pae_scope_printable():
+    # A PathAccessError whose path comes from a Scope/S access must still be
+    # printable: get_message() (and therefore str()) must not raise even
+    # though Path() rejects an S-based path. Regression for #249.
+    with pytest.raises(PathAccessError) as exc_info:
+        glom({}, S['X'], scope={'x': 'y'})
+
+    exc = exc_info.value
+    msg = exc.get_message()
+    assert '<exception str() failed>' not in str(exc)
+    assert "could not access 'X'" in msg
+    assert "part 0 of T['X']" in msg
+    assert "KeyError" in msg
+
+
+def test_pae_fallback_for_non_path():
+    # get_message() should not crash even if .path lacks a .values() method
+    # (e.g. a manually constructed PathAccessError with a plain string path).
+    exc = PathAccessError(KeyError('z'), 'a.b.c', 0)
+    msg = exc.get_message()
+    assert 'a.b.c' in msg
+    assert "KeyError" in msg
+
+    # Also cover IndexError fallback: part_idx beyond path length
+    exc2 = PathAccessError(KeyError('z'), Path('a', 'b'), 99)
+    msg2 = exc2.get_message()
+    assert "Path('a', 'b')" in msg2
 
 
 def test_unfinalized_glomerror_repr():

@@ -345,7 +345,10 @@ class PathAccessError(GlomError, AttributeError, KeyError, IndexError):
         self.part_idx = part_idx
 
     def get_message(self):
-        path_part = Path(self.path).values()[self.part_idx]
+        try:
+            path_part = self.path.values()[self.part_idx]
+        except (AttributeError, IndexError):
+            path_part = self.path
         return ('could not access %r, part %r of %r, got error: %r'
                 % (path_part, self.part_idx, self.path, self.exc))
 
