@@ -210,6 +210,45 @@ def test_path_slices():
     assert path[1::2] == Path(T.b, 2)
 
 
+def test_path_slices_match_sequence_semantics():
+    # Path slicing must mirror standard sequence slicing over the
+    # path's components (the values returned by .values()), including
+    # clamping of out-of-range bounds and support for negative steps.
+    path = Path('a', 'b', 'c')
+    vals = path.values()
+    assert vals == ('a', 'b', 'c')
+
+    # out-of-range negative start/stop must be clamped, not wrap to the
+    # end (previously silently returned an empty or truncated Path)
+    assert path[-4:2].values() == vals[-4:2] == ('a', 'b')
+    assert path[-5:].values() == vals[-5:] == ('a', 'b', 'c')
+    assert path[:-5].values() == vals[:-5] == ()
+    assert path[-100:100].values() == vals[-100:100] == ('a', 'b', 'c')
+
+    # negative steps (e.g. reversing a path) must be honored
+    assert path[::-1].values() == vals[::-1] == ('c', 'b', 'a')
+    assert path[2::-1].values() == vals[2::-1] == ('c', 'b', 'a')
+    assert path[::-2].values() == vals[::-2] == ('c', 'a')
+
+    # a slice that yields nothing must produce a valid, empty Path
+    # (previously produced a corrupt Path with misaligned op/value ops)
+    empty = Path('x', 'y')[-4:-3]
+    assert empty == Path()
+    assert empty.values() == ()
+
+    # exhaustive cross-check against tuple slicing for a range of bounds
+    # and steps, over paths of several lengths
+    for n in range(5):
+        p = Path(*['k%d' % i for i in range(n)])
+        pv = p.values()
+        bounds = [None] + list(range(-n - 2, n + 3))
+        for start in bounds:
+            for stop in bounds:
+                for step in (None, 1, 2, 3, -1, -2):
+                    key = slice(start, stop, step)
+                    assert p[key].values() == pv[key], (n, start, stop, step)
+
+
 def test_path_values():
     path = Path(T.a.b, 1, 2, T(test='yes'))
 

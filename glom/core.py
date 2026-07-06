@@ -730,27 +730,25 @@ class Path:
 
     def __getitem__(self, i):
         cur_t_path = self.path_t.__ops__
-        try:
-            step = i.step
-            start = i.start if i.start is not None else 0
-            stop = i.stop
+        if isinstance(i, slice):
+            # slicing mirrors standard sequence slicing over the path's
+            # components: out-of-range bounds are clamped and negative
+            # steps are honored, exactly as for a list/tuple of the
+            # values returned by .values(). Each component occupies a
+            # (op, value) pair at ops offset (2 * idx) + 1.
+            new_path = ()
+            for idx in range(*i.indices(len(self))):
+                new_path += cur_t_path[(idx * 2) + 1:(idx * 2) + 3]
+            new_t = TType()
+            new_t.__ops__ = (cur_t_path[0],) + new_path
+            return Path(new_t)
 
-            start = (start * 2) + 1 if start >= 0 else (start * 2) + len(cur_t_path)
-            if stop is not None:
-                stop = (stop * 2) + 1 if stop >= 0 else (stop * 2) + len(cur_t_path)
-        except AttributeError:
-            step = 1
-            start = (i * 2) + 1 if i >= 0 else (i * 2) + len(cur_t_path)
-            if start < 0 or start >= len(cur_t_path):
-                raise IndexError('Path index %d out of range for Path of length %d' % (i, (len(cur_t_path) - 1) // 2))
-            stop = ((i + 1) * 2) + 1 if i >= 0 else ((i + 1) * 2) + len(cur_t_path)
+        start = (i * 2) + 1 if i >= 0 else (i * 2) + len(cur_t_path)
+        if start < 0 or start >= len(cur_t_path):
+            raise IndexError('Path index %d out of range for Path of length %d' % (i, (len(cur_t_path) - 1) // 2))
 
         new_t = TType()
-        new_path = cur_t_path[start:stop]
-        if step is not None and step != 1:
-            new_path = tuple(zip(new_path[::2], new_path[1::2]))[::step]
-            new_path = sum(new_path, ())
-        new_t.__ops__ = (cur_t_path[0],) + new_path
+        new_t.__ops__ = (cur_t_path[0],) + cur_t_path[start:start + 2]
         return Path(new_t)
 
     def __repr__(self):
