@@ -201,7 +201,8 @@ def mw_get_target(next_, posargs_, target_file, target_format, spec_file, spec_f
         target_text = sys.stdin.read()
     elif target_file:
         try:
-            target_text = open(target_file).read()
+            with open(target_file) as f:
+                target_text = f.read()
         except OSError as ose:
             raise UsageError(f'could not read target file {target_file!r}, got: {ose}')
     elif not target_text and not isatty(sys.stdin):
