@@ -209,6 +209,11 @@ def test_path_slices():
     # slicing and stepping
     assert path[1::2] == Path(T.b, 2)
 
+    # negative step, like ordinary sequence slicing
+    assert path[::-1] == Path(T(test='yes'), 2, 1, T.b, T.a)
+    assert path[3:1:-1] == Path(2, 1)
+    assert path[-1:-3:-1] == Path(T(test='yes'), 2)
+
 
 def test_path_values():
     path = Path(T.a.b, 1, 2, T(test='yes'))
