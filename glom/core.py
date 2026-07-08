@@ -1662,9 +1662,15 @@ def _t_eval(target, _t, scope):
 def _assign_op(dest, op, arg, val, path, scope):
     """helper method for doing the assignment on a T operation"""
     if op == '[':
-        dest[arg] = val
+        try:
+            dest[arg] = val
+        except Exception as e:
+            raise PathAssignError(e, path, arg)
     elif op == '.':
-        setattr(dest, arg, val)
+        try:
+            setattr(dest, arg, val)
+        except Exception as e:
+            raise PathAssignError(e, path, arg)
     elif op == 'P':
         _assign = scope[TargetRegistry].get_handler('assign', dest)
         try:
