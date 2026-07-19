@@ -82,6 +82,10 @@ def test_coalesce():
     with pytest.raises(ValueError):
         Coalesce('x', 'y', default=1, default_factory=list)
 
+    # a falsy default is still mutually exclusive with default_factory
+    with pytest.raises(ValueError):
+        Coalesce('x', 'y', default=0, default_factory=list)
+
     # check that arbitrary values can be skipped
     assert glom(val, Coalesce('xxx', 'yyy', 'a.b', default='zzz', skip='c')) == 'zzz'
 

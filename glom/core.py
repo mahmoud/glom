@@ -904,7 +904,7 @@ class Coalesce:
         self._orig_kwargs = dict(kwargs)
         self.default = kwargs.pop('default', _MISSING)
         self.default_factory = kwargs.pop('default_factory', _MISSING)
-        if self.default and self.default_factory:
+        if self.default is not _MISSING and self.default_factory is not _MISSING:
             raise ValueError('expected one of "default" or "default_factory", not both')
         self.skip = kwargs.pop('skip', _MISSING)
         if self.skip is _MISSING:
