@@ -555,3 +555,21 @@ glom.core.GlomError.wrap(IndexError): error raised while processing, details bel
  - Spec: []
 IndexError: list index out of range
 """
+
+
+def test_self_referential_target_does_not_recurse():
+    """A self-referential target must not overflow the stack while glom
+    formats an error trace of it. bbrepr keeps a bounded recursion depth so
+    the repr is truncated instead of recursing forever (see #315)."""
+    d = {}
+    d['self'] = d
+
+    # bbrepr of a cyclic structure is bounded and does not raise.
+    r = bbrepr(d)
+    assert r.endswith('}')
+    assert '...' in r
+
+    # A failing glom over a self-referential target surfaces the real
+    # PathAccessError rather than a RecursionError from formatting the trace.
+    with pytest.raises(PathAccessError):
+        glom(d, 'missing')
