@@ -519,6 +519,9 @@ class _BBRepr(Repr):
         for name in self.__dict__:
             if not isinstance(getattr(self, name), int):
                 continue
+            # keep maxlevel low to prevent infinite recursion on self-referential structures
+            if name == 'maxlevel':
+                continue
             setattr(self, name, 1024)
 
     def repr1(self, x, level):
