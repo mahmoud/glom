@@ -12,6 +12,13 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
+## Unreleased
+
+- Make `flatten()` traverse intermediate levels with an explicit iterator stack.
+  Empty targets no longer allocate work proportional to the requested `levels`,
+  and deeply nested inputs do not require recursive generator chains. Lazy
+  consumption and the final accumulator semantics are preserved. (#312)
+
 ## 25.12.0
 
 _(December 28, 2025)_

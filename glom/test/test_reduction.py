@@ -151,3 +151,41 @@ def test_merge_func():
     # basic signature test
     with pytest.raises(TypeError):
         merge([], nonexistentkwarg=False)
+
+
+@pytest.mark.parametrize('target', [[], [[]], [[[]]]])
+@pytest.mark.parametrize('init', [list, dict, 'lazy'])
+def test_flatten_empty_at_large_depth(target, init):
+    # A huge declared depth should not construct a huge tuple or generator chain.
+    result = flatten(target, levels=10 ** 30, init=init)
+    assert (list(result) if init == 'lazy' else result) == ({} if init is dict else [])
+
+
+def test_flatten_deep_nesting_without_recursion():
+    target = [42]
+    for _ in range(2000):
+        target = [target]
+    assert flatten(target, levels=2000) == [42]
+
+
+def test_flatten_levels_preserve_lazy_consumption():
+    consumed = []
+
+    def source():
+        for value in range(3):
+            consumed.append(value)
+            yield [[value]]
+
+    result = flatten(source(), levels=2, init='lazy')
+    assert consumed == []
+    assert next(result) == 0
+    assert consumed == [0]
+    assert list(result) == [1, 2]
+
+
+def test_flatten_levels_preserve_accumulator():
+    assert flatten([[[1, 2]], [[3]]], levels=3, init=int) == 6
+    assert flatten([[['a', 'bc']]], levels=3, init=str) == 'abc'
+    assert flatten({'items': [[[1], [2]]]}, spec='items', levels=2) == [1, 2]
+    with pytest.raises(TypeError):
+        flatten([], levels=2.5)
