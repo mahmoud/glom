@@ -186,6 +186,36 @@ class Flatten(Fold):
         return format_invocation(cn, args, kwargs, repr=bbrepr)
 
 
+class _FlattenLevels(Flatten):
+    """Flatten intermediate levels using a stack bounded by actual nesting."""
+
+    def __init__(self, levels, init):
+        super().__init__(init=init)
+        self.levels = levels
+
+    def _fold(self, iterator):
+        def intermediate_items():
+            stack = [(iterator, self.levels - 1)]
+            while stack:
+                current, remaining = stack[-1]
+                try:
+                    value = next(current)
+                except StopIteration:
+                    stack.pop()
+                    continue
+                if remaining:
+                    stack.append((iter(value), remaining - 1))
+                else:
+                    yield value
+
+        return super()._fold(intermediate_items())
+
+    def __repr__(self):
+        init = 'lazy' if self.lazy else self.init
+        return format_invocation(self.__class__.__name__, (),
+                                 {'levels': self.levels, 'init': init}, repr=bbrepr)
+
+
 def flatten(target, **kwargs):
     """At its most basic, ``flatten()`` turns an iterable of iterables
     into a single list. But it has a few arguments which give it more
@@ -199,7 +229,9 @@ def flatten(target, **kwargs):
           or even :class:`int`. You can also pass ``init="lazy"`` to
           get a generator.
        levels (int): A positive integer representing the number of
-          nested levels to flatten. Defaults to 1.
+          nested levels to flatten. Defaults to 1. Intermediate traversal
+          uses space proportional to the actual nesting, not this limit;
+          empty iterables finish without visiting nonexistent levels.
        spec: The glomspec to fetch before flattening. This defaults to the
           the root level of the object.
 
@@ -256,9 +288,8 @@ def flatten(target, **kwargs):
         return target
     if levels < 0:
         raise ValueError('expected levels >= 0, not %r' % levels)
-    spec = (subspec,)
-    spec += (Flatten(init="lazy"),) * (levels - 1)
-    spec += (Flatten(init=init),)
+    levels = operator.index(levels)
+    spec = (subspec, _FlattenLevels(levels, init))
 
     return glom(target, spec)
 
