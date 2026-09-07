@@ -113,7 +113,8 @@ class Iter:
         return
 
     def _add_op(self, opname, args, callback):
-        return type(self)(subspec=self.subspec, _iter_stack=[(opname, args, callback)] + self._iter_stack)
+        return type(self)(subspec=self.subspec, sentinel=self.sentinel,
+                          _iter_stack=[(opname, args, callback)] + self._iter_stack)
 
     def map(self, subspec):
         """Return a new :class:`Iter()` spec which will apply the provided
