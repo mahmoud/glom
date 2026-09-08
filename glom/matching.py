@@ -366,7 +366,7 @@ class Not(_Bool):
         except GlomError:
             return target
         else:
-            raise GlomError("child shouldn't have passed", self.child)
+            raise MatchError("child shouldn't have passed: {0!r}", self.child)
 
     def _m_repr(self):
         if isinstance(self.child, (_MType, _MExpr)):
