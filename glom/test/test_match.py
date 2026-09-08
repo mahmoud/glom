@@ -508,3 +508,9 @@ def test_switch():
 
 def test_nested_dict():
     assert glom({1: 2}, Match({A.t: S.t})) == {1: 1}
+
+
+@pytest.mark.parametrize('spec', [Not(Match(int)), ~M, ~(M > 0)])
+def test_not_raises_match_error_when_child_matches(spec):
+    with pytest.raises(MatchError):
+        glom(1, spec)
