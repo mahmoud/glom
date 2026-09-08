@@ -316,6 +316,18 @@ def test_delete_ignore_missing():
     assert delete({}, 'a', ignore_missing=True) == {}
     assert delete({}, 'a.b', ignore_missing=True) == {}
 
+    # explicit item access (a '[' op) on a missing dict key raises
+    # KeyError rather than IndexError; ignore_missing should still skip it
+    assert glom({'a': 1}, Delete(T['zzz'], ignore_missing=True)) == {'a': 1}
+    with pytest.raises(PathDeleteError, match='could not delete'):
+        glom({'a': 1}, Delete(T['zzz']))
+
+    # under a broadcast, a missing key partway through must not leave the
+    # earlier elements half-deleted when ignore_missing is set
+    target = {'items': [{'k': 1, 'keep': 'a'}, {'nope': 2}, {'k': 3, 'keep': 'b'}]}
+    glom(target, Delete(Path(T['items'].__star__()['k']), ignore_missing=True))
+    assert target == {'items': [{'keep': 'a'}, {'nope': 2}, {'keep': 'b'}]}
+
 
 def test_star_broadcast():
     val = {'a': [{'b': [{'c': 1}, {'c': 2}, {'c': 3}]}]}

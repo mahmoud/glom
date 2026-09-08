@@ -292,7 +292,7 @@ class Delete:
         if op == '[':
             try:
                 del dest[arg]
-            except IndexError as e:
+            except (IndexError, KeyError) as e:
                 if not self.ignore_missing:
                     raise PathDeleteError(e, self.path, arg)
         elif op == '.':
