@@ -25,6 +25,42 @@ def test_iter():
         Iter(nonexistent_kwarg=True)
 
 
+@pytest.mark.parametrize('sentinel', [None, object()], ids=['none', 'object'])
+@pytest.mark.parametrize('add_ops, expected', [
+    (lambda spec: spec.map(str), ['0', '1']),
+    (lambda spec: spec.filter(), [1]),
+    (lambda spec: spec.map(str).filter(lambda x: x == '1').chunked(2), [['1']]),
+], ids=['map', 'filter', 'chain'])
+def test_iter_sentinel_chained(sentinel, add_ops, expected):
+    spec = Iter(sentinel=sentinel)
+    chained = add_ops(spec)
+    target = iter([0, SKIP, 1, sentinel, 2])
+
+    assert list(glom(target, chained)) == expected
+    assert list(target) == [2]
+    assert list(glom([0, SKIP, 1, sentinel, 2], spec)) == [0, 1]
+    assert list(glom([0, SKIP, 1, STOP, 2], chained)) == expected
+
+
+def test_iter_sentinel_chained_subspec():
+    target = iter([{'value': 1}, {'value': None}, {'value': 2}])
+    spec = Iter('value', sentinel=None).map(str)
+
+    assert list(glom(target, spec)) == ['1']
+    assert list(target) == [{'value': 2}]
+
+
+def test_iter_sentinel_chained_identity():
+    sentinel = []
+    equal_value = []
+    target = iter([equal_value, sentinel, [1]])
+    result = list(glom(target, Iter(sentinel=sentinel).map(T)))
+
+    assert len(result) == 1
+    assert result[0] is equal_value
+    assert list(target) == [[1]]
+
+
 def test_filter():
     is_odd = lambda x: x % 2
     odd_spec = Iter().filter(is_odd)
