@@ -100,6 +100,20 @@ def test_sequence_assign():
     return
 
 
+def test_assign_t_form_raises_path_assign_error():
+    # a failing assignment reached through a T-expression destination
+    # (setitem/setattr ops) should raise PathAssignError, just like the
+    # string/Path form already does. Previously these leaked the raw
+    # IndexError/TypeError/AttributeError wrapped as a generic GlomError.
+    with pytest.raises(PathAssignError, match='could not assign'):
+        glom(['short', 'list'], Assign(T[5], 'x'))
+    with pytest.raises(PathAssignError, match='could not assign'):
+        glom(('a', 'b'), Assign(T[0], 'x'))
+    with pytest.raises(PathAssignError, match='could not assign'):
+        glom(5, Assign(T.foo, 1))
+    return
+
+
 def test_invalid_assign_op_target():
     target = {'afunc': lambda x: 'hi %s' % x}
     spec = T['afunc'](x=1)
