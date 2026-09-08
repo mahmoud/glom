@@ -606,8 +606,8 @@ class Path:
     >>> path[-2:]
     Path(1, 2)
 
-    To build a Path object from a string, use :meth:`Path.from_text()`. 
-    This is the default behavior when the top-level :func:`~glom.glom` 
+    To build a Path object from a string, use :meth:`Path.from_text()`.
+    This is the default behavior when the top-level :func:`~glom.glom`
     function gets a string spec.
     """
     def __init__(self, *path_parts):
@@ -1959,11 +1959,11 @@ def _handle_tuple(target, spec, scope):
     for subspec in spec:
         scope = chain_child(scope)
         nxt = scope[glom](res, subspec, scope)
+        res = nxt
         if nxt is SKIP:
             continue
         if nxt is STOP:
             break
-        res = nxt
         if not isinstance(subspec, list):
             scope[Path] += [getattr(subspec, '__name__', subspec)]
     return res
@@ -2197,7 +2197,7 @@ def glom(target, spec, **kwargs):
     'c'
 
     Here the *spec* was just a string denoting a path,
-    ``'a.b'``. As simple as it should be. You can also use 
+    ``'a.b'``. As simple as it should be. You can also use
     :mod:`glob`-like wildcard selectors:
 
     >>> target = {'a': [{'k': 'v1'}, {'k': 'v2'}]}
@@ -2209,8 +2209,8 @@ def glom(target, spec, **kwargs):
     >>> target = {'a': [{'k': 'v3'}, {'k': 'v4'}], 'k': 'v0'}
     >>> glom(target, '**.k')
     ['v0', 'v3', 'v4']
-    
-    The next example shows how to use nested data to 
+
+    The next example shows how to use nested data to
     access many fields at once, and make a new nested structure.
 
     Constructing, or restructuring more-complicated nested data:
@@ -2433,7 +2433,7 @@ def register(target_type, **kwargs):
 
 def register_op(op_name, **kwargs):
     """For extension authors needing to add operations beyond the builtin
-    'get', 'iterate', 'keys', 'assign', and 'delete' to the default scope. 
+    'get', 'iterate', 'keys', 'assign', and 'delete' to the default scope.
     See TargetRegistry for more details.
     """
     _DEFAULT_SCOPE[TargetRegistry].register_op(op_name, **kwargs)
