@@ -131,7 +131,7 @@ def _make_stack(spec, **kwargs):
             try:
                 print(f' !! failed to stringify {type(value).__name__} object, got {be}')
                 traceback.print_exc()
-            except:
+            except Exception:
                 print(' !! unable to print trace')
             return f'<unprintable {type(value).__name__} object got {be}>'
 

@@ -35,7 +35,7 @@ def _find_snippets():
 
 try:
     SNIPPETS = _find_snippets()
-except:
+except Exception:
     SNIPPETS = []  # in case running in an environment without docs
 
 SNIPPETS_GLOBALS = copy.copy(glom.__dict__)
