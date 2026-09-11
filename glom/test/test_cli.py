@@ -1,5 +1,6 @@
 import os
 import subprocess
+import warnings
 
 import pytest
 from face import CommandChecker, CommandLineError
@@ -114,6 +115,51 @@ def test_usage_errors(cc, basic_spec_path, basic_target_path):
 
     res = cc.fail_1(['glom', '--spec-file', basic_spec_path, '--target-file', basic_target_path + 'abra'])
     assert 'could not read target file' in res.stdout  # TODO: stderr
+
+
+def test_target_file_does_not_leak_handle(cc, basic_spec_path, basic_target_path):
+    # Regression: reading --target-file used `open(target_file).read()` without
+    # a with-statement, leaving the TextIOWrapper reference alive until GC.
+    # That triggers a ResourceWarning on garbage collection and, on platforms
+    # with a real file-descriptor limit, can EMFILE under load. mw_get_target
+    # must close the file deterministically (as the spec_file path already does).
+    import builtins
+    real_open = builtins.open
+    opened = []
+    opened_close_states = []
+
+    def tracking_open(*args, **kwargs):
+        f = real_open(*args, **kwargs)
+        opened.append(f)
+        opened_close_states.append(False)
+
+        original_close = f.close
+
+        def tracked_close():
+            opened_close_states[-1] = True
+            return original_close()
+
+        f.close = tracked_close
+        return f
+
+    # Run --target-file through the real CommandChecker (which invokes the
+    # cli in-process via face) with a tracking open installed, then assert
+    # every opened file was explicitly closed.
+    builtins.open = tracking_open
+    try:
+        cc.run(['glom', '--indent', '0', '--target-file',
+                basic_target_path, '--spec-file', basic_spec_path])
+    finally:
+        builtins.open = real_open
+
+    # The pre-fix bug leaves at least one opened file un-closed (the one
+    # created by `open(target_file).read()` in mw_get_target). Post-fix the
+    # cli mirrors the spec_file path and closes every handle it opens.
+    assert opened, 'cli should have opened at least the spec and target files'
+    assert all(opened_close_states), (
+        'mw_get_target left a file handle un-closed: %r' %
+        [str(f) for f, closed in zip(opened, opened_close_states) if not closed]
+    )
 
 
 def test_main_basic():
