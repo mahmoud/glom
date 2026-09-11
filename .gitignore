@@ -53,3 +53,6 @@ nosetests.xml
 *.sw[op]
 
 .cache/
+.cie/
+.venv/
+.forge/
