@@ -519,6 +519,12 @@ class _BBRepr(Repr):
         for name in self.__dict__:
             if not isinstance(getattr(self, name), int):
                 continue
+            # ...except the recursion-depth limit: raising it defeats the
+            # guard that keeps repr() of a self-referential structure from
+            # exhausting the interpreter stack (see #315). Leave maxlevel at
+            # reprlib's bounded default.
+            if name == 'maxlevel':
+                continue
             setattr(self, name, 1024)
 
     def repr1(self, x, level):

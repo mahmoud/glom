@@ -12,6 +12,15 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
+## Unreleased
+
+- Fix a `RecursionError` when glom formats an error trace for a
+  self-referential target. `bbrepr` no longer raises its recursion-depth
+  limit, so a cyclic structure's repr is bounded and truncated instead of
+  overflowing the stack (see [issue 315][i315]).
+
+[i315]: https://github.com/mahmoud/glom/issues/315
+
 ## 25.12.0
 
 _(December 28, 2025)_
