@@ -151,3 +151,18 @@ def test_merge_func():
     # basic signature test
     with pytest.raises(TypeError):
         merge([], nonexistentkwarg=False)
+
+
+@pytest.mark.parametrize('target', [[], [[]], [[[]]]])
+@pytest.mark.parametrize('init', [list, 'lazy'])
+def test_flatten_empty_at_large_depth(target, init):
+    # A huge declared depth should not construct a huge tuple or generator chain.
+    result = flatten(target, levels=10 ** 6, init=init)
+    assert (list(result) if init == 'lazy' else result) == []
+
+
+def test_flatten_deep_nesting_without_recursion():
+    target = [42]
+    for _ in range(2000):
+        target = [target]
+    assert flatten(target, levels=2000) == [42]
