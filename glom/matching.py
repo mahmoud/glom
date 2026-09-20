@@ -232,7 +232,7 @@ class Regex:
         self.match_func, self.pattern = match_func, pattern
 
     def glomit(self, target, scope):
-        if type(target) not in _RE_TYPES:
+        if not isinstance(target, _RE_TYPES):
             raise MatchError(
                 "{0!r} not valid as a Regex target -- expected {1!r}", type(target), _RE_TYPES)
         match = self.match_func(target)
