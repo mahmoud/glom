@@ -1,5 +1,7 @@
 import re
 import json
+import operator
+from functools import partial
 
 import pytest
 
@@ -90,6 +92,35 @@ def test_match_expressions():
         glom(1, M < 1)
     with pytest.raises(MatchError):
         glom(1, M != 1)
+
+
+def is_positive(target):
+    return target > 0
+
+
+class IsPositive:
+    def __call__(self, target):
+        return is_positive(target)
+
+
+@pytest.mark.parametrize('predicate, name', [
+    (is_positive, 'is_positive'),
+    (partial(operator.lt, 0), 'partial'),
+    (IsPositive(), 'IsPositive'),
+])
+@pytest.mark.parametrize('target, reason', [
+    (0, 'non truthy return'),
+    (None, 'got exception TypeError'),
+])
+def test_match_callable_errors(predicate, name, target, reason):
+    assert glom(1, Match(predicate)) == 1
+    with pytest.raises(MatchError) as exc_info:
+        glom(target, Match(predicate))
+    message = exc_info.value.get_message()
+    assert message.startswith(f'{name}({target!r}) did not validate')
+    assert reason in message
+    assert glom(target, Match(predicate, default='fallback')) == 'fallback'
+    assert glom(target, Match(Or(predicate, Val('fallback')))) == 'fallback'
 
 
 def test_defaults():
