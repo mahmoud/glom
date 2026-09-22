@@ -881,8 +881,9 @@ class Check:
           exception, the Check will fail.
        instance_of: a type or sequence of types to be checked with isinstance()
        one_of: an iterable of values, any of which can match the target ("in")
-       default: an optional default value to replace the value when the check fails
-                (if default is not specified, GlomCheckError will be raised)
+       default: an optional default value to replace the value when the check fails,
+                including when a validator raises an exception. A specifier default
+                is evaluated against the checked value. If omitted, CheckError is raised.
 
     Aside from *spec*, all arguments are keyword arguments. Each
     argument, except for *default*, represent a check
@@ -983,12 +984,11 @@ class Check:
                     if res is False:
                         raise self._ValidationError
                 except Exception as e:
+                    if self.default is not RAISE:
+                        return arg_val(target, self.default, scope)
                     msg = ('expected %r check to validate target'
                            % getattr(validator, '__name__', None) or ('#%s' % i))
-                    if type(e) is self._ValidationError:
-                        if self.default is not RAISE:
-                            return self.default
-                    else:
+                    if type(e) is not self._ValidationError:
                         msg += ' (got exception: %r)' % e
                     errs.append(msg)
 
