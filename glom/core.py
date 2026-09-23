@@ -452,7 +452,7 @@ class BadSpec(GlomError, TypeError):
 class UnregisteredTarget(GlomError):
     """This :class:`GlomError` subtype is raised when a spec calls for an
     unsupported action on a target type. For instance, trying to
-    iterate on an non-iterable target:
+    iterate on a non-iterable target:
 
     >>> glom(object(), ['a.b.c'])
     Traceback (most recent call last):
@@ -2392,7 +2392,7 @@ def register(target_type, **kwargs):
     """Register *target_type* so :meth:`~Glommer.glom()` will
     know how to handle instances of that type as targets.
 
-    Here's an example of adding basic iterabile support for Django's ORM:
+    Here's an example of adding basic iterable support for Django's ORM:
 
     .. code-block:: python
 
