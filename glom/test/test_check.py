@@ -1,6 +1,6 @@
-from pytest import raises
+from pytest import raises, mark
 
-from glom import glom, Check, CheckError, Coalesce, SKIP, STOP, T
+from glom import glom, Check, CheckError, Coalesce, SKIP, STOP, T, Spec
 
 try:
     unicode
@@ -96,3 +96,41 @@ def test_check_signature():
 
     with raises(ValueError):
         Check(validate='bad, not callable, value')
+
+
+@mark.parametrize('default', [None, False, 0, '', 'fallback'])
+def test_check_validator_exception_default(default):
+    assert glom('invalid', Check(validate=int, default=default)) == default
+
+
+def test_check_validator_exception_control_flow():
+    target = ['1', 'invalid', '2']
+    assert glom(target, [Check(validate=int, default=SKIP)]) == ['1', '2']
+    assert glom(target, [Check(validate=int, default=STOP)]) == ['1']
+
+
+@mark.parametrize('validator', [int, lambda value: False])
+@mark.parametrize('default', [T.upper(), Spec(T.upper())])
+def test_check_validator_default_spec(validator, default):
+    assert glom({'value': 'invalid'},
+                Check('value', validate=validator, default=default)) == 'INVALID'
+
+
+def test_check_validator_exception_without_default():
+    with raises(CheckError) as exc_info:
+        glom('invalid', Check(validate=(int, float)))
+    assert len(exc_info.value.msgs) == 2
+    assert all('ValueError' in msg for msg in exc_info.value.msgs)
+
+
+def test_check_validator_success_does_not_evaluate_default():
+    target = {'value': '1'}
+    assert glom(target, Check('value', validate=int, default=T.missing)) is target
+
+
+def test_check_validator_does_not_swallow_base_exception():
+    def interrupted(value):
+        raise KeyboardInterrupt
+
+    with raises(KeyboardInterrupt):
+        glom('invalid', Check(validate=interrupted, default='fallback'))
