@@ -2149,8 +2149,10 @@ class TargetRegistry:
             raise TypeError(f'expected auto_func to be callable, not: {auto_func!r}')
 
         # determine support for any previously known types
-        known_types = set(sum([list(m.keys()) for m
-                               in self._op_type_map.values()], []))
+        # registration order, not set order, so the fuzzy type tree
+        # resolves overlapping types the same way as for other ops
+        known_types = list(dict.fromkeys(t for m in self._op_type_map.values()
+                                         for t in m))
         type_map = self._op_type_map.get(op_name, OrderedDict())
         type_tree = self._op_type_tree.get(op_name, OrderedDict())
         for t in sorted(known_types, key=lambda t: t.__name__):

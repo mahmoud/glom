@@ -248,6 +248,32 @@ def test_faulty_op_registration():
     return
 
 
+def test_register_op_follows_registration_order():
+    # Regression for #243. The forced hashes make CPython iterate
+    # {First, Second} as Second, First, the opposite of registration order.
+    class ForcedHash(type):
+        def __hash__(cls):
+            return cls.forced_hash
+
+    class First(metaclass=ForcedHash):
+        forced_hash = 2
+
+    class Second(metaclass=ForcedHash):
+        forced_hash = 1
+
+    class Both(First, Second):
+        pass
+
+    treg = TargetRegistry(register_default_types=False)
+    treg.register(First, get=lambda obj: 'First')
+    treg.register(Second, get=lambda obj: 'Second')
+    treg.register_op('new_op', lambda t: (lambda obj: t.__name__))
+
+    obj = Both()
+    assert treg.get_handler('get', obj)(obj) == 'First'
+    assert treg.get_handler('new_op', obj)(obj) == 'First'
+
+
 def test_reregister_type():
     treg = TargetRegistry()
 
