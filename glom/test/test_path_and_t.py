@@ -1,4 +1,4 @@
-from pytest import raises
+from pytest import mark, raises
 
 from glom import glom, Path, S, T, A, PathAccessError, GlomError, BadSpec, Or, Assign, Delete
 from glom import core
@@ -364,3 +364,64 @@ def test_path_cache():
     pre = Path._MAX_CACHE
     Path._MAX_CACHE = 0
     assert Path.from_text('d.e.f') is not Path.from_text('d.e.f')
+
+
+@mark.parametrize('subclass_first', [False, True])
+def test_path_from_text_subclass_cache(subclass_first, monkeypatch):
+    monkeypatch.setattr(Path, '_MAX_CACHE', 10000)
+    class PrefixPath(Path):
+        def glomit(self, target, scope):
+            return 'custom:' + super().glomit(target, scope)
+
+    text = 'subclass-first' if subclass_first else 'base-first'
+    classes = (PrefixPath, Path) if subclass_first else (Path, PrefixPath)
+    first, second = [cls.from_text(text) for cls in classes]
+    assert type(first) is classes[0]
+    assert type(second) is classes[1]
+    assert glom({text: 'value'}, PrefixPath.from_text(text)) == 'custom:value'
+    assert glom({text: 'value'}, Path.from_text(text)) == 'value'
+    assert PrefixPath.from_text(text) is PrefixPath.from_text(text)
+    assert Path.from_text(text) is Path.from_text(text)
+
+
+@mark.parametrize('star_mode', [False, True])
+def test_path_from_text_unhashable_class(star_mode, monkeypatch):
+    monkeypatch.setattr(Path, '_MAX_CACHE', 10000)
+    monkeypatch.setattr(core, 'PATH_STAR', star_mode)
+
+    class UnhashableMeta(type):
+        __hash__ = None
+
+    class UnhashablePath(Path, metaclass=UnhashableMeta):
+        pass
+
+    result = UnhashablePath.from_text('unhashable-class')
+    assert type(result) is UnhashablePath
+    assert result.values() == ('unhashable-class',)
+    assert UnhashablePath.from_text('unhashable-class') is result
+
+
+@mark.parametrize('star_mode', [False, True])
+def test_path_from_text_equal_classes(star_mode, monkeypatch):
+    monkeypatch.setattr(Path, '_MAX_CACHE', 10000)
+    monkeypatch.setattr(core, 'PATH_STAR', star_mode)
+
+    class EquivalentMeta(type):
+        def __eq__(cls, other):
+            return isinstance(other, EquivalentMeta)
+
+        def __hash__(cls):
+            return 17
+
+    class Left(Path, metaclass=EquivalentMeta):
+        pass
+
+    class Right(Path, metaclass=EquivalentMeta):
+        pass
+
+    left = Left.from_text('equivalent-classes')
+    right = Right.from_text('equivalent-classes')
+    assert type(left) is Left
+    assert type(right) is Right
+    assert Left.from_text('equivalent-classes') is left
+    assert Right.from_text('equivalent-classes') is right
