@@ -9,6 +9,7 @@ step, you can do these checks inline with your glom spec, using
 
 import re
 import sys
+from collections.abc import Iterator  # 2026-10-11: Detect one-shot conditions.
 from pprint import pprint
 
 from boltons.iterutils import is_iterable
@@ -903,6 +904,9 @@ class Check:
         def _get_arg_val(name, cond, func, val, can_be_empty=True):
             if val is _MISSING:
                 return ()
+            # 2026-10-11: Validation must not exhaust one-shot conditions.
+            if isinstance(val, Iterator):
+                val = tuple(val)
             if not is_iterable(val):
                 val = (val,)
             elif not val and not can_be_empty:
@@ -943,6 +947,9 @@ class Check:
             if not is_iterable(one_of):
                 raise ValueError('expected "one_of" argument to be iterable'
                                  ' , not: %r' % one_of)
+            # 2026-10-11: Choices are reused for each checked target.
+            if isinstance(one_of, Iterator):
+                one_of = tuple(one_of)
             if not one_of:
                 raise ValueError('expected "one_of" to contain at least'
                                  ' one value, not: %r' % (one_of,))

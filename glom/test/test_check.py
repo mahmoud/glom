@@ -78,6 +78,37 @@ def test_check_multi():
 
 
 
+# 2026-10-11: Iterator conditions must survive validation and repeated checks.
+def test_check_iterator_validators():
+    check = Check(validate=iter([lambda value: value > 0]))
+    assert glom(1, check) == 1
+    with raises(CheckError):
+        glom(-1, check)
+
+
+def test_check_iterator_types():
+    for name in ('type', 'instance_of'):
+        check = Check(**{name: iter([int])})
+        assert glom(1, check) == 1
+        assert glom(2, check) == 2
+        with raises(CheckError):
+            glom('invalid', check)
+
+
+def test_check_iterator_choices():
+    check = Check(one_of=iter([1, 2]))
+    assert glom(2, check) == 2
+    assert glom(1, check) == 1
+    with raises(CheckError):
+        glom(3, check)
+
+
+def test_check_empty_iterator_conditions():
+    for name in ('type', 'instance_of', 'one_of'):
+        with raises(ValueError):
+            Check(**{name: iter([])})
+
+
 def test_check_signature():
     with raises(ValueError):
         Check(instance_of=())
