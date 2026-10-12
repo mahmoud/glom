@@ -1,3 +1,6 @@
+from decimal import Decimal
+from fractions import Fraction
+
 from pytest import raises
 
 from glom import glom, T, SKIP, STOP, Auto, BadSpec, Val
@@ -74,6 +77,23 @@ def test_agg():
 
     assert glom(range(10), Group({lambda t: t % 2: Count()})) == {
 		0: 5, 1: 5}
+
+
+def test_avg_decimal():
+    values = [Decimal('0.1'), Decimal('0.2')]
+    result = glom(iter(values), Group(Avg()))
+    assert isinstance(result, Decimal)
+    assert result == Decimal('0.15')
+
+
+def test_avg_fraction():
+    result = glom([Fraction(1, 3), Fraction(2, 3)], Group(Avg()))
+    assert isinstance(result, Fraction)
+    assert result == Fraction(1, 2)
+
+
+def test_avg_integer_cancellation():
+    assert glom([2 ** 60, 1, -(2 ** 60)], Group(Avg())) == 1 / 3
 
 
 def test_limit():

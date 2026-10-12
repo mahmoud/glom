@@ -189,7 +189,7 @@ class Avg:
             avg_acc = tree[self]
         except KeyError:
             # format is [sum, count]
-            avg_acc = tree[self] = [0.0, 0]
+            avg_acc = tree[self] = [0, 0]
         avg_acc[0] += target
         avg_acc[1] += 1
         return avg_acc[0] / avg_acc[1]
