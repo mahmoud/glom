@@ -322,6 +322,8 @@ class And(_Bool):
 
     def __and__(self, other):
         # reduce number of layers of spec
+        if self.default is not _MISSING:
+            return And(self, other)
         return And(*(self.children + (other,)))
 
 
@@ -344,6 +346,8 @@ class Or(_Bool):
 
     def __or__(self, other):
         # reduce number of layers of spec
+        if self.default is not _MISSING:
+            return Or(self, other)
         return Or(*(self.children + (other,)))
 
 

@@ -164,6 +164,32 @@ def test_and_or_reduction():
     assert repr(or_spec) == "Or(T['a'], T['b'], T['c'])"
 
 
+@pytest.mark.parametrize('default, expected', [
+    (None, None), (0, 0), (Val('fallback'), 'fallback')])
+def test_or_chaining_preserves_default(default, expected):
+    left = Or(M == 1, default=default)
+    chained = left | (M == 2)
+    assert glom(-1, chained) == expected
+    # The left fallback succeeds even when the right operand could match.
+    assert glom(2, chained) == expected
+    assert glom(1, chained) == 1
+    assert glom(-1, left) == expected
+
+
+@pytest.mark.parametrize('default, expected', [
+    (None, None), (0, 0), (Val('fallback'), 'fallback')])
+def test_and_chaining_preserves_default(default, expected):
+    left = And(M > 0, default=default)
+    chained = left & Val('next')
+
+    assert glom(-1, chained) == 'next'
+    assert glom(1, chained) == 'next'
+    assert glom(-1, left) == expected
+    # The left fallback must not handle a failure in the right operand.
+    with pytest.raises(MatchError):
+        glom(1, left & (M > 10))
+
+
 def test_precedence():
     """test corner cases of dict key precedence"""
     glom({(0, 1): 3},
