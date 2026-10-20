@@ -278,6 +278,22 @@ def test_invoke():
 
 
 
+@pytest.mark.parametrize('star_kwargs, target, expected, expected_repr', [
+    ({'args': ()}, ({'a': 1},), {'a': 1}, 'Invoke(dict).star(args=())'),
+    ({'kwargs': {}}, None, {}, 'Invoke(dict).star(kwargs={})'),
+    ({'args': ''}, {'': ({'a': 1},)}, {'a': 1}, "Invoke(dict).star(args='')"),
+    ({'kwargs': ''}, {'': {'a': 1}}, {'a': 1}, "Invoke(dict).star(kwargs='')"),
+    ({'args': (), 'kwargs': {}}, ({'a': 1},), {'a': 1},
+     'Invoke(dict).star(args=(), kwargs={})'),
+])
+def test_invoke_star_falsy_repr(star_kwargs, target, expected, expected_repr):
+    spec = Invoke(dict).star(**star_kwargs)
+    assert glom(target, spec) == expected
+    assert repr(spec) == expected_repr
+    reconstructed = eval(repr(spec), {'__builtins__': {}, 'Invoke': Invoke, 'dict': dict})
+    assert glom(target, reconstructed) == expected
+
+
 def test_spec_and_recursion():
     assert repr(Spec('a.b.c')) == "Spec('a.b.c')"
 

@@ -1288,9 +1288,9 @@ class Invoke:
                           if self._cur_kwargs[k] is _kwargs]
             else:
                 kwargs = {}
-                if args:
+                if args is not None:
                     kwargs['args'] = args
-                if _kwargs:
+                if _kwargs is not None:
                     kwargs['kwargs'] = _kwargs
                 args = ()
 
