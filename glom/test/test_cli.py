@@ -1,4 +1,6 @@
 import os
+import io
+import sys
 import subprocess
 
 import pytest
@@ -172,3 +174,40 @@ def test_main(tmp_path):
     os.chdir(str(tmp_path))
     res = subprocess.check_output(['glom', 'a', '{"a": 3}'])
     assert res.decode('utf8') in ('3\n', '3\r\n')  # unix or windows line end okay
+
+
+@pytest.mark.parametrize('read_error', [False, True])
+def test_target_file_closed(cc, basic_target_path, monkeypatch, read_error):
+    handles = []
+    real_open = open
+
+    class BrokenReader(io.StringIO):
+        def read(self, *args):
+            raise OSError('read failed')
+
+    def tracked_open(path, *args, **kwargs):
+        handle = BrokenReader(BASIC_TARGET) if read_error else real_open(path, *args, **kwargs)
+        handles.append(handle)
+        return handle
+
+    monkeypatch.setattr(cli, 'open', tracked_open, raising=False)
+    try:
+        if read_error:
+            result = cc.fail_1(['glom', '--target-file', basic_target_path, 'a.b'])
+            assert 'could not read target file' in result.stdout
+        else:
+            result = cc.run(['glom', '--target-file', basic_target_path, 'a.b'])
+            assert result.stdout == '"c"\n'
+        assert len(handles) == 1
+        assert handles[0].closed
+    finally:
+        for handle in handles:
+            handle.close()
+
+
+def test_target_stdin_stays_open(monkeypatch):
+    stream = io.StringIO(BASIC_TARGET)
+    monkeypatch.setattr(sys, 'stdin', stream)
+    result = cli.mw_get_target(lambda **kwargs: kwargs, ['a.b'], '-', 'json', None, 'python')
+    assert result['target'] == {'a': {'b': 'c'}}
+    assert not stream.closed
