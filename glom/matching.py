@@ -748,14 +748,15 @@ def _glom_match(target, spec, scope):
             result.append(scope[glom](sub_target, sub_spec, scope))
         return tuple(result)
     elif callable(spec):
+        name = getattr(spec, '__name__', type(spec).__name__)
         try:
             if spec(target):
                 return target
         except Exception as e:
             raise MatchError(
-                "{0}({1!r}) did not validate (got exception {2!r})", spec.__name__, target, e)
+                "{0}({1!r}) did not validate (got exception {2!r})", name, target, e)
         raise MatchError(
-            "{0}({1!r}) did not validate (non truthy return)", spec.__name__, target)
+            "{0}({1!r}) did not validate (non truthy return)", name, target)
     elif target != spec:
         raise MatchError("{0!r} does not match {1!r}", target, spec)
     return target
