@@ -602,6 +602,9 @@ class Optional:
         return target
 
     def __repr__(self):
+        if self.default is not _MISSING:
+            return (f'{self.__class__.__name__}({bbrepr(self.key)}, '
+                    f'default={bbrepr(self.default)})')
         return f'{self.__class__.__name__}({bbrepr(self.key)})'
 
 
