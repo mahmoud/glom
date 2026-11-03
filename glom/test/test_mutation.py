@@ -3,6 +3,7 @@ import pytest
 from glom import glom, Path, T, S, Spec, Glommer, PathAssignError, PathAccessError
 from glom import assign, Assign, delete, Delete, PathDeleteError, Or
 from glom import core
+from glom import Val
 from glom.core import UnregisteredTarget
 
 
@@ -48,6 +49,17 @@ def test_assign_spec_val():
     assert output['a'] == output['b'] == 'c'
     output = glom({'b': 'c'}, Assign('a', Or('d', 'b')))
     assert output['a'] == output['b'] == 'c'
+
+
+@pytest.mark.parametrize('path', ['a.b', 'a.b.c.d'])
+@pytest.mark.parametrize('value', [T, Spec('absent'), {'nested': T}])
+def test_assign_missing_preserves_literal_values(path, value):
+    target = {}
+    assign(target, path, Val(value), missing=dict)
+    result = target
+    for part in path.split('.'):
+        result = result[part]
+    assert result is value
 
 
 def test_unregistered_assign():
