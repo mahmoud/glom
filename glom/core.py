@@ -29,6 +29,7 @@ from abc import ABCMeta
 from pprint import pprint
 import string
 from collections import OrderedDict
+from collections.abc import Iterator
 import traceback
 
 from face.helpers import get_wrap_width
@@ -1830,8 +1831,9 @@ class Vars:
     will be referenced; so, think carefully about mutable data structures.
     """
     def __init__(self, base=(), **kw):
-        dict(base)  # ensure it is a dict-compatible first arg
-        self.base = base
+        validated_base = dict(base)  # ensure it is a dict-compatible first arg
+        # Validation consumes iterators; retain their values for later runs.
+        self.base = validated_base if isinstance(base, Iterator) else base
         self.defaults = kw
 
     def glomit(self, target, spec):
