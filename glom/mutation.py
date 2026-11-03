@@ -19,7 +19,7 @@ type.
 import operator
 from pprint import pprint
 
-from .core import Path, T, S, Spec, glom, UnregisteredTarget, GlomError, PathAccessError, UP
+from .core import Path, T, S, Spec, Val, glom, UnregisteredTarget, GlomError, PathAccessError, UP
 from .core import TType, register_op, TargetRegistry, bbrepr, PathAssignError, arg_val, _assign_op
 
 
@@ -175,7 +175,7 @@ class Assign:
                 raise
 
             remaining_path = self._orig_path[pae.part_idx + 1:]
-            val = scope[glom](self.missing(), Assign(remaining_path, val, missing=self.missing), scope)
+            val = scope[glom](self.missing(), Assign(remaining_path, Val(val), missing=self.missing), scope)
 
             op, arg = self._orig_path.items()[pae.part_idx]
             path = self._orig_path[:pae.part_idx]
