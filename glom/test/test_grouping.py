@@ -1,4 +1,4 @@
-from pytest import raises
+from pytest import mark, raises
 
 from glom import glom, T, SKIP, STOP, Auto, BadSpec, Val
 from glom.grouping import Group, First, Avg, Max, Min, Sample, Limit
@@ -49,7 +49,8 @@ def test_corner_cases():
                    1: {1: [1]},
                    2: {0: [2], 1: [3]},
                    3: {0: [4, 6], 1: [5, 7]},
-                   4: {0: [8, 10, 12], 1: [9, 11, 13]}}
+                   4: {0: [8, 10, 12], 1: [9, 11, 13]},
+                   5: {0: [16, 18], 1: [17, 19]}}
 
     return
 
@@ -87,6 +88,35 @@ def test_limit():
     with raises(BadSpec):
         assert glom(t, Limit(1))  # needs to be wrapped in Group for now
     return
+
+
+@mark.parametrize('aggregate, expected', [
+    (Limit(1), {'a': ['a'], 'b': ['b']}),
+    (First(), {'a': 'a', 'b': 'b'}),
+])
+def test_bucket_stop_does_not_end_group(aggregate, expected):
+    assert glom(['a', 'a', 'b', 'b'], Group({T: aggregate})) == expected
+
+
+def test_stopped_bucket_is_not_evaluated_again():
+    seen = []
+
+    def value(target):
+        seen.append(target)
+        return STOP if target == ('a', 2) else target[1]
+
+    target = [('a', 1), ('a', 2), ('a', 3), ('b', 4)]
+    assert glom(target, Group({T[0]: value})) == {'a': 1, 'b': 4}
+    assert seen == [('a', 1), ('a', 2), ('b', 4)]
+
+
+def test_key_stop_still_ends_group():
+    def target():
+        yield 'a'
+        yield STOP
+        raise AssertionError('group read past a stopped key')
+
+    assert glom(target(), Group({T: [T]})) == {'a': ['a']}
 
 
 def test_reduce():

@@ -17,6 +17,8 @@ but is not 1:1; instead the main purpose is to ensure
 data is kept until the Group() finishes executing
 """
 
+_STOPPED_BUCKETS = make_sentinel('_STOPPED_BUCKETS')
+
 CUR_AGG = make_sentinel('CUR_AGG')
 CUR_AGG.__doc__ = """
 the spec which is currently performing aggregation --
@@ -63,6 +65,11 @@ class Group:
 
     target is the current target, accumulator is a dict
     maintained by Group mode
+
+    In a dict spec, a value spec that returns :data:`~glom.STOP` stops
+    accumulation for the current key only. The key spec can still
+    produce new keys. A key spec that returns :data:`~glom.STOP` stops
+    its entire branch.
 
     unlike Iter(), Group() converts an iterable target
     into a single result; Iter() converts an iterable
@@ -116,6 +123,8 @@ def GROUP(target, spec, scope):
         acc = tree[_spec_id] = _spec_type()
     if _spec_type is dict:
         done = True
+        stopped_buckets_key = (_STOPPED_BUCKETS, _spec_id)
+        stopped_buckets = tree.get(stopped_buckets_key, ())
         for keyspec, valspec in spec.items():
             if tree.get(keyspec, None) is STOP:
                 continue
@@ -126,15 +135,21 @@ def GROUP(target, spec, scope):
             if key is STOP:
                 tree[keyspec] = STOP
                 continue
+            # A stopped value only closes this bucket. The key spec can still
+            # produce new keys, so the group must keep reading.
+            done = False
+            bucket = (keyspec, key)
+            if bucket in stopped_buckets:
+                continue
             if key not in acc:
                 # TODO: guard against key == id(spec)
                 tree[key] = {}
             scope[ACC_TREE] = tree[key]
             result = recurse(valspec)
             if result is STOP:
-                tree[keyspec] = STOP
+                stopped_buckets = tree.setdefault(stopped_buckets_key, set())
+                stopped_buckets.add(bucket)
                 continue
-            done = False  # SKIP or returning a value means we still want more vals
             if result is not SKIP:
                 acc[key] = result
         if done:
