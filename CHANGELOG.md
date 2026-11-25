@@ -12,6 +12,10 @@ The glom team's approach to updates can be summed up as:
 Check this page when upgrading, we strive to keep the updates
 summarized and well-linked.
 
+## Unreleased
+
+- Accept lists of types in `Check(instance_of=...)`, as documented.
+
 ## 25.12.0
 
 _(December 28, 2025)_

@@ -1,4 +1,4 @@
-from pytest import raises
+from pytest import mark, raises
 
 from glom import glom, Check, CheckError, Coalesce, SKIP, STOP, T
 
@@ -75,6 +75,35 @@ def test_check_multi():
         glom(target, Check(instance_of=float, validate=lambda x: x > 3.14))
 
     assert "2 errors" in str(exc_info.value)
+
+
+@mark.parametrize('types,target', [([int], 2), ([int, str], 2),
+                                  ([int, str], 'text'), ([int], True)])
+def test_check_instance_of_list(types, target):
+    check = Check(instance_of=types)
+    assert glom(target, check) is target
+    assert glom(target, check) is target
+    names = ', '.join(t.__name__ for t in types)
+    assert repr(check) == 'Check(instance_of=[%s])' % names
+
+
+@mark.parametrize('types', [[int], [int, str]])
+def test_check_instance_of_list_failure(types):
+    with raises(CheckError) as exc_info:
+        glom(None, Check(instance_of=types))
+    assert 'expected instance of' in str(exc_info.value)
+
+
+def test_check_instance_of_list_default():
+    assert glom(None, Check(instance_of=[int], default='fallback')) == 'fallback'
+    assert glom([1, 'a', 2], [Check(instance_of=[int], default=SKIP)]) == [1, 2]
+    assert glom({'n': 2}, Check('n', instance_of=[int])) == {'n': 2}
+
+
+@mark.parametrize('types', [[], [int, 'str'], [int, 42]])
+def test_check_instance_of_invalid_list(types):
+    with raises(ValueError):
+        Check(instance_of=types)
 
 
 

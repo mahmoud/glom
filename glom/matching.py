@@ -929,6 +929,8 @@ class Check:
             raise TypeError('unexpected keyword arguments: %r' % kwargs.keys())
 
         self.validators = _get_arg_val('validate', 'callable', callable, validate)
+        if is_iterable(instance_of):
+            instance_of = tuple(instance_of)
         self.instance_of = _get_arg_val('instance_of', 'a type',
                                         lambda x: isinstance(x, type), instance_of, False)
         self.types = _get_arg_val('type', 'a type',
